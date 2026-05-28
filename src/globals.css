@@ -4,89 +4,113 @@
 
 @layer base {
   :root {
+    /* WastiGo Brand Colors */
+    --brand-50: 142 76% 97%;
+    --brand-100: 142 72% 90%;
+    --brand-200: 142 68% 78%;
+    --brand-300: 142 62% 62%;
+    --brand-400: 142 56% 48%;
+    --brand-500: 142 72% 32%;
+    --brand-600: 142 76% 24%;
+    --brand-700: 142 78% 18%;
+    --brand-800: 142 80% 13%;
+    --brand-900: 142 82% 8%;
+
+    /* Neutral */
+    --neutral-50: 0 0% 98%;
+    --neutral-100: 0 0% 95%;
+    --neutral-200: 0 0% 90%;
+    --neutral-300: 0 0% 80%;
+    --neutral-400: 0 0% 60%;
+    --neutral-500: 0 0% 45%;
+    --neutral-600: 0 0% 30%;
+    --neutral-700: 0 0% 20%;
+    --neutral-800: 0 0% 12%;
+    --neutral-900: 0 0% 6%;
+
+    /* Accent - Warm Amber */
+    --accent-50: 40 100% 95%;
+    --accent-100: 40 95% 88%;
+    --accent-200: 40 90% 75%;
+    --accent-300: 40 85% 60%;
+    --accent-400: 40 80% 48%;
+    --accent-500: 40 85% 38%;
+
+    /* Semantic */
+    --success: 142 72% 32%;
+    --warning: 40 85% 38%;
+    --error: 0 72% 48%;
+    --info: 200 72% 48%;
+
+    /* shadcn/ui mapped to WastiGo */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 142 80% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 142 80% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 142 80% 8%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 142 72% 32%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 142 30% 95%;
+    --secondary-foreground: 142 78% 18%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 142 20% 95%;
+    --muted-foreground: 142 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 40 85% 38%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 142 15% 88%;
+    --input: 142 15% 88%;
+    --ring: 142 72% 32%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 142 78% 18%;
+    --sidebar-foreground: 142 20% 95%;
+    --sidebar-primary: 142 72% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 60% 25%;
+    --sidebar-accent-foreground: 142 20% 95%;
+    --sidebar-border: 142 50% 22%;
+    --sidebar-ring: 142 72% 42%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 142 80% 6%;
+    --foreground: 142 20% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 142 70% 10%;
+    --card-foreground: 142 20% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 142 70% 10%;
+    --popover-foreground: 142 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 142 72% 42%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 142 50% 18%;
+    --secondary-foreground: 142 20% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 142 40% 15%;
+    --muted-foreground: 142 15% 55%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 40 80% 48%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 142 40% 20%;
+    --input: 142 40% 20%;
+    --ring: 142 72% 42%;
   }
 }
 
@@ -94,8 +118,50 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* WastiGo Custom Utilities */
+@layer utilities {
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-[#145C25] to-[#2E8B3E] bg-clip-text text-transparent;
+  }
+  .bg-gradient-brand {
+    @apply bg-gradient-to-br from-[#145C25] via-[#1A7A30] to-[#2E8B3E];
+  }
+  .bg-gradient-hero {
+    @apply bg-gradient-to-br from-[#0A2F14] via-[#145C25] to-[#0D3B1A];
+  }
+  .bg-gradient-card {
+    @apply bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7];
+  }
+  .shadow-brand {
+    box-shadow: 0 4px 24px rgba(20, 92, 37, 0.15);
+  }
+  .shadow-brand-lg {
+    box-shadow: 0 8px 40px rgba(20, 92, 37, 0.2);
+  }
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(142, 15%, 80%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(142, 15%, 65%);
 }
