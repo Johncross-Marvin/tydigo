@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   Leaf,
   Droplets,
+  Award,
 } from "lucide-react";
 
 const steps = ["Category", "Weight", "Location", "Schedule", "Payment", "Confirm"];
