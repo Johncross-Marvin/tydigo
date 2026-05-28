@@ -3,14 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Recycle, Phone, ArrowRight, Shield, CheckCircle2, ArrowLeft } from "lucide-react";
-
-const GOOGLE_DRIVE_IDS = {
-  login: "1VfqVsULLkE-tzkDENDtPWgqz-7QLIXnA",
-};
-
-const gd = (id: string) => `https://drive.google.com/uc?export=view&id=${id}`;
+import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -32,7 +26,7 @@ const LoginPage = () => {
         <div className="hidden lg:flex flex-col items-center">
           <div className="w-72 rounded-[2.5rem] overflow-hidden shadow-brand-lg border-4 border-neutral-300">
             <img
-              src={gd(GOOGLE_DRIVE_IDS.login)}
+              src={gdUrl(IMAGE_IDS.login)}
               alt="WastiGo Login"
               className="w-full h-auto"
             />

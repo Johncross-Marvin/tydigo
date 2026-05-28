@@ -16,12 +16,7 @@ import {
   Navigation,
   Shield,
 } from "lucide-react";
-
-const GOOGLE_DRIVE_IDS = {
-  tracking: "1wDKGZLthGyQW9jCcPOf3PyHzFqoji7gq",
-};
-
-const gd = (id: string) => `https://drive.google.com/uc?export=view&id=${id}`;
+import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const TrackingPage = () => {
   const [eta, setEta] = useState(12);
@@ -51,7 +46,7 @@ const TrackingPage = () => {
         <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl overflow-hidden">
           <div className="relative h-64 sm:h-80 bg-neutral-100">
             <img
-              src={gd(GOOGLE_DRIVE_IDS.tracking)}
+              src={gdUrl(IMAGE_IDS.tracking)}
               alt="Live Tracking Map"
               className="w-full h-full object-cover"
             />

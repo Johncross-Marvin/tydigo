@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Recycle,
   Truck,
@@ -25,27 +25,7 @@ import {
   Globe,
   Sparkles,
 } from "lucide-react";
-
-const GOOGLE_DRIVE_IDS = {
-  hero: "1Iipeg7HtEfp8Thx6bRt_0OX36M0l9Jge",
-  dashboard: "1b5h3vD3HPb_4iPqCUZSRqBPXC5sCL0_k",
-  tracking: "1wDKGZLthGyQW9jCcPOf3PyHzFqoji7gq",
-  pickup: "17M5utbdVYw3TYuCQVORgbf6TAA8UROqA",
-  ecopoints: "1Yi-vG8rjWtUQK6fo_2VSijujwU9wJQCc",
-  roleSelection: "1iBtupkO46BJPOyX83CEuxRarqAFsfiM7",
-  login: "1VfqVsULLkE-tzkDENDtPWgqz-7QLIXnA",
-  onboarding: "1TcIeg2FTB04UtdKaZGwEr3dJ6dGMedCO",
-  payment: "1UhYHrADHT-P0wWK1mtGzcgCqWjcJyQvq",
-  completion: "18EaT2-o1Xbpig84Cfb_vniIlEQk_ZDmN",
-  collectorDashboard: "1Y_Ugn-S5jC7QzQSDD1WmX-2bse_V_wqe",
-  businessDashboard: "1fR41RA7kqtdTbjjera1rIoqZHxB3ryjR",
-  partnerDashboard: "1zA1ZzfFRRelgV6cHRehjQBd-Z6YNNfxL",
-  adminDashboard: "1PAkVI48arw1x4b8Pd4s_QOiyHtoH1Xkk",
-  challenges: "189IgEpg1rKhMooMMpaM97Lae7JmfWQRX",
-  redeem: "1Tn2o_tvrhid5Ka98oy3Cf2ujoZ2mgbJL",
-};
-
-const gd = (id: string) => `https://drive.google.com/uc?export=view&id=${id}`;
+import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -256,7 +236,7 @@ const Index = () => {
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-10" />
                   <div className="rounded-[2rem] overflow-hidden bg-white">
                     <img
-                      src={gd(GOOGLE_DRIVE_IDS.dashboard)}
+                      src={gdUrl(IMAGE_IDS.dashboard)}
                       alt="WastiGo App Dashboard"
                       className="w-full h-auto"
                       loading="lazy"
@@ -478,12 +458,12 @@ const Index = () => {
           {/* Scrolling phone mockups */}
           <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-hide">
             {[
-              { src: GOOGLE_DRIVE_IDS.dashboard, label: "Dashboard" },
-              { src: GOOGLE_DRIVE_IDS.tracking, label: "Live Tracking" },
-              { src: GOOGLE_DRIVE_IDS.pickup, label: "Request Pickup" },
-              { src: GOOGLE_DRIVE_IDS.ecopoints, label: "EcoPoints" },
-              { src: GOOGLE_DRIVE_IDS.payment, label: "Payments" },
-              { src: GOOGLE_DRIVE_IDS.completion, label: "Completion" },
+              { src: IMAGE_IDS.dashboard, label: "Dashboard" },
+              { src: IMAGE_IDS.tracking, label: "Live Tracking" },
+              { src: IMAGE_IDS.requestPickup, label: "Request Pickup" },
+              { src: IMAGE_IDS.ecopoints, label: "EcoPoints" },
+              { src: IMAGE_IDS.payment, label: "Payments" },
+              { src: IMAGE_IDS.completion, label: "Completion" },
             ].map((screen, i) => (
               <div
                 key={i}
@@ -491,7 +471,7 @@ const Index = () => {
               >
                 <div className="w-64 sm:w-72 rounded-[2rem] overflow-hidden shadow-brand-lg border-4 border-neutral-200">
                   <img
-                    src={gd(screen.src)}
+                    src={gdUrl(screen.src)}
                     alt={screen.label}
                     className="w-full h-auto"
                     loading="lazy"

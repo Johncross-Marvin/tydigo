@@ -16,12 +16,7 @@ import {
   Trophy,
   Flame,
 } from "lucide-react";
-
-const GOOGLE_DRIVE_IDS = {
-  ecopoints: "1Yi-vG8rjWtUQK6fo_2VSijujwU9wJQCc",
-};
-
-const gd = (id: string) => `https://drive.google.com/uc?export=view&id=${id}`;
+import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const EcoPointsPage = () => {
   return (
@@ -34,6 +29,15 @@ const EcoPointsPage = () => {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
+        {/* App Screen Preview */}
+        <Card className="border-0 shadow-brand-lg rounded-2xl overflow-hidden">
+          <img
+            src={gdUrl(IMAGE_IDS.ecopoints)}
+            alt="EcoPoints Screen"
+            className="w-full h-auto"
+          />
+        </Card>
+
         {/* Balance Card */}
         <Card className="border-0 shadow-brand-lg rounded-2xl bg-gradient-to-br from-[#145C25] via-[#1A7A30] to-[#0D3B1A] text-white overflow-hidden relative">
           <CardContent className="p-6 relative z-10">
