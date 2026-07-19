@@ -1,7 +1,7 @@
 {
-  "name": "WastiGo",
-  "short_name": "WastiGo",
-  "description": "Smart waste pickup, recycling rewards, and operations platform.",
+  "name": "Tydigo",
+  "short_name": "Tydigo",
+  "description": "Cleaner homes. Smarter cities.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

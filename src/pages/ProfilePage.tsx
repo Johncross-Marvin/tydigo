@@ -35,7 +35,7 @@ const ProfilePage = () => {
               </AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="text-xl font-extrabold text-neutral-900">{user?.name ?? "WastiGo User"}</h2>
+              <h2 className="text-xl font-extrabold text-neutral-900">{user?.name ?? "Tydigo User"}</h2>
               <div className="flex items-center gap-1 text-sm text-neutral-500 mt-0.5">
                 <Phone className="w-3.5 h-3.5" /> +{user?.phone ?? ""}
               </div>

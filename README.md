@@ -1,7 +1,8 @@
-# WastiGo
+# Tydigo
 
-Smart waste pickup, recycling rewards, and operations dashboard for households,
-collectors, businesses, recycling partners, and platform admins.
+Tydigo is an on-demand waste pickup, recycling, and rewards platform helping homes, estates, businesses, collectors, and recyclers build cleaner African cities.
+
+Cleaner homes. Smarter cities.
 
 ## What is production-backed now
 

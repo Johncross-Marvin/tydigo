@@ -131,7 +131,7 @@ async function startAuth(request, db, env) {
   if (phone.length < 10) throw httpError("Enter a valid phone number.", 400);
 
   const existing = await first(db, "SELECT id, name, role FROM users WHERE phone = ?", phone);
-  if (mode === "signin" && !existing) throw httpError("No WastiGo account exists for this phone number.", 404);
+  if (mode === "signin" && !existing) throw httpError("No Tydigo account exists for this phone number.", 404);
   if (mode === "signup" && !name) throw httpError("Enter your full name to create an account.", 400);
 
   const recentRequests = await first(db, "SELECT COUNT(*) AS count FROM auth_verifications WHERE phone = ? AND created_at > ?", phone, addMinutes(-10));
@@ -157,7 +157,7 @@ async function startAuth(request, db, env) {
 }
 
 async function deliverVerification(env, phone, code) {
-  const smsMessage = "Your WastiGo verification code is " + code + ". It expires in 10 minutes.";
+  const smsMessage = "Your Tydigo verification code is " + code + ". It expires in 10 minutes.";
   const formattedPhone = "+" + phone;
 
   if (env?.TERMII_API_KEY) {
@@ -167,7 +167,7 @@ async function deliverVerification(env, phone, code) {
       body: JSON.stringify({
         api_key: env.TERMII_API_KEY,
         to: formattedPhone,
-        from: env.TERMII_SENDER_ID || "WastiGo",
+        from: env.TERMII_SENDER_ID || "Tydigo",
         sms: smsMessage,
         type: "plain",
         channel: env.TERMII_CHANNEL || "generic",
@@ -218,7 +218,7 @@ async function verifyAuth(request, db, env) {
     const role = normalizeRole(verification.role || "household", env);
     await db.prepare(
       "INSERT INTO users (id, phone, name, role, created_at, updated_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).bind(userId, verification.phone, verification.name || "WastiGo User", role, now, now, now).run();
+    ).bind(userId, verification.phone, verification.name || "Tydigo User", role, now, now, now).run();
     await db.prepare(
       "INSERT INTO profiles (user_id, address, city, state, ecopoints, rating, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ).bind(userId, "", "Abuja", "FCT", 500, 5, now).run();
@@ -518,8 +518,10 @@ function corsHeaders(request) {
 
 function normalizePhone(phone) {
   const digits = String(phone || "").replace(/\\D/g, "");
+  if (digits.startsWith("00")) return digits.slice(2);
   if (digits.startsWith("234")) return digits;
   if (digits.startsWith("0")) return "234" + digits.slice(1);
+  if (digits.length >= 11) return digits;
   return "234" + digits;
 }
 

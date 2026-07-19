@@ -21,7 +21,7 @@ const PartnerDashboardPage = () => {
         <Link to="/role-selection" className="p-1.5 -ml-1.5 rounded-lg hover:bg-neutral-100">
           <ArrowLeft className="w-5 h-5 text-neutral-600" />
         </Link>
-        <h1 className="font-bold text-neutral-900">Partner Dashboard</h1>
+        <h1 className="font-bold text-neutral-900">Recycler Dashboard</h1>
       </header>
 
       <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">

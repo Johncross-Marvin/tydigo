@@ -15,11 +15,11 @@ const CompletionPage = () => {
 
   const handleShare = async () => {
     const shareText = pickup
-      ? `I just completed WastiGo pickup ${pickup.pickup_code} and earned ${earnedPoints.toLocaleString()} EcoPoints.`
-      : "I just completed a WastiGo pickup.";
+      ? `I just completed Tydigo pickup ${pickup.pickup_code} and earned ${earnedPoints.toLocaleString()} EcoPoints.`
+      : "I just completed a Tydigo pickup.";
 
     if (navigator.share) {
-      await navigator.share({ title: "WastiGo Pickup Complete", text: shareText, url: window.location.origin });
+      await navigator.share({ title: "Tydigo Pickup Complete", text: shareText, url: window.location.origin });
       return;
     }
 

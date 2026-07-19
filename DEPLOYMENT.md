@@ -1,6 +1,6 @@
-# WastiGo Deployment
+# Tydigo Deployment
 
-WastiGo is now a full-stack app: the Vite frontend talks to authenticated API routes, and production data is stored in the D1 database bound as `DB`.
+Tydigo is an on-demand waste pickup, recycling, and rewards platform helping homes, estates, businesses, collectors, and recyclers build cleaner African cities.
 
 ## Production Architecture
 
@@ -18,14 +18,14 @@ git status
 git add -A
 git commit -m "Add production auth and persistent data backend"
 git branch -M main
-git remote add origin https://github.com/YOUR_GITHUB_USERNAME/wastigo.git
+git remote add origin https://github.com/YOUR_GITHUB_USERNAME/tydigo.git
 git push -u origin main
 ```
 
 If `origin` already exists, update it instead:
 
 ```bash
-git remote set-url origin https://github.com/YOUR_GITHUB_USERNAME/wastigo.git
+git remote set-url origin https://github.com/YOUR_GITHUB_USERNAME/tydigo.git
 git push -u origin main
 ```
 
@@ -41,12 +41,12 @@ Vercel can host the frontend cleanly. For real user data, set the frontend to ca
 6. Add environment variable:
 
 ```bash
-VITE_API_BASE_URL=https://wastigo-20260719.johncros.chatgpt.site
+VITE_API_BASE_URL=https://YOUR_FULL_STACK_TYDIGO_API_URL
 ```
 
 7. Deploy.
 
-Do not leave `VITE_API_BASE_URL` empty on Vercel unless the API is also deployed behind the same host. A static-only Vercel deploy cannot persist users, sessions, pickups, payments, or partner requests by itself.
+Do not leave `VITE_API_BASE_URL` empty on Vercel unless the API is also deployed behind the same host. A static-only Vercel deploy cannot persist users, sessions, pickups, payments, or recycler material requests by itself.
 
 ## Full-Stack Worker Deployment
 
@@ -69,7 +69,7 @@ For real SMS OTP delivery, configure either Termii:
 
 ```bash
 TERMII_API_KEY=your-termii-api-key
-TERMII_SENDER_ID=WastiGo
+TERMII_SENDER_ID=Tydigo
 TERMII_CHANNEL=generic
 ```
 
@@ -81,4 +81,4 @@ TWILIO_AUTH_TOKEN=your-twilio-auth-token
 TWILIO_FROM_NUMBER=+1234567890
 ```
 
-Normal public signup supports household, collector, business, and recycling partner accounts. Admin access should remain invitation-only.
+Normal public signup supports home/estate, collector, business, and recycler accounts. Admin access should remain invitation-only.

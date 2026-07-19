@@ -22,10 +22,10 @@ const AdminDashboardPage = () => {
   ];
 
   const menuItems = [
-    { icon: Shield, label: "KYC Verification", desc: "Approve collector & partner identities", route: "/admin/kyc" },
+    { icon: Shield, label: "KYC Verification", desc: "Approve collector and recycler identities", route: "/admin/kyc" },
     { icon: DollarSign, label: "Pricing Engine", desc: "Manage pickup & weight pricing", route: "/admin/pricing" },
     { icon: Award, label: "EcoPoints Rules", desc: "Configure earning & redemption rules", route: "/admin/ecopoints" },
-    { icon: Truck, label: "Batch Tracking", desc: "Monitor waste batches to partners", route: "/admin/batches" },
+    { icon: Truck, label: "Batch Tracking", desc: "Monitor waste batches to recyclers", route: "/admin/batches" },
     { icon: BarChart3, label: "Impact Reports", desc: "ESG & sustainability analytics", route: "/admin/impact" },
   ];
 

@@ -11,7 +11,7 @@ const NotFound = () => {
         </div>
         <h1 className="text-4xl font-extrabold text-neutral-900 mb-3">Page not found</h1>
         <p className="text-neutral-500 mb-6">
-          This WastiGo route is not available. Head back home or choose your role again.
+          This Tydigo route is not available. Head back home or choose your role again.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-3">
           <Link to="/">

@@ -74,7 +74,7 @@ const HouseholdDashboardPage = () => {
               <Recycle className="w-5 h-5 text-amber-400" />
             </div>
             <span className="text-xl font-bold">
-              Wasti<span className="text-amber-400">Go</span>
+              Ty<span className="text-amber-400">digo</span>
             </span>
           </Link>
         </div>
@@ -115,7 +115,7 @@ const HouseholdDashboardPage = () => {
             <div className="flex items-center justify-between mb-6">
               <Link to="/" className="flex items-center gap-2.5">
                 <Recycle className="w-5 h-5 text-amber-400" />
-                <span className="text-lg font-bold">WastiGo</span>
+                <span className="text-lg font-bold">Tydigo</span>
               </Link>
               <button onClick={() => setMobileSidebarOpen(false)}>
                 <X className="w-5 h-5" />

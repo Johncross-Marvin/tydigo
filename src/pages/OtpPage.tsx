@@ -20,7 +20,7 @@ type PendingAuth = {
 
 const readPendingAuth = (state: unknown): PendingAuth | null => {
   if (state && typeof state === "object" && "verificationId" in state) return state as PendingAuth;
-  const stored = sessionStorage.getItem("wastigo_pending_auth");
+  const stored = sessionStorage.getItem("tydigo_pending_auth");
   if (!stored) return null;
   try {
     return JSON.parse(stored) as PendingAuth;
@@ -60,7 +60,7 @@ const OtpPage = () => {
 
     try {
       const user = await verifySession(pendingAuth.verificationId, digits.join(""));
-      sessionStorage.removeItem("wastigo_pending_auth");
+      sessionStorage.removeItem("tydigo_pending_auth");
       setVerified(true);
       setTimeout(() => navigate(roleHomePath[user.role], { replace: true }), 900);
     } catch (verifyError) {
@@ -109,7 +109,7 @@ const OtpPage = () => {
       role: pendingAuth.role,
     });
     const nextPending = { ...pendingAuth, ...response };
-    sessionStorage.setItem("wastigo_pending_auth", JSON.stringify(nextPending));
+    sessionStorage.setItem("tydigo_pending_auth", JSON.stringify(nextPending));
     setTimer(response.expiresInSeconds);
     setOtp(["", "", "", "", "", ""]);
     inputRefs.current[0]?.focus();

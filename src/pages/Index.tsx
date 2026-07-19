@@ -52,16 +52,16 @@ const Index = () => {
   ];
 
   const footerCompanyLinks = [
-    { label: "About WastiGo", href: "#how-it-works" },
+    { label: "About Tydigo", href: "#how-it-works" },
     { label: "Impact", href: "#impact" },
-    { label: "Partner With Us", href: "/partner/request" },
-    { label: "Contact", href: "mailto:hello@wastigo.ng" },
+    { label: "Recycler Network", href: "/partner/request" },
+    { label: "Contact", href: "mailto:hello@tydigo.africa" },
   ];
 
   const footerLegalLinks = [
-    { label: "Privacy", href: "mailto:privacy@wastigo.ng" },
-    { label: "Terms", href: "mailto:legal@wastigo.ng" },
-    { label: "Support", href: "mailto:support@wastigo.ng" },
+    { label: "Privacy", href: "mailto:privacy@tydigo.africa" },
+    { label: "Terms", href: "mailto:legal@tydigo.africa" },
+    { label: "Support", href: "mailto:support@tydigo.africa" },
   ];
 
   return (
@@ -82,7 +82,7 @@ const Index = () => {
                 <Recycle className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-[#145C25] tracking-tight">
-                Wasti<span className="text-amber-500">Go</span>
+                Ty<span className="text-amber-500">digo</span>
               </span>
             </Link>
 
@@ -181,28 +181,24 @@ const Index = () => {
             <div className="space-y-8">
               <Badge className="bg-green-500/20 text-green-200 border-green-400/30 px-4 py-1.5 text-sm rounded-full">
                 <Sparkles className="w-3.5 h-3.5 mr-2" />
-                Nigeria's #1 Waste Management Platform
+                On-demand waste pickup, recycling, and rewards
               </Badge>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
-                Smart Waste
+                Cleaner homes.
                 <br />
-                <span className="text-amber-400">Management</span> for
-                <br />
-                a Cleaner Future
+                <span className="text-amber-400">Smarter cities.</span>
               </h1>
 
               <p className="text-lg text-green-100/80 max-w-lg leading-relaxed">
-                Schedule pickups, earn EcoPoints, track collectors in real-time,
-                and join thousands of households making Nigeria cleaner — one
-                pickup at a time.
+                Tydigo is an on-demand waste pickup, recycling, and rewards platform helping homes, estates, businesses, collectors, and recyclers build cleaner African cities.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/login">
                   <Button className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-[#0A2F14] font-bold text-base px-8 py-6 rounded-2xl shadow-lg shadow-amber-500/25 transition-all hover:scale-105">
                     <Phone className="w-5 h-5 mr-2" />
-                    Start with Phone Number
+                    Start with Tydigo
                   </Button>
                 </Link>
                 <a href="#how-it-works">
@@ -240,7 +236,7 @@ const Index = () => {
                     ))}
                   </div>
                   <p className="text-sm text-green-200">
-                    Trusted by <strong>50,000+</strong> households
+                    Trusted by <strong>50,000+</strong> homes and businesses
                   </p>
                 </div>
               </div>
@@ -258,7 +254,7 @@ const Index = () => {
                   <div className="rounded-[2rem] overflow-hidden bg-white">
                     <img
                       src={gdUrl(IMAGE_IDS.dashboard)}
-                      alt="WastiGo App Dashboard"
+                      alt="Tydigo App Dashboard"
                       className="w-full h-auto"
                       loading="eager"
                       decoding="async"
@@ -309,11 +305,10 @@ const Index = () => {
               Simple Process
             </Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 tracking-tight mb-4">
-              How WastiGo Works
+              How Tydigo Works
             </h2>
             <p className="text-neutral-500 text-lg">
-              Four simple steps to turn your waste into value. It's never been
-              easier to keep your environment clean.
+              Book a pickup, coordinate collection, and turn recyclable waste into measurable value.
             </p>
           </div>
 
@@ -389,8 +384,7 @@ const Index = () => {
               Everything You Need
             </h2>
             <p className="text-neutral-500 text-lg">
-              From real-time tracking to rewards redemption, WastiGo has all the
-              tools for modern waste management.
+              From real-time tracking to rewards redemption, Tydigo connects the people and businesses keeping African cities clean.
             </p>
           </div>
 
@@ -506,7 +500,7 @@ const Index = () => {
               Choose Your Role
             </h2>
             <p className="text-neutral-500 text-lg">
-              WastiGo serves the entire waste management ecosystem.
+              Tydigo serves homes, estates, businesses, collectors, and recyclers in one connected platform.
             </p>
           </div>
 
@@ -514,8 +508,8 @@ const Index = () => {
             {[
               {
                 icon: Users,
-                title: "Household",
-                desc: "Schedule pickups & earn rewards",
+                title: "Homes & Estates",
+                desc: "Schedule pickups and earn rewards",
                 color: "bg-green-100 text-[#145C25]",
               },
               {
@@ -532,8 +526,8 @@ const Index = () => {
               },
               {
                 icon: Recycle,
-                title: "Partner",
-                desc: "Supply recyclable materials",
+                title: "Recycler",
+                desc: "Source recyclable materials",
                 color: "bg-amber-100 text-amber-600",
               },
               {
@@ -574,15 +568,15 @@ const Index = () => {
               Plans for Every Waste Workflow
             </h2>
             <p className="text-neutral-500 text-lg">
-              Start with household pickups, then scale into business, partner,
-              and admin operations when your network grows.
+              Start with homes and estates, then scale into business, collector,
+              and recycler workflows as your city network grows.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                name: "Household",
+                name: "Home / Estate",
                 price: "Free",
                 detail: "Pay per pickup",
                 cta: "Start Pickup",
@@ -599,12 +593,12 @@ const Index = () => {
                 features: ["Scheduled bulk pickups", "Impact reporting", "Dedicated support"],
               },
               {
-                name: "Partner",
+                name: "Recycler",
                 price: "Marketplace",
-                detail: "Material request pricing",
+                detail: "Material marketplace pricing",
                 cta: "Request Materials",
                 route: "/partner/request",
-                features: ["Recyclable material sourcing", "Batch tracking", "Partner revenue view"],
+                features: ["Recyclable material sourcing", "Batch tracking", "Recycler revenue view"],
               },
             ].map((plan) => (
               <Card
@@ -659,13 +653,13 @@ const Index = () => {
               Our Growing Impact
             </h2>
             <p className="text-green-200 text-lg">
-              Together, we're making Nigeria cleaner and greener.
+               Together, we're building cleaner African cities.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { value: "50K+", label: "Active Households", icon: Users },
+              { value: "50K+", label: "Active Homes", icon: Users },
               { value: "250K+", label: "Pickups Completed", icon: Truck },
               { value: "1.2M kg", label: "Waste Recycled", icon: Recycle },
               { value: "₦45M+", label: "Rewards Paid Out", icon: Award },
@@ -700,18 +694,18 @@ const Index = () => {
             {[
               {
                 name: "Amina B.",
-                role: "Household User, Abuja",
-                text: "WastiGo has completely changed how I manage waste. The collectors are always on time and I've earned over 15,000 EcoPoints!",
+                role: "Estate Resident, Abuja",
+                text: "Tydigo has completely changed how I manage waste. The collectors are always on time and I've earned over 15,000 EcoPoints!",
               },
               {
                 name: "Ibrahim M.",
                 role: "Collector, Lagos",
-                text: "Since joining WastiGo, my monthly earnings have tripled. The app makes it easy to find pickups and plan my route.",
+                text: "Since joining Tydigo, my monthly earnings have tripled. The app makes it easy to find pickups and plan my route.",
               },
               {
                 name: "Mr. Okonkwo",
                 role: "Business Owner, Kano",
-                text: "We switched our entire office complex to WastiGo. The bulk pickup scheduling and impact reports are excellent.",
+                text: "We switched our entire office complex to Tydigo. The bulk pickup scheduling and impact reports are excellent.",
               },
             ].map((testimonial, i) => (
               <Card
@@ -761,8 +755,7 @@ const Index = () => {
                 Ready to Make a Difference?
               </h2>
               <p className="text-green-200 text-lg mb-8 max-w-lg mx-auto">
-                Join 50,000+ households already using WastiGo. Sign up in 60
-                seconds with just your phone number.
+                Join homes, estates, businesses, collectors, and recyclers using Tydigo to make waste pickup simpler and cities smarter.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/login">
@@ -798,11 +791,11 @@ const Index = () => {
                   <Recycle className="w-5 h-5 text-amber-400" />
                 </div>
                 <span className="text-xl font-bold text-white">
-                  Wasti<span className="text-amber-400">Go</span>
+                  Ty<span className="text-amber-400">digo</span>
                 </span>
               </div>
               <p className="text-sm text-green-300 leading-relaxed">
-                Smart waste management for a cleaner, greener Nigeria.
+                Cleaner homes. Smarter cities.
               </p>
             </div>
 
@@ -853,9 +846,9 @@ const Index = () => {
           </div>
 
           <div className="border-t border-green-700/50 pt-8 text-center text-sm text-green-400">
-            &copy; {new Date().getFullYear()} WastiGo. All rights reserved. Made
+            &copy; {new Date().getFullYear()} Tydigo. All rights reserved. Built
             with <Leaf className="w-3.5 h-3.5 inline text-green-400" /> in
-            Nigeria.
+            Africa.
           </div>
         </div>
       </footer>

@@ -9,10 +9,10 @@ import { useAuth } from "@/components/auth-provider";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const signupRoles: Array<{ value: UserRole; label: string }> = [
-  { value: "household", label: "Household" },
+  { value: "household", label: "Home / Estate" },
   { value: "collector", label: "Collector" },
   { value: "business", label: "Business" },
-  { value: "partner", label: "Recycling Partner" },
+  { value: "partner", label: "Recycler" },
 ];
 
 const LoginPage = () => {
@@ -42,7 +42,7 @@ const LoginPage = () => {
         role: mode === "signup" ? role : undefined,
       });
       const pendingAuth = { ...response, phone, mode, name, role };
-      sessionStorage.setItem("wastigo_pending_auth", JSON.stringify(pendingAuth));
+      sessionStorage.setItem("tydigo_pending_auth", JSON.stringify(pendingAuth));
       navigate("/otp", { state: pendingAuth });
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : "Unable to start verification.");
@@ -56,16 +56,16 @@ const LoginPage = () => {
       <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-8 items-center">
         <div className="hidden lg:flex flex-col items-center">
           <div className="w-72 rounded-[2.5rem] overflow-hidden shadow-brand-lg border-4 border-neutral-300">
-            <img src={gdUrl(IMAGE_IDS.login)} alt="WastiGo secure sign in" className="w-full h-auto" />
+            <img src={gdUrl(IMAGE_IDS.login)} alt="Tydigo secure sign in" className="w-full h-auto" />
           </div>
           <div className="mt-6 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Recycle className="w-6 h-6 text-[#145C25]" />
               <span className="text-xl font-bold text-[#145C25]">
-                Wasti<span className="text-amber-500">Go</span>
+                Ty<span className="text-amber-500">digo</span>
               </span>
             </div>
-            <p className="text-sm text-neutral-500">Persistent waste operations for real users.</p>
+            <p className="text-sm text-neutral-500">Cleaner homes. Smarter cities.</p>
           </div>
         </div>
 
@@ -80,10 +80,10 @@ const LoginPage = () => {
                 <Phone className="w-6 h-6 text-[#145C25]" />
               </div>
               <CardTitle className="text-2xl font-extrabold text-neutral-900">
-                {mode === "signin" ? "Sign in to WastiGo" : "Create your WastiGo account"}
+                {mode === "signin" ? "Sign in to Tydigo" : "Create your Tydigo account"}
               </CardTitle>
               <CardDescription className="text-neutral-500">
-                Your session, profile, pickup history, payments, and partner requests are stored securely.
+                Your session, profile, pickup history, payments, and recycler requests are stored securely.
               </CardDescription>
             </CardHeader>
 
@@ -117,13 +117,13 @@ const LoginPage = () => {
                   <label className="text-sm font-semibold text-neutral-700 mb-2 block">Phone Number</label>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                      <span className="text-sm font-bold text-neutral-600">NG +234</span>
+                      <span className="text-sm font-bold text-neutral-600">Phone</span>
                     </div>
                     <Input
                       type="tel"
-                      placeholder="800 000 0000"
+                      placeholder="+234 800 000 0000"
                       value={phone}
-                      onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 11))}
+                      onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 15))}
                       className="pl-24 h-14 rounded-2xl border-2 border-neutral-200 focus:border-[#145C25] text-lg"
                       minLength={10}
                       required

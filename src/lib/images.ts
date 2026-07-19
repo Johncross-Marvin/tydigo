@@ -1,5 +1,5 @@
 /**
- * WastiGo Google Drive Image IDs
+ * Tydigo Google Drive Image IDs
  * 
  * Each ID maps to a specific UI design screenshot.
  * Using Google Drive thumbnail API for reliable cross-origin embedding.

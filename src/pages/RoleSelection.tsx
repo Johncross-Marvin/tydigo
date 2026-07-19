@@ -19,7 +19,7 @@ const roles = [
   {
     id: "household",
     icon: Users,
-    title: "Household",
+    title: "Home / Estate",
     desc: "Schedule waste pickups, track collectors, and earn EcoPoints rewards.",
     color: "bg-green-100 text-[#145C25] border-green-300",
     hoverColor: "hover:border-[#145C25] hover:bg-green-50",
@@ -46,7 +46,7 @@ const roles = [
   {
     id: "partner",
     icon: Recycle,
-    title: "Recycling Partner",
+    title: "Recycler",
     desc: "Source recyclable materials, manage requests, and track deliveries.",
     color: "bg-amber-100 text-amber-600 border-amber-300",
     hoverColor: "hover:border-amber-500 hover:bg-amber-50",
@@ -103,7 +103,7 @@ const RoleSelectionPage = () => {
             Choose Your Role
           </h1>
           <p className="text-neutral-500">
-            Select how you want to use WastiGo. Admin access is invitation-only.
+            Select how you want to use Tydigo. Admin access is invitation-only.
           </p>
         </div>
 

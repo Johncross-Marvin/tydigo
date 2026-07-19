@@ -59,7 +59,7 @@ type RequestOptions = RequestInit & {
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
-const SESSION_TOKEN_KEY = "wastigo_session_token";
+const SESSION_TOKEN_KEY = "tydigo_session_token";
 
 export const roleHomePath: Record<UserRole, string> = {
   household: "/household/dashboard",
