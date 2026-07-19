@@ -86,7 +86,7 @@ async function handleApi(request, env, url) {
     const path = url.pathname;
 
     if (path === "/api/health" && request.method === "GET") return json(request, { ok: true, storage: "d1" });
-    if (path === "/api/auth/start" && request.method === "POST") return startAuth(request, db);
+    if (path === "/api/auth/start" && request.method === "POST") return startAuth(request, db, env);
     if (path === "/api/auth/verify" && request.method === "POST") return verifyAuth(request, db, env);
     if (path === "/api/auth/logout" && request.method === "POST") return logout(request, db);
     if (path === "/api/me" && request.method === "GET") return json(request, { user: await requireUser(request, db) });
@@ -121,7 +121,7 @@ async function ensureDb(env) {
   return env.DB;
 }
 
-async function startAuth(request, db) {
+async function startAuth(request, db, env) {
   const body = await readJson(request);
   const mode = body.mode === "signup" ? "signup" : "signin";
   const phone = normalizePhone(body.phone);
@@ -134,6 +134,9 @@ async function startAuth(request, db) {
   if (mode === "signin" && !existing) throw httpError("No WastiGo account exists for this phone number.", 404);
   if (mode === "signup" && !name) throw httpError("Enter your full name to create an account.", 400);
 
+  const recentRequests = await first(db, "SELECT COUNT(*) AS count FROM auth_verifications WHERE phone = ? AND created_at > ?", phone, addMinutes(-10));
+  if (Number(recentRequests?.count ?? 0) >= 5) throw httpError("Too many verification requests. Try again in a few minutes.", 429);
+
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const verificationId = id("ver");
   const now = nowIso();
@@ -143,13 +146,58 @@ async function startAuth(request, db) {
     "INSERT INTO auth_verifications (id, phone, code, name, role, mode, user_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(verificationId, phone, code, name || existing?.name || null, role || existing?.role || "household", mode, existing?.id || null, now, expiresAt).run();
 
+  const delivery = await deliverVerification(env, phone, code);
+
   return json(request, {
     verificationId,
     maskedPhone: maskPhone(phone),
     expiresInSeconds: 600,
-    delivery: "in_app_verification",
-    verificationCode: code,
+    ...delivery,
   });
+}
+
+async function deliverVerification(env, phone, code) {
+  const smsMessage = "Your WastiGo verification code is " + code + ". It expires in 10 minutes.";
+  const formattedPhone = "+" + phone;
+
+  if (env?.TERMII_API_KEY) {
+    const response = await fetch("https://api.ng.termii.com/api/sms/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: env.TERMII_API_KEY,
+        to: formattedPhone,
+        from: env.TERMII_SENDER_ID || "WastiGo",
+        sms: smsMessage,
+        type: "plain",
+        channel: env.TERMII_CHANNEL || "generic",
+      }),
+    });
+
+    if (!response.ok) throw httpError("Unable to send verification SMS.", 502);
+    return { delivery: "sms" };
+  }
+
+  if (env?.TWILIO_ACCOUNT_SID && env?.TWILIO_AUTH_TOKEN && env?.TWILIO_FROM_NUMBER) {
+    const body = new URLSearchParams({
+      To: formattedPhone,
+      From: env.TWILIO_FROM_NUMBER,
+      Body: smsMessage,
+    });
+    const response = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + env.TWILIO_ACCOUNT_SID + "/Messages.json", {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + btoa(env.TWILIO_ACCOUNT_SID + ":" + env.TWILIO_AUTH_TOKEN),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+
+    if (!response.ok) throw httpError("Unable to send verification SMS.", 502);
+    return { delivery: "sms" };
+  }
+
+  return { delivery: "in_app_verification", verificationCode: code };
 }
 
 async function verifyAuth(request, db, env) {

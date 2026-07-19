@@ -111,7 +111,7 @@ export const api = {
       maskedPhone: string;
       expiresInSeconds: number;
       delivery: string;
-      verificationCode: string;
+      verificationCode?: string;
     }>("/api/auth/start", {
       method: "POST",
       auth: false,

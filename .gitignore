@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 *.tsbuildinfo
+.sites-package-*
+wastigo-sites-production-*.tar.gz
 
 # Editor directories and files
 .vscode/*

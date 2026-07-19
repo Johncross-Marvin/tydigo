@@ -9,6 +9,7 @@ WastiGo is now a full-stack app: the Vite frontend talks to authenticated API ro
 - Database: D1 binding named `DB`.
 - Schema: `drizzle/0001_wastigo_core.sql`.
 - Auth: phone-based signup/signin, server-side verification records, bearer sessions, logout/session revocation.
+- OTP delivery: Termii or Twilio SMS when server-side credentials are configured; in-app verification fallback when no SMS provider is configured.
 
 ## Push To GitHub
 
@@ -62,6 +63,22 @@ For admin promotion, configure this as a private server-side environment variabl
 
 ```bash
 ADMIN_INVITE_CODE=use-a-long-private-random-value
+```
+
+For real SMS OTP delivery, configure either Termii:
+
+```bash
+TERMII_API_KEY=your-termii-api-key
+TERMII_SENDER_ID=WastiGo
+TERMII_CHANNEL=generic
+```
+
+Or Twilio:
+
+```bash
+TWILIO_ACCOUNT_SID=your-twilio-account-sid
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
+TWILIO_FROM_NUMBER=+1234567890
 ```
 
 Normal public signup supports household, collector, business, and recycling partner accounts. Admin access should remain invitation-only.

@@ -10,7 +10,7 @@ import { api, roleHomePath } from "@/lib/api";
 type PendingAuth = {
   verificationId: string;
   maskedPhone: string;
-  verificationCode: string;
+  verificationCode?: string;
   expiresInSeconds: number;
   mode: "signin" | "signup";
   phone: string;
@@ -140,9 +140,15 @@ const OtpPage = () => {
           <CardContent className="space-y-6 pt-4">
             {!verified ? (
               <>
-                <div className="rounded-2xl bg-green-50 border border-green-100 p-4 text-sm text-green-800">
-                  Verification code for this build: <span className="font-black tracking-widest">{pendingAuth.verificationCode}</span>
-                </div>
+                {pendingAuth.verificationCode ? (
+                  <div className="rounded-2xl bg-green-50 border border-green-100 p-4 text-sm text-green-800">
+                    Verification code for this build: <span className="font-black tracking-widest">{pendingAuth.verificationCode}</span>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-green-50 border border-green-100 p-4 text-sm text-green-800">
+                    Enter the 6-digit code sent to {pendingAuth.maskedPhone}.
+                  </div>
+                )}
 
                 <div className="flex justify-center gap-3">
                   {otp.map((digit, index) => (
