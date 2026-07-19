@@ -1,37 +1,62 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, CheckCircle2, Phone, Recycle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Recycle, Phone, ArrowRight, Shield, CheckCircle2, ArrowLeft } from "lucide-react";
+import { api, roleHomePath, type UserRole } from "@/lib/api";
+import { useAuth } from "@/components/auth-provider";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
+
+const signupRoles: Array<{ value: UserRole; label: string }> = [
+  { value: "household", label: "Household" },
+  { value: "collector", label: "Collector" },
+  { value: "business", label: "Business" },
+  { value: "partner", label: "Recycling Partner" },
+];
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [phone, setPhone] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<UserRole>("household");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phone.length >= 10) {
-      setSubmitted(true);
-      setTimeout(() => navigate("/otp", { state: { phone } }), 1500);
+  useEffect(() => {
+    if (!loading && user) navigate(roleHomePath[user.role], { replace: true });
+  }, [loading, navigate, user]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setSubmitting(true);
+
+    try {
+      const response = await api.startAuth({
+        mode,
+        phone,
+        name: mode === "signup" ? name : undefined,
+        role: mode === "signup" ? role : undefined,
+      });
+      const pendingAuth = { ...response, phone, mode, name, role };
+      sessionStorage.setItem("wastigo_pending_auth", JSON.stringify(pendingAuth));
+      navigate("/otp", { state: pendingAuth });
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : "Unable to start verification.");
+    } finally {
+      setSubmitting(false);
     }
   };
-
-  const formattedPhone = phone.replace(/(\d{3})(\d{3})(\d{0,4})/, "$1 $2 $3").trim();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] via-white to-[#DCFCE7] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-8 items-center">
-        {/* Left - App Preview */}
         <div className="hidden lg:flex flex-col items-center">
           <div className="w-72 rounded-[2.5rem] overflow-hidden shadow-brand-lg border-4 border-neutral-300">
-            <img
-              src={gdUrl(IMAGE_IDS.login)}
-              alt="WastiGo Login"
-              className="w-full h-auto"
-            />
+            <img src={gdUrl(IMAGE_IDS.login)} alt="WastiGo secure sign in" className="w-full h-auto" />
           </div>
           <div className="mt-6 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -40,18 +65,12 @@ const LoginPage = () => {
                 Wasti<span className="text-amber-500">Go</span>
               </span>
             </div>
-            <p className="text-sm text-neutral-500">
-              Smart Waste Management Platform
-            </p>
+            <p className="text-sm text-neutral-500">Persistent waste operations for real users.</p>
           </div>
         </div>
 
-        {/* Right - Login Form */}
         <div>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#145C25] mb-6 transition-colors"
-          >
+          <Link to="/" className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#145C25] mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Home
           </Link>
 
@@ -61,88 +80,106 @@ const LoginPage = () => {
                 <Phone className="w-6 h-6 text-[#145C25]" />
               </div>
               <CardTitle className="text-2xl font-extrabold text-neutral-900">
-                Welcome Back
+                {mode === "signin" ? "Sign in to WastiGo" : "Create your WastiGo account"}
               </CardTitle>
               <CardDescription className="text-neutral-500">
-                Enter your phone number to sign in or create an account.
+                Your session, profile, pickup history, payments, and partner requests are stored securely.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-5 pt-4">
-              {!submitted ? (
-                <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-2 gap-2 rounded-2xl bg-neutral-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("signin")}
+                  className={`h-11 rounded-xl text-sm font-bold transition ${mode === "signin" ? "bg-white text-[#145C25] shadow-sm" : "text-neutral-500"}`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("signup")}
+                  className={`h-11 rounded-xl text-sm font-bold transition ${mode === "signup" ? "bg-white text-[#145C25] shadow-sm" : "text-neutral-500"}`}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {mode === "signup" && (
                   <div>
-                    <label className="text-sm font-semibold text-neutral-700 mb-2 block">
-                      Phone Number
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                        <span className="text-sm font-bold text-neutral-600">
-                          🇳🇬 +234
-                        </span>
-                      </div>
-                      <Input
-                        type="tel"
-                        placeholder="800 000 0000"
-                        value={phone}
-                        onChange={(e) =>
-                          setPhone(e.target.value.replace(/\D/g, ""))
-                        }
-                        className="pl-20 h-14 rounded-2xl border-2 border-neutral-200 focus:border-[#145C25] text-lg"
-                        maxLength={10}
-                      />
+                    <label className="text-sm font-semibold text-neutral-700 mb-2 block">Full Name</label>
+                    <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Bello" className="h-14 rounded-2xl" required />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-sm font-semibold text-neutral-700 mb-2 block">Phone Number</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                      <span className="text-sm font-bold text-neutral-600">NG +234</span>
                     </div>
+                    <Input
+                      type="tel"
+                      placeholder="800 000 0000"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 11))}
+                      className="pl-24 h-14 rounded-2xl border-2 border-neutral-200 focus:border-[#145C25] text-lg"
+                      minLength={10}
+                      required
+                    />
                   </div>
-
-                  <Button
-                    type="submit"
-                    disabled={phone.length < 10}
-                    className="w-full h-14 bg-[#145C25] hover:bg-[#0F4A1E] text-white font-bold text-base rounded-2xl shadow-brand disabled:opacity-50"
-                  >
-                    Send Verification Code
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
-
-                  <div className="flex items-center gap-3 text-xs text-neutral-400">
-                    <Shield className="w-4 h-4" />
-                    Your phone number is secure and will never be shared.
-                  </div>
-                </form>
-              ) : (
-                <div className="text-center py-8 space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-8 h-8 text-[#145C25]" />
-                  </div>
-                  <p className="text-lg font-bold text-neutral-900">
-                    Code Sent!
-                  </p>
-                  <p className="text-neutral-500">
-                    We sent a 6-digit code to{" "}
-                    <strong>+234 {formattedPhone}</strong>
-                  </p>
-                  <p className="text-xs text-neutral-400">
-                    Redirecting to verification...
-                  </p>
                 </div>
-              )}
+
+                {mode === "signup" && (
+                  <div>
+                    <label className="text-sm font-semibold text-neutral-700 mb-2 block">Account Type</label>
+                    <select
+                      value={role}
+                      onChange={(event) => setRole(event.target.value as UserRole)}
+                      className="h-14 w-full rounded-2xl border-2 border-neutral-200 bg-white px-4 font-semibold text-neutral-700 focus:border-[#145C25] focus:outline-none"
+                    >
+                      {signupRoles.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {error && <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
+
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full h-14 bg-[#145C25] hover:bg-[#0F4A1E] text-white font-bold text-base rounded-2xl shadow-brand disabled:opacity-50"
+                >
+                  {submitting ? "Preparing Verification..." : "Continue Securely"}
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+
+                <div className="flex items-center gap-3 text-xs text-neutral-500">
+                  <Shield className="w-4 h-4" />
+                  Sessions are server-issued and can be revoked on logout.
+                </div>
+              </form>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-neutral-200" />
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-neutral-400">
-                    Trusted by 50,000+ Nigerians
-                  </span>
+                  <span className="bg-white px-3 text-neutral-400">D1-backed persistence enabled</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-center gap-6 text-xs text-neutral-400">
                 <span className="flex items-center gap-1">
-                  <Shield className="w-3.5 h-3.5" /> Secure
+                  <Shield className="w-3.5 h-3.5" /> Authenticated
                 </span>
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> No Password
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Persistent Data
                 </span>
               </div>
             </CardContent>

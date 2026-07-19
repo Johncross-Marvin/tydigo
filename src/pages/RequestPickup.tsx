@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,8 @@ import {
   Droplets,
   Award,
 } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
+import { api, formatNaira, type Pickup } from "@/lib/api";
 
 const steps = ["Category", "Weight", "Location", "Schedule", "Payment", "Confirm"];
 const wasteTypes = [
@@ -32,13 +35,48 @@ const wasteTypes = [
 ];
 
 const RequestPickupPage = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedWaste, setSelectedWaste] = useState<string | null>(null);
   const [weight, setWeight] = useState("5");
+  const [address, setAddress] = useState("15A Awolowo Road, Wuse Zone 2, Abuja");
   const [schedule, setSchedule] = useState("today");
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const [createdPickup, setCreatedPickup] = useState<Pickup | null>(null);
+  const [error, setError] = useState("");
+  const weightKg = Number(weight);
+  const weightSurcharge = Math.max(0, Math.round(weightKg * 50));
+  const estimatedPrice = 500 + weightSurcharge;
 
-  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
+  const pickupMutation = useMutation({
+    mutationFn: api.createPickup,
+    onSuccess: async ({ pickup }) => {
+      setCreatedPickup(pickup);
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      await queryClient.invalidateQueries({ queryKey: ["pickups"] });
+      setCurrentStep(5);
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Unable to save pickup.");
+    },
+  });
+
+  const nextStep = () => {
+    setError("");
+    if (currentStep === 4) {
+      if (!selectedWaste) return;
+      pickupMutation.mutate({
+        wasteType: selectedWaste,
+        weightKg: Number(weight),
+        address,
+        scheduleWindow: schedule,
+        paymentMethod,
+      });
+      return;
+    }
+    setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
+  };
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
 
   return (
@@ -128,12 +166,16 @@ const RequestPickupPage = () => {
               <div className="space-y-4">
                 <h2 className="text-lg font-bold text-neutral-900">Confirm Location</h2>
                 <p className="text-sm text-neutral-500">Your pickup address</p>
-                <div className="bg-neutral-100 rounded-2xl h-48 flex items-center justify-center">
-                  <div className="text-center">
+                <div className="bg-neutral-100 rounded-2xl p-5 flex items-center justify-center">
+                  <div className="text-center w-full max-w-md">
                     <MapPin className="w-10 h-10 text-[#145C25] mx-auto mb-2" />
-                    <p className="font-semibold text-neutral-700">15A Awolowo Road</p>
-                    <p className="text-sm text-neutral-500">Wuse Zone 2, Abuja</p>
-                    <Button variant="link" className="text-[#145C25] text-sm mt-1">Change Address</Button>
+                    <label className="text-sm font-semibold text-neutral-700 mb-2 block">Pickup Address</label>
+                    <input
+                      value={address}
+                      onChange={(event) => setAddress(event.target.value)}
+                      className="h-12 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm outline-none focus:border-[#145C25]"
+                      placeholder="Enter pickup address"
+                    />
                   </div>
                 </div>
               </div>
@@ -173,7 +215,7 @@ const RequestPickupPage = () => {
                 <div className="space-y-3">
                   {[
                     { id: "card", icon: CreditCard, label: "Pay with Card", desc: "Visa, Mastercard, Verve" },
-                    { id: "points", icon: Award, label: "Use EcoPoints", desc: "Balance: 12,450 pts (NGN 6,225)" },
+                    { id: "points", icon: Award, label: "Use EcoPoints", desc: `Balance: ${(user?.ecopoints ?? 0).toLocaleString()} pts` },
                     { id: "transfer", icon: CreditCard, label: "Bank Transfer", desc: "Pay after pickup" },
                   ].map((method, i) => (
                     <button
@@ -200,15 +242,15 @@ const RequestPickupPage = () => {
                 <div className="p-4 bg-neutral-50 rounded-2xl space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-500">Pickup fee</span>
-                    <span className="font-semibold">₦500</span>
+                    <span className="font-semibold">{formatNaira(500)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-neutral-500">Weight surcharge (est.)</span>
-                    <span className="font-semibold">₦250</span>
+                    <span className="font-semibold">{formatNaira(weightSurcharge)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-neutral-900 pt-2 border-t border-neutral-200">
                     <span>Total</span>
-                    <span className="text-[#145C25]">₦750</span>
+                    <span className="text-[#145C25]">{formatNaira(estimatedPrice)}</span>
                   </div>
                 </div>
               </div>
@@ -220,13 +262,14 @@ const RequestPickupPage = () => {
                   <CheckCircle2 className="w-10 h-10 text-[#145C25]" />
                 </div>
                 <h2 className="text-xl font-extrabold text-neutral-900">Pickup Confirmed!</h2>
-                <p className="text-neutral-500">Your collector will arrive within 2 hours.</p>
+                <p className="text-neutral-500">Your request was saved and is ready for payment/tracking.</p>
                 <div className="bg-neutral-50 rounded-2xl p-4 text-left space-y-2">
+                  <div className="flex justify-between text-sm"><span className="text-neutral-500">Pickup Code</span><span className="font-semibold">{createdPickup?.pickup_code}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Waste Type</span><span className="font-semibold">{selectedWaste}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Weight</span><span className="font-semibold">{weight} kg</span></div>
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Schedule</span><span className="font-semibold capitalize">{schedule}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Payment</span><span className="font-semibold capitalize">{paymentMethod}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-neutral-500">Total</span><span className="font-semibold text-[#145C25]">₦750</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-neutral-500">Total</span><span className="font-semibold text-[#145C25]">{formatNaira(createdPickup?.price_ngn ?? estimatedPrice)}</span></div>
                 </div>
                 <Link to="/household/tracking">
                   <Button className="bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl shadow-brand">
@@ -248,14 +291,15 @@ const RequestPickupPage = () => {
             )}
             <Button
               onClick={nextStep}
-              disabled={(currentStep === 0 && !selectedWaste)}
+              disabled={(currentStep === 0 && !selectedWaste) || (currentStep === 2 && !address.trim()) || pickupMutation.isPending}
               className="flex-1 bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl shadow-brand disabled:opacity-50"
             >
-              {currentStep === steps.length - 2 ? "Confirm Pickup" : "Continue"}
+              {pickupMutation.isPending ? "Saving..." : currentStep === steps.length - 2 ? "Confirm Pickup" : "Continue"}
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
         )}
+        {error && <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
       </main>
     </div>
   );

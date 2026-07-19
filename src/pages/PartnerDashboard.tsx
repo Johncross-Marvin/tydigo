@@ -1,10 +1,20 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Recycle, Package, Truck, TrendingUp, ShoppingBag, Plus, CheckCircle2 } from "lucide-react";
+import { api, formatNaira } from "@/lib/api";
 
 const PartnerDashboardPage = () => {
+  const { data } = useQuery({
+    queryKey: ["partner-requests"],
+    queryFn: api.listPartnerRequests,
+  });
+  const requests = data?.requests ?? [];
+  const fulfilled = requests.filter((request) => request.status === "delivered").length;
+  const requestedValue = requests.reduce((total, request) => total + Number(request.quantity_kg) * Number(request.price_per_kg_ngn), 0);
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
@@ -18,9 +28,9 @@ const PartnerDashboardPage = () => {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: Package, label: "Requests", value: "28", color: "bg-amber-100 text-amber-600" },
-            { icon: CheckCircle2, label: "Fulfilled", value: "19", color: "bg-green-100 text-[#145C25]" },
-            { icon: TrendingUp, label: "Revenue", value: "₦450K", color: "bg-blue-100 text-blue-600" },
+            { icon: Package, label: "Requests", value: String(requests.length), color: "bg-amber-100 text-amber-600" },
+            { icon: CheckCircle2, label: "Fulfilled", value: String(fulfilled), color: "bg-green-100 text-[#145C25]" },
+            { icon: TrendingUp, label: "Value", value: formatNaira(requestedValue), color: "bg-blue-100 text-blue-600" },
           ].map((stat, i) => (
             <Card key={i} className="border-0 shadow-sm rounded-2xl">
               <CardContent className="p-4 text-center">
@@ -45,11 +55,7 @@ const PartnerDashboardPage = () => {
             </Link>
           </div>
           <div className="space-y-3">
-            {[
-              { material: "Crushed Plastic (PET)", qty: "500 kg", status: "Pending", price: "₦150/kg" },
-              { material: "Cardboard Bales", qty: "1,200 kg", status: "In Transit", price: "₦80/kg" },
-              { material: "Aluminum Cans", qty: "300 kg", status: "Delivered", price: "₦350/kg" },
-            ].map((req, i) => (
+            {requests.map((req, i) => (
               <Card key={i} className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl">
                 <CardContent className="p-4 flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
@@ -57,16 +63,23 @@ const PartnerDashboardPage = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-neutral-900 text-sm">{req.material}</p>
-                    <p className="text-xs text-neutral-500">{req.qty} • {req.price}</p>
+                    <p className="text-xs text-neutral-500">{Number(req.quantity_kg).toLocaleString()} kg • {formatNaira(Number(req.price_per_kg_ngn))}/kg</p>
                   </div>
                   <Badge className={`rounded-full text-xs ${
-                    req.status === "Delivered" ? "bg-green-100 text-[#145C25]" :
-                    req.status === "In Transit" ? "bg-blue-100 text-blue-600" :
+                    req.status === "delivered" ? "bg-green-100 text-[#145C25]" :
+                    req.status === "in_transit" ? "bg-blue-100 text-blue-600" :
                     "bg-amber-100 text-amber-600"
-                  }`}>{req.status}</Badge>
+                  }`}>{req.status.replace("_", " ")}</Badge>
                 </CardContent>
               </Card>
             ))}
+            {!requests.length && (
+              <Card className="border-0 shadow-sm rounded-2xl">
+                <CardContent className="p-6 text-center text-sm text-neutral-500">
+                  No material requests yet. Create one to start sourcing recyclables.
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>

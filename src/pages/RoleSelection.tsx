@@ -9,10 +9,11 @@ import {
   Truck,
   BarChart3,
   Recycle,
-  Shield,
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
+import { roleHomePath, type UserRole } from "@/lib/api";
 
 const roles = [
   {
@@ -51,24 +52,30 @@ const roles = [
     hoverColor: "hover:border-amber-500 hover:bg-amber-50",
     route: "/partner/dashboard",
   },
-  {
-    id: "admin",
-    icon: Shield,
-    title: "Admin",
-    desc: "Manage platform operations, KYC verification, pricing, and analytics.",
-    color: "bg-red-100 text-red-600 border-red-300",
-    hoverColor: "hover:border-red-500 hover:bg-red-50",
-    route: "/admin/dashboard",
-  },
 ];
 
 const RoleSelectionPage = () => {
-  const [selected, setSelected] = useState<string | null>(null);
+  const { user, updateRole } = useAuth();
+  const [selected, setSelected] = useState<string | null>(user?.role ?? null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const role = roles.find((r) => r.id === selected);
-    if (role) navigate(role.route);
+    if (!role) return;
+
+    setSaving(true);
+    setError("");
+
+    try {
+      const nextUser = await updateRole(role.id as UserRole);
+      navigate(roleHomePath[nextUser.role]);
+    } catch (roleError) {
+      setError(roleError instanceof Error ? roleError.message : "Unable to update your account role.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRoleKeyDown = (event: KeyboardEvent, roleId: string) => {
@@ -96,7 +103,7 @@ const RoleSelectionPage = () => {
             Choose Your Role
           </h1>
           <p className="text-neutral-500">
-            Select how you want to use WastiGo. You can always switch later.
+            Select how you want to use WastiGo. Admin access is invitation-only.
           </p>
         </div>
 
@@ -147,12 +154,14 @@ const RoleSelectionPage = () => {
           ))}
         </div>
 
+        {error && <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
+
         <Button
           onClick={handleContinue}
-          disabled={!selected}
+          disabled={!selected || saving}
           className="w-full h-14 bg-[#145C25] hover:bg-[#0F4A1E] text-white font-bold text-base rounded-2xl shadow-brand disabled:opacity-50"
         >
-          Continue as {selected ? roles.find((r) => r.id === selected)?.title : "..."}
+          {saving ? "Saving..." : `Continue as ${selected ? roles.find((r) => r.id === selected)?.title : "..."}`}
           <ArrowRight className="w-5 h-5 ml-2" />
         </Button>
       </div>

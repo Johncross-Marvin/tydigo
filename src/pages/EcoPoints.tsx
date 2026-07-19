@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Award,
-  TrendingUp,
   History,
   Gift,
   Star,
@@ -17,8 +17,15 @@ import {
   Flame,
 } from "lucide-react";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
+import { api, formatNaira } from "@/lib/api";
 
 const EcoPointsPage = () => {
+  const { data } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: api.dashboard,
+  });
+  const points = data?.stats.ecopoints ?? 0;
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
@@ -45,8 +52,8 @@ const EcoPointsPage = () => {
               <Award className="w-32 h-32" />
             </div>
             <p className="text-green-200 text-sm">Your Balance</p>
-            <p className="text-4xl font-black tracking-tight mt-1">12,450</p>
-            <p className="text-green-200 text-sm mt-1">≈ ₦6,225.00</p>
+            <p className="text-4xl font-black tracking-tight mt-1">{points.toLocaleString()}</p>
+            <p className="text-green-200 text-sm mt-1">{formatNaira(Math.floor(points / 2))} estimated redemption value</p>
             <div className="flex gap-2 mt-4">
               <Link to="/household/redeem">
                 <Button className="bg-amber-500 hover:bg-amber-400 text-[#0A2F14] font-bold rounded-xl">

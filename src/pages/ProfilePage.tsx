@@ -1,15 +1,18 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, User, Phone, MapPin, Settings, Shield, LogOut, ChevronRight, Award } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const menuItems = [
     { icon: User, label: "Personal Information", desc: "Name, phone, address" },
     { icon: Shield, label: "KYC Verification", desc: "Verify your identity" },
     { icon: MapPin, label: "Saved Addresses", desc: "Home, work, other" },
-    { icon: Award, label: "EcoPoints Tier", desc: "Gold Tier — 12,450 pts" },
+    { icon: Award, label: "EcoPoints Tier", desc: `${(user?.ecopoints ?? 0).toLocaleString()} pts saved` },
     { icon: Settings, label: "App Settings", desc: "Notifications, language" },
   ];
 
@@ -27,15 +30,17 @@ const ProfilePage = () => {
         <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
           <CardContent className="p-6 flex items-center gap-4">
             <Avatar className="w-16 h-16 ring-4 ring-green-100">
-              <AvatarFallback className="bg-green-100 text-[#145C25] font-bold text-xl">AB</AvatarFallback>
+              <AvatarFallback className="bg-green-100 text-[#145C25] font-bold text-xl">
+                {(user?.name ?? "WG").split(" ").map((name) => name[0]).join("").slice(0, 2)}
+              </AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="text-xl font-extrabold text-neutral-900">Amina Bello</h2>
+              <h2 className="text-xl font-extrabold text-neutral-900">{user?.name ?? "WastiGo User"}</h2>
               <div className="flex items-center gap-1 text-sm text-neutral-500 mt-0.5">
-                <Phone className="w-3.5 h-3.5" /> +234 800 000 0000
+                <Phone className="w-3.5 h-3.5" /> +{user?.phone ?? ""}
               </div>
               <div className="flex items-center gap-1 text-sm text-neutral-500">
-                <MapPin className="w-3.5 h-3.5" /> Wuse Zone 2, Abuja
+                <MapPin className="w-3.5 h-3.5" /> {user?.address || `${user?.city ?? "Abuja"}, ${user?.state ?? "FCT"}`}
               </div>
             </div>
           </CardContent>
@@ -60,11 +65,13 @@ const ProfilePage = () => {
           ))}
         </Card>
 
-        <Link to="/login">
-          <Button variant="outline" className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50">
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out
-          </Button>
-        </Link>
+        <Button
+          variant="outline"
+          onClick={() => void logout().then(() => navigate("/login"))}
+          className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+        >
+          <LogOut className="w-4 h-4 mr-2" /> Sign Out
+        </Button>
       </main>
     </div>
   );

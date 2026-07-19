@@ -1,16 +1,19 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { api } from "@/lib/api";
 
 const AdminKycPage = () => {
-  const pending = [
-    { name: "Ibrahim Musa", role: "Collector", id: "KYC-1042", date: "May 27, 2025", doc: "National ID" },
-    { name: "Fatima Sule", role: "Collector", id: "KYC-1043", date: "May 27, 2025", doc: "Driver's License" },
-    { name: "GreenCycle Ltd", role: "Partner", id: "KYC-1044", date: "May 26, 2025", doc: "CAC Certificate" },
-  ];
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin-overview"],
+    queryFn: api.adminOverview,
+    retry: false,
+  });
+  const pending = data?.pendingKyc ?? [];
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -23,8 +26,24 @@ const AdminKycPage = () => {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-3">
-        {pending.map((item, i) => (
-          <Card key={i} className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl">
+        {isLoading && <div className="rounded-2xl bg-white p-6 text-center text-neutral-500">Loading KYC queue...</div>}
+
+        {error && (
+          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error instanceof Error ? error.message : "Unable to load KYC queue."}
+          </div>
+        )}
+
+        {!isLoading && !error && pending.length === 0 && (
+          <Card className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl">
+            <CardContent className="p-6 text-center text-neutral-500">
+              No pending KYC submissions are currently waiting for review.
+            </CardContent>
+          </Card>
+        )}
+
+        {pending.map((item) => (
+          <Card key={item.id} className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl">
             <CardContent className="p-4 flex items-center gap-4">
               <Avatar className="w-12 h-12">
                 <AvatarFallback className="bg-neutral-100 text-neutral-600 font-bold">
@@ -33,8 +52,8 @@ const AdminKycPage = () => {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-neutral-900 text-sm">{item.name}</p>
-                <p className="text-xs text-neutral-500">{item.role} • {item.doc}</p>
-                <p className="text-xs text-neutral-400">{item.id} — {item.date}</p>
+                <p className="text-xs text-neutral-500 capitalize">{item.role} - {item.document_type}</p>
+                <p className="text-xs text-neutral-400">{item.id} - {new Date(item.created_at).toLocaleDateString()}</p>
               </div>
               <div className="flex gap-1.5">
                 <Button size="sm" variant="outline" className="rounded-lg h-8 w-8 p-0">

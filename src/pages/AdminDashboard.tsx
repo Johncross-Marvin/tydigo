@@ -1,17 +1,24 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Users, Truck, Recycle, DollarSign, TrendingUp, Shield, Settings, BarChart3, Award, AlertTriangle } from "lucide-react";
+import { api, formatNaira, formatWeight } from "@/lib/api";
 
 const AdminDashboardPage = () => {
+  const { data, error } = useQuery({
+    queryKey: ["admin-overview"],
+    queryFn: api.adminOverview,
+    retry: false,
+  });
   const kpis = [
-    { icon: Users, label: "Total Users", value: "52,847", change: "+12%", color: "bg-blue-100 text-blue-600" },
-    { icon: Truck, label: "Active Collectors", value: "1,243", change: "+5%", color: "bg-green-100 text-[#145C25]" },
-    { icon: Recycle, label: "Waste Collected", value: "128 tons", change: "+18%", color: "bg-amber-100 text-amber-600" },
-    { icon: DollarSign, label: "Revenue", value: "₦8.4M", change: "+22%", color: "bg-purple-100 text-purple-600" },
-    { icon: Award, label: "EcoPoints Issued", value: "2.1M", change: "+15%", color: "bg-orange-100 text-orange-600" },
-    { icon: AlertTriangle, label: "Pending KYC", value: "47", change: "Needs review", color: "bg-red-100 text-red-600" },
+    { icon: Users, label: "Total Users", value: String(data?.kpis.totalUsers ?? 0), change: "Live", color: "bg-blue-100 text-blue-600" },
+    { icon: Truck, label: "Active Collectors", value: String(data?.kpis.activeCollectors ?? 0), change: "Live", color: "bg-green-100 text-[#145C25]" },
+    { icon: Recycle, label: "Waste Collected", value: formatWeight(data?.kpis.wasteCollectedKg ?? 0), change: `${data?.kpis.pickups ?? 0} pickups`, color: "bg-amber-100 text-amber-600" },
+    { icon: DollarSign, label: "Revenue", value: formatNaira(data?.kpis.revenueNgn ?? 0), change: "Paid", color: "bg-purple-100 text-purple-600" },
+    { icon: Award, label: "EcoPoints Issued", value: (data?.kpis.ecopointsIssued ?? 0).toLocaleString(), change: "Live", color: "bg-orange-100 text-orange-600" },
+    { icon: AlertTriangle, label: "Pending KYC", value: String(data?.kpis.pendingKyc ?? 0), change: "Needs review", color: "bg-red-100 text-red-600" },
   ];
 
   const menuItems = [
@@ -35,6 +42,12 @@ const AdminDashboardPage = () => {
       </header>
 
       <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-5">
+        {error && (
+          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error instanceof Error ? error.message : "Unable to load admin overview."}
+          </div>
+        )}
+
         {/* KPIs */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {kpis.map((kpi, i) => (

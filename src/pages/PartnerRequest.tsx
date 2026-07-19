@@ -1,16 +1,41 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, ShoppingBag, Send, CheckCircle2 } from "lucide-react";
+import { api } from "@/lib/api";
 
 const PartnerRequestPage = () => {
+  const queryClient = useQueryClient();
   const [sent, setSent] = useState(false);
+  const [material, setMaterial] = useState("");
+  const [quantityKg, setQuantityKg] = useState("");
+  const [pricePerKgNgn, setPricePerKgNgn] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [error, setError] = useState("");
+  const requestMutation = useMutation({
+    mutationFn: api.createPartnerRequest,
+    onSuccess: async () => {
+      setSent(true);
+      await queryClient.invalidateQueries({ queryKey: ["partner-requests"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Unable to submit request.");
+    },
+  });
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSent(true);
+    setError("");
+    requestMutation.mutate({
+      material,
+      quantityKg: Number(quantityKg),
+      pricePerKgNgn: Number(pricePerKgNgn),
+      deliveryAddress,
+    });
   };
 
   return (
@@ -30,23 +55,24 @@ const PartnerRequestPage = () => {
               <div className="space-y-3">
                 <div>
                   <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Material Type</label>
-                  <Input placeholder="e.g., Crushed Plastic (PET)" className="h-12 rounded-xl" required />
+                  <Input value={material} onChange={(event) => setMaterial(event.target.value)} placeholder="e.g., Crushed Plastic (PET)" className="h-12 rounded-xl" required />
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Quantity (kg)</label>
-                  <Input type="number" placeholder="500" className="h-12 rounded-xl" min="1" required />
+                  <Input value={quantityKg} onChange={(event) => setQuantityKg(event.target.value)} type="number" placeholder="500" className="h-12 rounded-xl" min="1" required />
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Preferred Price per kg (₦)</label>
-                  <Input type="number" placeholder="150" className="h-12 rounded-xl" min="1" required />
+                  <Input value={pricePerKgNgn} onChange={(event) => setPricePerKgNgn(event.target.value)} type="number" placeholder="150" className="h-12 rounded-xl" min="1" required />
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Delivery Address</label>
-                  <Input placeholder="Your facility address" className="h-12 rounded-xl" required />
+                  <Input value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} placeholder="Your facility address" className="h-12 rounded-xl" required />
                 </div>
               </div>
-              <Button type="submit" className="w-full h-14 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-2xl">
-                <Send className="w-4 h-4 mr-2" /> Submit Request
+              {error && <div className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</div>}
+              <Button type="submit" disabled={requestMutation.isPending} className="w-full h-14 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-2xl">
+                <Send className="w-4 h-4 mr-2" /> {requestMutation.isPending ? "Submitting..." : "Submit Request"}
               </Button>
               </form>
             </CardContent>

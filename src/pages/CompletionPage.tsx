@@ -1,11 +1,22 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Star, Award, Home, Share2 } from "lucide-react";
+import { CheckCircle2, Star, Home, Share2 } from "lucide-react";
+import { api, formatWeight } from "@/lib/api";
 
 const CompletionPage = () => {
+  const { data } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: api.dashboard,
+  });
+  const pickup = data?.recentPickups[0] ?? data?.activePickup ?? null;
+  const earnedPoints = pickup ? Math.max(100, Math.round(Number(pickup.weight_kg) * 100)) : 0;
+
   const handleShare = async () => {
-    const shareText = "I just completed a WastiGo pickup and earned 500 EcoPoints.";
+    const shareText = pickup
+      ? `I just completed WastiGo pickup ${pickup.pickup_code} and earned ${earnedPoints.toLocaleString()} EcoPoints.`
+      : "I just completed a WastiGo pickup.";
 
     if (navigator.share) {
       await navigator.share({ title: "WastiGo Pickup Complete", text: shareText, url: window.location.origin });
@@ -24,29 +35,28 @@ const CompletionPage = () => {
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-neutral-900">Pickup Complete!</h1>
-            <p className="text-neutral-500 mt-1">Your waste has been collected successfully.</p>
+            <p className="text-neutral-500 mt-1">Your saved pickup record is ready for review.</p>
           </div>
 
           <div className="bg-neutral-50 rounded-2xl p-5 space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-neutral-500">Pickup ID</span>
-              <span className="font-bold">WST-4829</span>
+              <span className="font-bold">{pickup?.pickup_code ?? "No pickup yet"}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-neutral-500">Collector</span>
-              <span className="font-bold">Ibrahim Musa</span>
+              <span className="font-bold">{pickup?.collector_name ?? "Unassigned"}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-neutral-500">Waste Collected</span>
-              <span className="font-bold">Plastic — 5 kg</span>
+              <span className="font-bold">{pickup ? `${pickup.waste_type} - ${formatWeight(Number(pickup.weight_kg))}` : "Pending"}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-neutral-500">EcoPoints Earned</span>
-              <span className="font-bold text-[#145C25]">+500 pts</span>
+              <span className="font-bold text-[#145C25]">+{earnedPoints.toLocaleString()} pts</span>
             </div>
           </div>
 
-          {/* Rating */}
           <div>
             <p className="text-sm font-semibold text-neutral-700 mb-2">Rate Your Collector</p>
             <div className="flex justify-center gap-1">

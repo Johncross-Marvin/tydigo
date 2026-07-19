@@ -289,7 +289,7 @@ const Index = () => {
                     <div>
                       <p className="text-xs text-neutral-500">EcoPoints</p>
                       <p className="text-sm font-bold text-neutral-800">
-                        12,450 pts
+                        Synced balance
                       </p>
                     </div>
                   </div>
