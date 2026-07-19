@@ -1,10 +1,63 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { extname, join, relative, sep } from "node:path";
 
-const serverDir = join(process.cwd(), "dist", "server");
+const distDir = join(process.cwd(), "dist");
+const serverDir = join(distDir, "server");
+const textExtensions = new Set([".css", ".html", ".js", ".json", ".map", ".svg", ".txt", ".webmanifest", ".xml"]);
+const mimeTypes = new Map([
+  [".css", "text/css; charset=utf-8"],
+  [".html", "text/html; charset=utf-8"],
+  [".ico", "image/x-icon"],
+  [".js", "text/javascript; charset=utf-8"],
+  [".json", "application/json; charset=utf-8"],
+  [".map", "application/json; charset=utf-8"],
+  [".png", "image/png"],
+  [".svg", "image/svg+xml; charset=utf-8"],
+  [".txt", "text/plain; charset=utf-8"],
+  [".webmanifest", "application/manifest+json; charset=utf-8"],
+  [".xml", "application/xml; charset=utf-8"],
+]);
 
-const worker = `const worker = {
-  async fetch(request, env) {
+async function walk(directory) {
+  const entries = await readdir(directory);
+  const files = [];
+
+  for (const entry of entries) {
+    if (entry === "server" || entry === ".openai") continue;
+
+    const fullPath = join(directory, entry);
+    const fileStat = await stat(fullPath);
+
+    if (fileStat.isDirectory()) {
+      files.push(...(await walk(fullPath)));
+      continue;
+    }
+
+    files.push(fullPath);
+  }
+
+  return files;
+}
+
+const files = {};
+
+for (const filePath of await walk(distDir)) {
+  const routePath = `/${relative(distDir, filePath).split(sep).join("/")}`;
+  const ext = extname(filePath);
+  const isText = textExtensions.has(ext);
+  const buffer = await readFile(filePath);
+
+  files[routePath] = {
+    body: isText ? buffer.toString("utf8") : buffer.toString("base64"),
+    encoding: isText ? "text" : "base64",
+    mimeType: mimeTypes.get(ext) ?? "application/octet-stream",
+  };
+}
+
+const worker = `const files = ${JSON.stringify(files)};
+
+const worker = {
+  async fetch(request) {
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new Response("Method Not Allowed", {
         status: 405,
@@ -13,35 +66,41 @@ const worker = `const worker = {
     }
 
     const url = new URL(request.url);
-    const assetResponse = await env.ASSETS.fetch(request);
+    const file = resolveFile(url.pathname);
 
-    if (assetResponse.status !== 404) {
-      return withSecurityHeaders(assetResponse, url.pathname);
+    if (!file) {
+      return new Response("Not Found", { status: 404 });
     }
 
-    const indexUrl = new URL("/index.html", request.url);
-    const indexRequest = new Request(indexUrl, request);
-    const indexResponse = await env.ASSETS.fetch(indexRequest);
-    return withSecurityHeaders(indexResponse, "/index.html");
+    const body = request.method === "HEAD" ? null : decodeBody(file);
+    const headers = new Headers({
+      "Content-Type": file.mimeType,
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Cache-Control": url.pathname.startsWith("/assets/")
+        ? "public, max-age=31536000, immutable"
+        : "no-cache",
+    });
+
+    return new Response(body, { status: 200, headers });
   },
 };
 
-function withSecurityHeaders(response, pathname) {
-  const headers = new Headers(response.headers);
-  headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+function resolveFile(pathname) {
+  if (pathname === "/" || pathname === "") return files["/index.html"];
+  if (files[pathname]) return files[pathname];
+  if (!pathname.split("/").pop().includes(".")) return files["/index.html"];
+  return null;
+}
 
-  if (pathname.startsWith("/assets/")) {
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
-  } else {
-    headers.set("Cache-Control", "no-cache");
+function decodeBody(file) {
+  if (file.encoding === "base64") {
+    const binary = atob(file.body);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return bytes;
   }
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+  return file.body;
 }
 
 export default worker;
