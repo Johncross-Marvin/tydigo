@@ -6,11 +6,11 @@ import { ArrowLeft, Trophy, Target, Flame, Users, Zap, Gift } from "lucide-react
 
 const ChallengesPage = () => {
   const challenges = [
-    { icon: Target, title: "Sort 10kg Plastic", desc: "Sort and recycle 10kg of plastic waste", progress: 70, pts: "+500", color: "bg-blue-500" },
-    { icon: Flame, title: "7-Day Streak", desc: "Schedule pickups for 7 consecutive days", progress: 57, pts: "+750", color: "bg-orange-500" },
-    { icon: Users, title: "Refer 3 Neighbors", desc: "Invite neighbors to join WastiGo", progress: 33, pts: "+2,000", color: "bg-purple-500" },
-    { icon: Zap, title: "Super Sorter", desc: "Pre-sort waste into 3+ categories", progress: 100, pts: "+300", color: "bg-amber-500" },
-    { icon: Trophy, title: "Monthly Champion", desc: "Complete 20 pickups this month", progress: 45, pts: "+3,000", color: "bg-green-500" },
+    { icon: Target, title: "Sort 10kg Plastic", desc: "Sort and recycle 10kg of plastic waste", progress: 70, pts: "+500", barClass: "[&>div]:bg-blue-500" },
+    { icon: Flame, title: "7-Day Streak", desc: "Schedule pickups for 7 consecutive days", progress: 57, pts: "+750", barClass: "[&>div]:bg-orange-500" },
+    { icon: Users, title: "Refer 3 Neighbors", desc: "Invite neighbors to join WastiGo", progress: 33, pts: "+2,000", barClass: "[&>div]:bg-purple-500" },
+    { icon: Zap, title: "Super Sorter", desc: "Pre-sort waste into 3+ categories", progress: 100, pts: "+300", barClass: "[&>div]:bg-amber-500" },
+    { icon: Trophy, title: "Monthly Champion", desc: "Complete 20 pickups this month", progress: 45, pts: "+3,000", barClass: "[&>div]:bg-green-500" },
   ];
 
   return (
@@ -43,7 +43,7 @@ const ChallengesPage = () => {
                   <span>Progress</span>
                   <span>{challenge.progress}%</span>
                 </div>
-                <Progress value={challenge.progress} className={`h-2 rounded-full bg-neutral-100 [&>div]:${challenge.color}`} />
+                <Progress value={challenge.progress} className={`h-2 rounded-full bg-neutral-100 ${challenge.barClass}`} />
               </div>
             </CardContent>
           </Card>

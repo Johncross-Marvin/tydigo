@@ -1,0 +1,16 @@
+{
+  "name": "WastiGo",
+  "short_name": "WastiGo",
+  "description": "Smart waste pickup, recycling rewards, and operations platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#145C25",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

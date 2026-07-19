@@ -8,6 +8,11 @@ import { ArrowLeft, CreditCard, Shield, CheckCircle2, Lock } from "lucide-react"
 const PaymentPage = () => {
   const [paid, setPaid] = useState(false);
 
+  const handlePayment = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPaid(true);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
@@ -34,26 +39,41 @@ const PaymentPage = () => {
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Weight surcharge</span><span>₦250</span></div>
                   <div className="flex justify-between font-bold pt-2 border-t border-neutral-200"><span>Total</span><span className="text-[#145C25] text-lg">₦750</span></div>
                 </div>
-                <div className="space-y-3">
+                <form onSubmit={handlePayment} className="space-y-3">
                   <label className="text-sm font-semibold text-neutral-700">Card Number</label>
-                  <Input placeholder="1234 5678 9012 3456" className="h-12 rounded-xl" />
+                  <Input
+                    placeholder="1234 5678 9012 3456"
+                    className="h-12 rounded-xl"
+                    inputMode="numeric"
+                    autoComplete="cc-number"
+                    minLength={16}
+                    required
+                  />
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm font-semibold text-neutral-700">Expiry</label>
-                      <Input placeholder="MM/YY" className="h-12 rounded-xl" />
+                      <Input placeholder="MM/YY" className="h-12 rounded-xl" autoComplete="cc-exp" required />
                     </div>
                     <div>
                       <label className="text-sm font-semibold text-neutral-700">CVV</label>
-                      <Input placeholder="123" type="password" className="h-12 rounded-xl" />
+                      <Input
+                        placeholder="123"
+                        type="password"
+                        className="h-12 rounded-xl"
+                        inputMode="numeric"
+                        autoComplete="cc-csc"
+                        minLength={3}
+                        required
+                      />
                     </div>
                   </div>
-                </div>
-                <Button
-                  onClick={() => setPaid(true)}
-                  className="w-full h-14 bg-[#145C25] hover:bg-[#0F4A1E] text-white font-bold rounded-2xl shadow-brand"
-                >
-                  <Lock className="w-4 h-4 mr-2" /> Pay ₦750
-                </Button>
+                  <Button
+                    type="submit"
+                    className="w-full h-14 bg-[#145C25] hover:bg-[#0F4A1E] text-white font-bold rounded-2xl shadow-brand"
+                  >
+                    <Lock className="w-4 h-4 mr-2" /> Pay ₦750
+                  </Button>
+                </form>
                 <div className="flex items-center justify-center gap-2 text-xs text-neutral-400">
                   <Shield className="w-3.5 h-3.5" /> Secured by Paystack
                 </div>

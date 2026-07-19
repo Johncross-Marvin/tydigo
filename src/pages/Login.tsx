@@ -15,9 +15,11 @@ const LoginPage = () => {
     e.preventDefault();
     if (phone.length >= 10) {
       setSubmitted(true);
-      setTimeout(() => navigate("/otp"), 1500);
+      setTimeout(() => navigate("/otp", { state: { phone } }), 1500);
     }
   };
+
+  const formattedPhone = phone.replace(/(\d{3})(\d{3})(\d{0,4})/, "$1 $2 $3").trim();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] via-white to-[#DCFCE7] flex items-center justify-center p-4">
@@ -116,7 +118,7 @@ const LoginPage = () => {
                   </p>
                   <p className="text-neutral-500">
                     We sent a 6-digit code to{" "}
-                    <strong>+234 {phone}</strong>
+                    <strong>+234 {formattedPhone}</strong>
                   </p>
                   <p className="text-xs text-neutral-400">
                     Redirecting to verification...

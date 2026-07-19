@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,10 +7,15 @@ import { ArrowLeft, Shield, RefreshCw, CheckCircle2 } from "lucide-react";
 
 const OtpPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(45);
   const [verified, setVerified] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const phone = ((location.state as { phone?: string } | null)?.phone ?? "8000000000")
+    .replace(/\D/g, "")
+    .slice(0, 10);
+  const formattedPhone = phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
 
   useEffect(() => {
     if (timer > 0 && !verified) {
@@ -20,12 +25,13 @@ const OtpPage = () => {
   }, [timer, verified]);
 
   const handleChange = (index: number, value: string) => {
-    if (value.length > 1) return;
+    const digit = value.replace(/\D/g, "");
+    if (digit.length > 1) return;
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = digit;
     setOtp(newOtp);
 
-    if (value && index < 5) {
+    if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
@@ -51,6 +57,19 @@ const OtpPage = () => {
     inputRefs.current[0]?.focus();
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+    e.preventDefault();
+    const nextOtp = Array.from({ length: 6 }, (_, index) => pasted[index] ?? "");
+    setOtp(nextOtp);
+    inputRefs.current[Math.min(pasted.length, 6) - 1]?.focus();
+    if (pasted.length === 6 && !verified) {
+      setVerified(true);
+      setTimeout(() => navigate("/role-selection"), 1500);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] via-white to-[#DCFCE7] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -72,7 +91,7 @@ const OtpPage = () => {
             <CardDescription className="text-neutral-500">
               {verified
                 ? "Your phone number has been verified."
-                : `We sent a 6-digit code to +234 800 000 0000`}
+                : `We sent a 6-digit code to +234 ${formattedPhone}`}
             </CardDescription>
           </CardHeader>
 
@@ -93,6 +112,8 @@ const OtpPage = () => {
                       value={digit}
                       onChange={(e) => handleChange(i, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(i, e)}
+                      onPaste={handlePaste}
+                      aria-label={`OTP digit ${i + 1}`}
                       className="w-14 h-16 text-center text-2xl font-extrabold rounded-2xl border-2 border-neutral-200 focus:border-[#145C25] focus:ring-2 focus:ring-green-100"
                     />
                   ))}

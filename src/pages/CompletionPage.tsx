@@ -4,6 +4,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Star, Award, Home, Share2 } from "lucide-react";
 
 const CompletionPage = () => {
+  const handleShare = async () => {
+    const shareText = "I just completed a WastiGo pickup and earned 500 EcoPoints.";
+
+    if (navigator.share) {
+      await navigator.share({ title: "WastiGo Pickup Complete", text: shareText, url: window.location.origin });
+      return;
+    }
+
+    await navigator.clipboard.writeText(`${shareText} ${window.location.origin}`);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
       <Card className="border-0 shadow-brand-lg rounded-3xl max-w-md w-full">
@@ -40,7 +51,7 @@ const CompletionPage = () => {
             <p className="text-sm font-semibold text-neutral-700 mb-2">Rate Your Collector</p>
             <div className="flex justify-center gap-1">
               {[1, 2, 3, 4, 5].map((s) => (
-                <button key={s} className="p-1 hover:scale-110 transition-transform">
+                <button key={s} className="p-1 hover:scale-110 transition-transform" aria-label={`Rate ${s} stars`}>
                   <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
                 </button>
               ))}
@@ -53,7 +64,7 @@ const CompletionPage = () => {
                 <Home className="w-4 h-4 mr-2" /> Dashboard
               </Button>
             </Link>
-            <Button variant="outline" className="rounded-xl">
+            <Button variant="outline" className="rounded-xl" onClick={handleShare}>
               <Share2 className="w-4 h-4 mr-2" /> Share
             </Button>
           </div>

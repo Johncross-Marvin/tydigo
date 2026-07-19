@@ -36,6 +36,7 @@ const RequestPickupPage = () => {
   const [selectedWaste, setSelectedWaste] = useState<string | null>(null);
   const [weight, setWeight] = useState("5");
   const [schedule, setSchedule] = useState("today");
+  const [paymentMethod, setPaymentMethod] = useState("card");
 
   const nextStep = () => setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 0));
@@ -171,13 +172,19 @@ const RequestPickupPage = () => {
                 <h2 className="text-lg font-bold text-neutral-900">Payment Method</h2>
                 <div className="space-y-3">
                   {[
-                    { icon: CreditCard, label: "Pay with Card", desc: "Visa, Mastercard, Verve" },
-                    { icon: Award, label: "Use EcoPoints", desc: "Balance: 12,450 pts (₦6,225)" },
-                    { icon: CreditCard, label: "Bank Transfer", desc: "Pay after pickup" },
+                    { id: "card", icon: CreditCard, label: "Pay with Card", desc: "Visa, Mastercard, Verve" },
+                    { id: "points", icon: Award, label: "Use EcoPoints", desc: "Balance: 12,450 pts (NGN 6,225)" },
+                    { id: "transfer", icon: CreditCard, label: "Bank Transfer", desc: "Pay after pickup" },
                   ].map((method, i) => (
                     <button
                       key={i}
-                      className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-neutral-200 hover:border-[#145C25] text-left transition-all"
+                      onClick={() => setPaymentMethod(method.id)}
+                      aria-pressed={paymentMethod === method.id}
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
+                        paymentMethod === method.id
+                          ? "border-[#145C25] bg-green-50"
+                          : "border-neutral-200 hover:border-[#145C25]"
+                      }`}
                     >
                       <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
                         <method.icon className="w-5 h-5 text-neutral-600" />
@@ -186,6 +193,7 @@ const RequestPickupPage = () => {
                         <p className="font-bold text-neutral-900 text-sm">{method.label}</p>
                         <p className="text-xs text-neutral-500">{method.desc}</p>
                       </div>
+                      {paymentMethod === method.id && <CheckCircle2 className="w-5 h-5 text-[#145C25] ml-auto" />}
                     </button>
                   ))}
                 </div>
@@ -217,6 +225,7 @@ const RequestPickupPage = () => {
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Waste Type</span><span className="font-semibold">{selectedWaste}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Weight</span><span className="font-semibold">{weight} kg</span></div>
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Schedule</span><span className="font-semibold capitalize">{schedule}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-neutral-500">Payment</span><span className="font-semibold capitalize">{paymentMethod}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-neutral-500">Total</span><span className="font-semibold text-[#145C25]">₦750</span></div>
                 </div>
                 <Link to="/household/tracking">

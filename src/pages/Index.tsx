@@ -37,6 +37,33 @@ const Index = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const navItems = [
+    { label: "How It Works", href: "#how-it-works" },
+    { label: "Features", href: "#features" },
+    { label: "Impact", href: "#impact" },
+    { label: "Pricing", href: "#pricing" },
+  ];
+
+  const footerProductLinks = [
+    { label: "How It Works", href: "#how-it-works" },
+    { label: "Features", href: "#features" },
+    { label: "Pricing", href: "#pricing" },
+    { label: "Start Pickup", href: "/login" },
+  ];
+
+  const footerCompanyLinks = [
+    { label: "About WastiGo", href: "#how-it-works" },
+    { label: "Impact", href: "#impact" },
+    { label: "Partner With Us", href: "/partner/request" },
+    { label: "Contact", href: "mailto:hello@wastigo.ng" },
+  ];
+
+  const footerLegalLinks = [
+    { label: "Privacy", href: "mailto:privacy@wastigo.ng" },
+    { label: "Terms", href: "mailto:legal@wastigo.ng" },
+    { label: "Support", href: "mailto:support@wastigo.ng" },
+  ];
+
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       {/* ── NAVBAR ── */}
@@ -61,17 +88,15 @@ const Index = () => {
 
             {/* Desktop Nav */}
             <div className="hidden lg:flex items-center gap-8">
-              {["How It Works", "Features", "Impact", "Pricing"].map(
-                (item) => (
+              {navItems.map((item) => (
                   <a
-                    key={item}
-                    href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
+                    key={item.label}
+                    href={item.href}
                     className="text-sm font-medium text-neutral-600 hover:text-[#145C25] transition-colors"
                   >
-                    {item}
+                    {item.label}
                   </a>
-                )
-              )}
+                ))}
             </div>
 
             {/* Desktop CTA */}
@@ -93,6 +118,8 @@ const Index = () => {
             <button
               className="lg:hidden p-2 rounded-lg hover:bg-green-50"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? (
                 <X className="w-6 h-6 text-neutral-700" />
@@ -107,18 +134,16 @@ const Index = () => {
         {mobileMenuOpen && (
           <div className="lg:hidden bg-white border-t border-green-100 shadow-lg">
             <div className="px-4 py-4 space-y-3">
-              {["How It Works", "Features", "Impact", "Pricing"].map(
-                (item) => (
+              {navItems.map((item) => (
                   <a
-                    key={item}
-                    href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
+                    key={item.label}
+                    href={item.href}
                     className="block py-2 text-neutral-600 font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    {item}
+                    {item.label}
                   </a>
-                )
-              )}
+                ))}
               <div className="pt-3 border-t border-green-100 space-y-2">
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full rounded-xl">
@@ -149,10 +174,6 @@ const Index = () => {
             }}
           />
         </div>
-
-        {/* Glow orbs */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-green-400/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -239,7 +260,8 @@ const Index = () => {
                       src={gdUrl(IMAGE_IDS.dashboard)}
                       alt="WastiGo App Dashboard"
                       className="w-full h-auto"
-                      loading="lazy"
+                      loading="eager"
+                      decoding="async"
                     />
                   </div>
                 </div>
@@ -277,19 +299,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Bottom wave */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg
-            viewBox="0 0 1440 120"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 60C240 120 480 0 720 30C960 60 1200 0 1440 45V120H0V60Z"
-              fill="white"
-            />
-          </svg>
-        </div>
       </section>
 
       {/* ── HOW IT WORKS ── */}
@@ -554,6 +563,94 @@ const Index = () => {
         </div>
       </section>
 
+      {/* PRICING */}
+      <section id="pricing" className="py-20 lg:py-28 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <Badge className="bg-green-100 text-[#145C25] mb-4 px-4 py-1.5 rounded-full">
+              Transparent Pricing
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 tracking-tight mb-4">
+              Plans for Every Waste Workflow
+            </h2>
+            <p className="text-neutral-500 text-lg">
+              Start with household pickups, then scale into business, partner,
+              and admin operations when your network grows.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                name: "Household",
+                price: "Free",
+                detail: "Pay per pickup",
+                cta: "Start Pickup",
+                route: "/login",
+                features: ["Phone-number signup", "Live collector tracking", "EcoPoints rewards"],
+              },
+              {
+                name: "Business",
+                price: "Custom",
+                detail: "Bulk pickup plans",
+                cta: "View Dashboard",
+                route: "/business/dashboard",
+                featured: true,
+                features: ["Scheduled bulk pickups", "Impact reporting", "Dedicated support"],
+              },
+              {
+                name: "Partner",
+                price: "Marketplace",
+                detail: "Material request pricing",
+                cta: "Request Materials",
+                route: "/partner/request",
+                features: ["Recyclable material sourcing", "Batch tracking", "Partner revenue view"],
+              },
+            ].map((plan) => (
+              <Card
+                key={plan.name}
+                className={`border shadow-md shadow-neutral-200/30 rounded-2xl h-full ${
+                  plan.featured ? "border-[#145C25] ring-2 ring-green-100" : "border-neutral-100"
+                }`}
+              >
+                <CardContent className="p-6 flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-extrabold text-neutral-900">{plan.name}</h3>
+                    {plan.featured && (
+                      <Badge className="bg-[#145C25] text-white rounded-full">Popular</Badge>
+                    )}
+                  </div>
+                  <div className="mb-5">
+                    <p className="text-3xl font-black text-neutral-900">{plan.price}</p>
+                    <p className="text-sm text-neutral-500">{plan.detail}</p>
+                  </div>
+                  <div className="space-y-3 mb-6 flex-1">
+                    {plan.features.map((feature) => (
+                      <div key={feature} className="flex items-center gap-2 text-sm text-neutral-600">
+                        <CheckCircle2 className="w-4 h-4 text-[#145C25]" />
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+                  <Link to={plan.route}>
+                    <Button
+                      className={`w-full rounded-xl ${
+                        plan.featured
+                          ? "bg-[#145C25] hover:bg-[#0F4A1E] text-white"
+                          : "bg-neutral-900 hover:bg-neutral-800 text-white"
+                      }`}
+                    >
+                      {plan.cta}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── IMPACT COUNTERS ── */}
       <section id="impact" className="py-20 lg:py-28 bg-gradient-brand text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -712,30 +809,28 @@ const Index = () => {
             <div>
               <h4 className="font-bold text-white mb-4">Product</h4>
               <div className="space-y-2 text-sm">
-                {["How It Works", "Features", "Pricing", "Download App"].map(
-                  (item) => (
+                {footerProductLinks.map((item) => (
                     <a
-                      key={item}
-                      href="#"
+                      key={item.label}
+                      href={item.href}
                       className="block text-green-300 hover:text-white transition-colors"
                     >
-                      {item}
+                      {item.label}
                     </a>
-                  )
-                )}
+                  ))}
               </div>
             </div>
 
             <div>
               <h4 className="font-bold text-white mb-4">Company</h4>
               <div className="space-y-2 text-sm">
-                {["About Us", "Blog", "Careers", "Contact"].map((item) => (
+                {footerCompanyLinks.map((item) => (
                   <a
-                    key={item}
-                    href="#"
+                    key={item.label}
+                    href={item.href}
                     className="block text-green-300 hover:text-white transition-colors"
                   >
-                    {item}
+                    {item.label}
                   </a>
                 ))}
               </div>
@@ -744,17 +839,15 @@ const Index = () => {
             <div>
               <h4 className="font-bold text-white mb-4">Legal</h4>
               <div className="space-y-2 text-sm">
-                {["Privacy Policy", "Terms of Service", "Cookie Policy"].map(
-                  (item) => (
+                {footerLegalLinks.map((item) => (
                     <a
-                      key={item}
-                      href="#"
+                      key={item.label}
+                      href={item.href}
                       className="block text-green-300 hover:text-white transition-colors"
                     >
-                      {item}
+                      {item.label}
                     </a>
-                  )
-                )}
+                  ))}
               </div>
             </div>
           </div>

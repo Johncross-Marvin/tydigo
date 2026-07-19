@@ -269,16 +269,16 @@ const HouseholdDashboardPage = () => {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { title: "Sort 10kg Plastic", progress: 70, pts: "+500 pts", color: "bg-blue-500" },
-                    { title: "5 Pickups This Month", progress: 60, pts: "+1,000 pts", color: "bg-amber-500" },
-                    { title: "Refer a Neighbor", progress: 0, pts: "+2,000 pts", color: "bg-purple-500" },
+                    { title: "Sort 10kg Plastic", progress: 70, pts: "+500 pts", barClass: "[&>div]:bg-blue-500" },
+                    { title: "5 Pickups This Month", progress: 60, pts: "+1,000 pts", barClass: "[&>div]:bg-amber-500" },
+                    { title: "Refer a Neighbor", progress: 0, pts: "+2,000 pts", barClass: "[&>div]:bg-purple-500" },
                   ].map((challenge, i) => (
                     <div key={i} className="space-y-1.5">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium text-neutral-700">{challenge.title}</span>
                         <span className="text-xs text-[#145C25] font-semibold">{challenge.pts}</span>
                       </div>
-                      <Progress value={challenge.progress} className={`h-1.5 rounded-full bg-neutral-100 [&>div]:${challenge.color}`} />
+                      <Progress value={challenge.progress} className={`h-1.5 rounded-full bg-neutral-100 ${challenge.barClass}`} />
                     </div>
                   ))}
                 </div>

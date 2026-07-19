@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type KeyboardEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +71,13 @@ const RoleSelectionPage = () => {
     if (role) navigate(role.route);
   };
 
+  const handleRoleKeyDown = (event: KeyboardEvent, roleId: string) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setSelected(roleId);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] via-white to-[#DCFCE7] flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
@@ -98,6 +105,10 @@ const RoleSelectionPage = () => {
             <Card
               key={role.id}
               onClick={() => setSelected(role.id)}
+              onKeyDown={(event) => handleRoleKeyDown(event, role.id)}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected === role.id}
               className={`cursor-pointer border-2 rounded-2xl transition-all duration-200 ${
                 selected === role.id
                   ? `${role.color} border-2 shadow-brand`
