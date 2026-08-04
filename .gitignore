@@ -1,4 +1,21 @@
-# Logs
+# ── Dependencies ──────────────────────────────────────────────────────────
+node_modules
+
+# ── Build Output ─────────────────────────────────────────────────────────
+dist
+dist-ssr
+.next
+.vercel
+
+# ── Environment & Secrets ────────────────────────────────────────────────
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+
+# ── Logs ─────────────────────────────────────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -7,15 +24,14 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# ── TypeScript ───────────────────────────────────────────────────────────
 *.tsbuildinfo
+
+# ── Legacy Artifacts ─────────────────────────────────────────────────────
 .sites-package-*
 wastigo-sites-production-*.tar.gz
 
-# Editor directories and files
+# ── Editor ───────────────────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -25,3 +41,6 @@ wastigo-sites-production-*.tar.gz
 *.njsproj
 *.sln
 *.sw?
+
+# ── OS ───────────────────────────────────────────────────────────────────
+Thumbs.db

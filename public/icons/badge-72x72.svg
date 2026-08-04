@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">
+  <rect width="72" height="72" rx="16" fill="#145C25"/>
+  <text x="36" y="42" text-anchor="middle"
+    font-family="system-ui,-apple-system,sans-serif" font-size="40"
+    font-weight="800" fill="white">T</text>
+</svg>

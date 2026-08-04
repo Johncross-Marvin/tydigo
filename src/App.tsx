@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/components/auth-provider";
 import { ProtectedRoute } from "@/components/protected-route";
+import { InstallPromptBanner, OfflineBanner, UpdateAvailableBanner } from "@/components/pwa-banner";
 
 import Index from "./pages/Index";
 import LoginPage from "./pages/Login";
@@ -47,6 +48,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <OfflineBanner />
+          <UpdateAvailableBanner />
           <Routes>
             {/* Public */}
             <Route path="/" element={<Index />} />
@@ -87,6 +90,7 @@ const App = () => (
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <InstallPromptBanner />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

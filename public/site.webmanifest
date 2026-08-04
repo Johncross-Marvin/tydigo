@@ -1,16 +1,93 @@
 {
   "name": "Tydigo",
   "short_name": "Tydigo",
-  "description": "Cleaner homes. Smarter cities.",
+  "description": "On-demand waste pickup, recycling, and rewards platform for cleaner cities.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#145C25",
+  "categories": ["productivity", "utilities", "lifestyle", "business"],
+  "lang": "en-NG",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
+      "src": "/icons/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Tydigo Home Dashboard"
+    },
+    {
+      "src": "/screenshots/pickup.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Request a Waste Pickup"
+    },
+    {
+      "src": "/screenshots/ecopoints.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "EcoPoints Wallet"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Request Pickup",
+      "short_name": "Pickup",
+      "description": "Schedule a waste pickup",
+      "url": "/household/request-pickup",
+      "icons": [
+        {
+          "src": "/icons/shortcut-pickup.svg",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "EcoPoints",
+      "short_name": "EcoPoints",
+      "description": "View your EcoPoints wallet",
+      "url": "/household/ecopoints",
+      "icons": [
+        {
+          "src": "/icons/shortcut-ecopoints.svg",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

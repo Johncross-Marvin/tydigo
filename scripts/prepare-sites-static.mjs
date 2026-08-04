@@ -3,7 +3,7 @@ import { extname, join, relative, sep } from "node:path";
 
 const distDir = join(process.cwd(), "dist");
 const serverDir = join(distDir, "server");
-const migrationSql = await readFile(join(process.cwd(), "drizzle", "0001_wastigo_core.sql"), "utf8");
+const migrationSql = await readFile(join(process.cwd(), "drizzle", "0001_tydigo_core.sql"), "utf8");
 const schemaStatements = migrationSql
   .split(";")
   .map((statement) => statement.trim())

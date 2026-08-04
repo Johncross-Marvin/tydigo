@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "vite build && node scripts/prepare-sites-static.mjs",
     "build:dev": "vite build --mode development",
+    "start": "vite preview",
+    "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
