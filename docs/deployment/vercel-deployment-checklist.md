@@ -103,6 +103,7 @@ Already configured in project root:
 - [ ] Login page (`/login`) loads
 - [ ] OTP page (`/otp`) loads
 - [ ] Role selection (`/role-selection`) loads
+- [ ] **Status page (`/status`) — all lights green or yellow (no red)**
 - [ ] Customer dashboard (`/household/dashboard`) loads
 - [ ] Request pickup (`/household/request-pickup`) loads
 - [ ] EcoPoints (`/household/ecopoints`) loads

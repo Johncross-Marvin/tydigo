@@ -1,4 +1,4 @@
-export type UserRole = "household" | "collector" | "business" | "partner" | "admin";
+export type UserRole = "household" | "customer" | "collector" | "business" | "partner" | "admin";
 
 export type AuthUser = {
   id: string;
@@ -63,6 +63,7 @@ const SESSION_TOKEN_KEY = "tydigo_session_token";
 
 export const roleHomePath: Record<UserRole, string> = {
   household: "/household/dashboard",
+  customer: "/household/dashboard",
   collector: "/collector/dashboard",
   business: "/business/dashboard",
   partner: "/partner/dashboard",

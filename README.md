@@ -175,6 +175,78 @@ For detailed deployment instructions, see:
 
 ---
 
+## Development Workflow
+
+### How to commit changes
+
+```bash
+# 1. Create a feature branch
+git checkout -b feature/my-change
+
+# 2. Make changes, then verify
+pnpm run typecheck && pnpm run lint && pnpm run build
+
+# 3. Stage and commit
+git add .
+git commit -m "feat: description of change"
+
+# 4. Push and create a Pull Request on GitHub
+git push -u origin feature/my-change
+```
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` — new feature
+- `fix:` — bug fix
+- `docs:` — documentation
+- `refactor:` — code restructuring
+- `style:` — UI/styling changes
+- `chore:` — maintenance
+
+### Before every commit
+- [ ] `pnpm run typecheck` passes
+- [ ] `pnpm run lint` passes
+- [ ] `pnpm run build` succeeds
+- [ ] No `.env` files staged
+- [ ] No secrets in changed files
+
+### How Vercel deployment works
+
+1. Push to `main` → Vercel auto-detects the push
+2. Vercel runs `pnpm install --frozen-lockfile`
+3. Vercel runs `pnpm run build`
+4. `dist/` is deployed to production
+5. Preview deployments are created automatically for Pull Requests
+
+### How to add environment variables
+
+**Locally:** Edit your `.env` file (never commit this file)
+
+**On Vercel:** Dashboard → Settings → Environment Variables → Add key-value pairs → Redeploy
+
+**Variable prefixes:**
+- `VITE_*` → Public, accessible in browser code
+- No prefix → Server-side secrets only
+
+### How to test production deployment
+
+```bash
+# Build and preview locally
+pnpm run build
+pnpm run preview
+# → http://localhost:4173
+
+# Check status endpoint
+curl http://localhost:4173/status
+```
+
+### Documentation
+
+- [Development Workflow Guide](./docs/development/github-vercel-workflow.md) — Full CI/CD pipeline
+- [Vercel Launch Checklist](./docs/deployment/vercel-deployment-checklist.md) — Pre-deployment verification
+- [Deployment Guide](./DEPLOYMENT.md) — Production architecture and setup
+
+---
+
 ## License
 
 Private. All rights reserved.

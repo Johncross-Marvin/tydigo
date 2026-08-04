@@ -36,6 +36,7 @@ import AdminBatchesPage from "./pages/AdminBatches";
 import AdminImpactPage from "./pages/AdminImpact";
 
 import NotFound from "./pages/NotFound";
+import StatusPage from "./pages/StatusPage";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/otp" element={<OtpPage />} />
             <Route path="/role-selection" element={protectedPage(<RoleSelectionPage />)} />
+            <Route path="/status" element={<StatusPage />} />
 
             {/* Household */}
             <Route path="/household/dashboard" element={protectedPage(<HouseholdDashboardPage />)} />

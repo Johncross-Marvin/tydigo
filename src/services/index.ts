@@ -33,7 +33,6 @@ export {
 } from "./ecopoints";
 export type { EcopointStatus, EcopointRule, RedemptionOption } from "./ecopoints";
 
-// Re-export ECOPOINT_VALUE_NGN from ecopoints (authoritative source)
 export { ECOPOINT_VALUE_NGN } from "./ecopoints";
 
 export {
@@ -49,3 +48,31 @@ export {
   STATUS_ICONS,
 } from "./pickup-status";
 export type { PickupStatus } from "./pickup-status";
+
+export {
+  signInWithPhone,
+  verifyOtp,
+  signOut,
+  getCurrentUser,
+  getUserProfile,
+  updateProfile,
+  setUserRole,
+  refreshSession,
+} from "./auth";
+export type { AuthUser, UserRole } from "./auth";
+
+export { createPickup, getCustomerPickups, getActivePickup, uploadPickupPhoto } from "./pickup";
+export type { PickupDraftInput, CreatedPickup } from "./pickup";
+
+export { initializePayment, verifyPayment } from "./payments";
+export type { PaymentResult } from "./payments";
+
+export {
+  uploadFile,
+  uploadWastePhoto,
+  uploadPickupProof,
+  uploadAvatar,
+  deleteFile,
+  getSignedUrl,
+  BUCKETS,
+} from "./storage";
