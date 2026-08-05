@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { api, clearSessionToken, setSessionToken, type AuthUser, type UserRole } from "@/lib/api";
+import { clearSessionToken, setSessionToken, type AuthUser, type UserRole, roleHomePath } from "@/lib/api";
+import { getCurrentUser, signOut, verifyOtp, updateProfile } from "@/services/auth";
 
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   refreshUser: () => Promise<void>;
-  verifySession: (verificationId: string, code: string) => Promise<AuthUser>;
+  verifySession: (phone: string, code: string, profileMeta?: { name?: string; role?: UserRole }) => Promise<AuthUser>;
   updateRole: (role: UserRole) => Promise<AuthUser>;
   logout: () => Promise<void>;
 };
@@ -17,19 +18,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
-    const { user: nextUser } = await api.me();
-    setUser(nextUser);
+    try {
+      const nextUser = await getCurrentUser();
+      setUser(nextUser);
+    } catch {
+      setUser(null);
+    }
   };
 
   useEffect(() => {
-    api
-      .me()
-      .then(({ user: nextUser }) => setUser(nextUser))
-      .catch(() => {
-        clearSessionToken();
-        setUser(null);
-      })
-      .finally(() => setLoading(false));
+    refreshUser().finally(() => setLoading(false));
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -37,24 +35,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loading,
       refreshUser,
-      verifySession: async (verificationId, code) => {
-        const { token, user: nextUser } = await api.verifyAuth({ verificationId, code });
-        setSessionToken(token);
+      verifySession: async (phoneOrId: string, code: string, profileMeta) => {
+        const { user: nextUser, token } = await verifyOtp(phoneOrId, code, phoneOrId, profileMeta);
+        if (token) setSessionToken(token);
         setUser(nextUser);
         return nextUser;
       },
       updateRole: async (role) => {
-        const { user: nextUser } = await api.updateMe({ role });
+        if (!user) throw new Error("Not authenticated");
+        const nextUser = await updateProfile(user.id, { role });
         setUser(nextUser);
         return nextUser;
       },
       logout: async () => {
-        await api.logout().catch(() => undefined);
+        await signOut();
         clearSessionToken();
         setUser(null);
       },
     }),
-    [loading, user],
+    [user, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -65,3 +64,5 @@ export function useAuth() {
   if (!value) throw new Error("useAuth must be used within AuthProvider");
   return value;
 }
+
+export { roleHomePath };

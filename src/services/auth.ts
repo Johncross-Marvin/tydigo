@@ -16,7 +16,10 @@ export type { AuthUser, UserRole };
 
 // ─── Phone OTP Sign In ────────────────────────────────────────
 
-export async function signInWithPhone(phone: string): Promise<{
+export async function signInWithPhone(
+  phone: string,
+  metadata?: { name?: string; role?: UserRole },
+): Promise<{
   verificationId?: string;
   maskedPhone?: string;
   expiresInSeconds: number;
@@ -30,6 +33,10 @@ export async function signInWithPhone(phone: string): Promise<{
       options: {
         shouldCreateUser: true,
         channel: "sms",
+        data: metadata ? {
+          full_name: metadata.name,
+          role: metadata.role,
+        } : undefined,
       },
     });
 
@@ -38,12 +45,11 @@ export async function signInWithPhone(phone: string): Promise<{
     return {
       expiresInSeconds: 600,
       delivery: "sms",
-      // With Supabase, verification is handled server-side, no code returned
     };
   }
 
   // Fallback to mock API
-  return mockApi.startAuth({ mode: "signin", phone });
+  return mockApi.startAuth({ mode: "signin", phone, name: metadata?.name, role: metadata?.role });
 }
 
 // ─── Phone OTP Verify ─────────────────────────────────────────
@@ -52,6 +58,7 @@ export async function verifyOtp(
   phone: string,
   code: string,
   verificationId?: string,
+  profileMeta?: { name?: string; role?: UserRole },
 ): Promise<{ user: AuthUser; token?: string }> {
   if (isSupabaseAvailable() && supabase) {
     const normalizedPhone = normalizePhone(phone);
@@ -65,8 +72,13 @@ export async function verifyOtp(
 
     if (!data.user) throw new Error("Verification failed. Please try again.");
 
-    // Get or create profile
-    const profile = await getOrCreateProfile(data.user.id, normalizedPhone);
+    // Get or create profile with user metadata
+    const profile = await getOrCreateProfile(
+      data.user.id,
+      normalizedPhone,
+      profileMeta?.name || (data.user.user_metadata?.full_name as string),
+      (profileMeta?.role || (data.user.user_metadata?.role as UserRole) || "household") as UserRole,
+    );
 
     // Get session token
     const session = data.session;
@@ -129,6 +141,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 async function getOrCreateProfile(
   authUserId: string,
   phone: string,
+  fullName?: string,
+  role: UserRole = "household",
 ): Promise<AuthUser> {
   if (!isSupabaseAvailable() || !supabase) {
     // Mock fallback
@@ -139,8 +153,8 @@ async function getOrCreateProfile(
       return {
         id: authUserId,
         phone,
-        name: "Tydigo User",
-        role: "customer",
+        name: fullName || "Tydigo User",
+        role,
         ecopoints: 500,
         rating: 5,
       };
@@ -155,6 +169,14 @@ async function getOrCreateProfile(
     .single();
 
   if (existing) {
+    // Update name/role if this is a new signup with additional info
+    if (fullName && existing.full_name === "Tydigo User") {
+      await supabase
+        .from("profiles")
+        .update({ full_name: fullName, role, updated_at: new Date().toISOString() })
+        .eq("auth_user_id", authUserId);
+      return mapProfileToUser({ ...existing, full_name: fullName, role });
+    }
     return mapProfileToUser(existing);
   }
 
@@ -166,8 +188,8 @@ async function getOrCreateProfile(
       id: profileId,
       auth_user_id: authUserId,
       phone,
-      full_name: "Tydigo User",
-      role: "household",
+      full_name: fullName || "Tydigo User",
+      role,
       default_city: "Abuja",
       default_state: "FCT",
       ecopoints: 500,

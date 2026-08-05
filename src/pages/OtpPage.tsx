@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, RefreshCw, Shield } from "lucide-react";
+import { ArrowLeft, CheckCircle2, RefreshCw, Shield, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth-provider";
-import { api, roleHomePath } from "@/lib/api";
+import { verifyOtp } from "@/services/auth";
+import { signInWithPhone } from "@/services/auth";
+import { roleHomePath } from "@/lib/api";
 
 type PendingAuth = {
-  verificationId: string;
-  maskedPhone: string;
+  verificationId?: string;
+  maskedPhone?: string;
   verificationCode?: string;
   expiresInSeconds: number;
   mode: "signin" | "signup";
@@ -19,11 +21,15 @@ type PendingAuth = {
 };
 
 const readPendingAuth = (state: unknown): PendingAuth | null => {
-  if (state && typeof state === "object" && "verificationId" in state) return state as PendingAuth;
+  if (state && typeof state === "object" && "phone" in state && "mode" in state) {
+    return state as PendingAuth;
+  }
   const stored = sessionStorage.getItem("tydigo_pending_auth");
   if (!stored) return null;
   try {
-    return JSON.parse(stored) as PendingAuth;
+    const parsed = JSON.parse(stored) as PendingAuth;
+    if (parsed.phone && parsed.mode) return parsed;
+    return null;
   } catch {
     return null;
   }
@@ -32,12 +38,13 @@ const readPendingAuth = (state: unknown): PendingAuth | null => {
 const OtpPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifySession } = useAuth();
+  const { verifySession: verifyAndSetUser } = useAuth();
   const pendingAuth = useMemo(() => readPendingAuth(location.state), [location.state]);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [timer, setTimer] = useState(pendingAuth?.expiresInSeconds ?? 0);
+  const [timer, setTimer] = useState(pendingAuth?.expiresInSeconds ?? 600);
   const [verified, setVerified] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -59,12 +66,27 @@ const OtpPage = () => {
     setError("");
 
     try {
-      const user = await verifySession(pendingAuth.verificationId, digits.join(""));
+      const user = await verifyAndSetUser(
+        pendingAuth.verificationId || pendingAuth.phone,
+        digits.join(""),
+        pendingAuth.name || pendingAuth.role
+          ? { name: pendingAuth.name, role: pendingAuth.role }
+          : undefined,
+      );
       sessionStorage.removeItem("tydigo_pending_auth");
       setVerified(true);
       setTimeout(() => navigate(roleHomePath[user.role], { replace: true }), 900);
     } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : "Unable to verify code.");
+      const message = verifyError instanceof Error ? verifyError.message : "Unable to verify code.";
+      if (message.includes("expired")) {
+        setError("This verification code has expired. Please request a new one.");
+      } else if (message.includes("incorrect") || message.includes("invalid")) {
+        setError("Invalid code. Please check and try again.");
+      } else if (message.includes("not found") || message.includes("no account")) {
+        setError("No account found for this phone number. Please sign up first.");
+      } else {
+        setError(message);
+      }
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -100,20 +122,26 @@ const OtpPage = () => {
   };
 
   const handleResend = async () => {
-    if (!pendingAuth) return;
+    if (!pendingAuth || resending) return;
     setError("");
-    const response = await api.startAuth({
-      mode: pendingAuth.mode,
-      phone: pendingAuth.phone,
-      name: pendingAuth.name,
-      role: pendingAuth.role,
-    });
-    const nextPending = { ...pendingAuth, ...response };
-    sessionStorage.setItem("tydigo_pending_auth", JSON.stringify(nextPending));
-    setTimer(response.expiresInSeconds);
-    setOtp(["", "", "", "", "", ""]);
-    inputRefs.current[0]?.focus();
+    setResending(true);
+
+    try {
+      const response = await signInWithPhone(pendingAuth.phone);
+      setTimer(response.expiresInSeconds || 600);
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } catch (resendError) {
+      setError(resendError instanceof Error ? resendError.message : "Failed to resend code.");
+    } finally {
+      setResending(false);
+    }
   };
+
+  // Mask phone for display
+  const displayPhone = pendingAuth?.phone
+    ? pendingAuth.phone.slice(0, 5) + "****" + pendingAuth.phone.slice(-3)
+    : pendingAuth?.maskedPhone ?? "";
 
   if (!pendingAuth) return null;
 
@@ -130,23 +158,28 @@ const OtpPage = () => {
               <Shield className="w-6 h-6 text-amber-600" />
             </div>
             <CardTitle className="text-2xl font-extrabold text-neutral-900">
-              {verified ? "Verified" : "Enter Verification Code"}
+              {verified ? "Verified ✅" : "Enter Verification Code"}
             </CardTitle>
             <CardDescription className="text-neutral-500">
-              {verified ? "Your secure session is ready." : `We created a verification request for ${pendingAuth.maskedPhone}.`}
+              {verified
+                ? "Your secure session is ready."
+                : `A 6-digit code was sent to ${displayPhone}`}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6 pt-4">
             {!verified ? (
               <>
+                {/* Show mock code in dev mode */}
                 {pendingAuth.verificationCode ? (
                   <div className="rounded-2xl bg-green-50 border border-green-100 p-4 text-sm text-green-800">
-                    Verification code for this build: <span className="font-black tracking-widest">{pendingAuth.verificationCode}</span>
+                    <p className="font-semibold mb-1">🔧 Development Mode</p>
+                    Verification code: <span className="font-black tracking-widest">{pendingAuth.verificationCode}</span>
                   </div>
                 ) : (
-                  <div className="rounded-2xl bg-green-50 border border-green-100 p-4 text-sm text-green-800">
-                    Enter the 6-digit code sent to {pendingAuth.maskedPhone}.
+                  <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-blue-800 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>Enter the 6-digit code sent via SMS to your phone number.</span>
                   </div>
                 )}
 
@@ -170,17 +203,29 @@ const OtpPage = () => {
                   ))}
                 </div>
 
-                {error && <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
+                {error && (
+                  <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                    {error}
+                  </div>
+                )}
 
                 <div className="text-center space-y-2">
                   {timer > 0 ? (
                     <p className="text-sm text-neutral-500">
-                      Code expires in <span className="font-bold text-[#145C25]">{Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, "0")}</span>
+                      Code expires in{" "}
+                      <span className="font-bold text-[#145C25]">
+                        {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, "0")}
+                      </span>
                     </p>
                   ) : (
-                    <Button variant="ghost" onClick={handleResend} className="text-[#145C25] hover:text-[#0F4A1E] font-semibold">
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Resend Code
+                    <Button
+                      variant="ghost"
+                      onClick={handleResend}
+                      disabled={resending}
+                      className="text-[#145C25] hover:text-[#0F4A1E] font-semibold"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${resending ? "animate-spin" : ""}`} />
+                      {resending ? "Resending..." : "Resend Code"}
                     </Button>
                   )}
                 </div>
@@ -188,7 +233,7 @@ const OtpPage = () => {
                 <Button
                   onClick={() => void verifyCode(otp)}
                   disabled={otp.some((digit) => !digit) || verifying}
-                  className="w-full h-12 bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-2xl font-bold"
+                  className="w-full h-12 bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-2xl font-bold disabled:opacity-50"
                 >
                   {verifying ? "Verifying..." : "Verify and Continue"}
                 </Button>
@@ -204,7 +249,7 @@ const OtpPage = () => {
 
             <div className="text-center text-xs text-neutral-400">
               <Shield className="w-3.5 h-3.5 inline mr-1" />
-              Verification records and sessions are stored server-side.
+              OTP verification powered by Supabase Auth.
             </div>
           </CardContent>
         </Card>

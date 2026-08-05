@@ -4,16 +4,46 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Phone, Recycle, Shield } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { api, roleHomePath, type UserRole } from "@/lib/api";
+import { roleHomePath, type UserRole } from "@/lib/api";
+import { signInWithPhone } from "@/services/auth";
 import { useAuth } from "@/components/auth-provider";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const signupRoles: Array<{ value: UserRole; label: string }> = [
-  { value: "household", label: "Home / Estate" },
+  { value: "household", label: "Home / Household" },
+  { value: "business", label: "Estate / Business" },
   { value: "collector", label: "Collector" },
-  { value: "business", label: "Business" },
-  { value: "partner", label: "Recycler" },
+  { value: "partner", label: "Recycler / Partner" },
 ];
+
+/** Normalize a Nigerian phone number to E.164 format (+234XXXXXXXXXX) */
+function normalizeNigerianPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+
+  // Already international format
+  if (digits.startsWith("234") && digits.length >= 11) return `+${digits}`;
+  // Standard Nigerian mobile (11 digits starting with 0)
+  if (digits.startsWith("0") && digits.length === 11) return `+234${digits.slice(1)}`;
+  // Already 10 digits without leading 0 (e.g., 8146117344)
+  if (digits.length === 10) return `+234${digits}`;
+  // Other international
+  if (digits.length >= 11) return `+${digits}`;
+
+  // Fallback — prepend +234
+  return `+234${digits}`;
+}
+
+/** Validate a Nigerian phone number */
+function isValidNigerianPhone(raw: string): boolean {
+  const digits = raw.replace(/\D/g, "");
+  // Nigerian numbers: 10 digits (without country code) or 13 digits (with 234) or various formats
+  if (digits.startsWith("234") && digits.length === 13) return true;
+  if (digits.startsWith("0") && digits.length === 11) return true;
+  if (digits.length === 10) return true;
+  // Other international
+  if (digits.length >= 11 && digits.length <= 15) return true;
+  return false;
+}
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -32,20 +62,47 @@ const LoginPage = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+
+    // Validate
+    if (mode === "signup" && !name.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!phone.trim() || !isValidNigerianPhone(phone)) {
+      setError("Please enter a valid Nigerian phone number.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      const response = await api.startAuth({
+      const normalizedPhone = normalizeNigerianPhone(phone);
+
+      const response = await signInWithPhone(
+        normalizedPhone,
+        mode === "signup" ? { name: name.trim(), role } : undefined,
+      );
+      const pendingAuth = {
+        ...response,
+        phone: normalizedPhone,
         mode,
-        phone,
-        name: mode === "signup" ? name : undefined,
+        name: mode === "signup" ? name.trim() : undefined,
         role: mode === "signup" ? role : undefined,
-      });
-      const pendingAuth = { ...response, phone, mode, name, role };
+      };
       sessionStorage.setItem("tydigo_pending_auth", JSON.stringify(pendingAuth));
       navigate("/otp", { state: pendingAuth });
     } catch (authError) {
-      setError(authError instanceof Error ? authError.message : "Unable to start verification.");
+      const message = authError instanceof Error ? authError.message : "Unable to send verification code.";
+      // Map common Supabase errors to friendly messages
+      if (message.includes("phone_provider_disabled") || message.includes("Unsupported phone provider")) {
+        setError("Phone verification is not configured. Please contact support or try again later.");
+      } else if (message.includes("invalid")) {
+        setError("This phone number is invalid. Please use a valid Nigerian phone number.");
+      } else if (message.includes("rate") || message.includes("too many")) {
+        setError("Too many attempts. Please wait a moment and try again.");
+      } else {
+        setError(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -83,7 +140,9 @@ const LoginPage = () => {
                 {mode === "signin" ? "Sign in to Tydigo" : "Create your Tydigo account"}
               </CardTitle>
               <CardDescription className="text-neutral-500">
-                Your session, profile, pickup history, payments, and recycler requests are stored securely.
+                {mode === "signin"
+                  ? "Enter your phone number to sign in securely."
+                  : "Your profile, pickups, EcoPoints, and payment history are stored securely."}
               </CardDescription>
             </CardHeader>
 
@@ -91,14 +150,14 @@ const LoginPage = () => {
               <div className="grid grid-cols-2 gap-2 rounded-2xl bg-neutral-100 p-1">
                 <button
                   type="button"
-                  onClick={() => setMode("signin")}
+                  onClick={() => { setMode("signin"); setError(""); }}
                   className={`h-11 rounded-xl text-sm font-bold transition ${mode === "signin" ? "bg-white text-[#145C25] shadow-sm" : "text-neutral-500"}`}
                 >
                   Sign In
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode("signup")}
+                  onClick={() => { setMode("signup"); setError(""); }}
                   className={`h-11 rounded-xl text-sm font-bold transition ${mode === "signup" ? "bg-white text-[#145C25] shadow-sm" : "text-neutral-500"}`}
                 >
                   Sign Up
@@ -109,7 +168,13 @@ const LoginPage = () => {
                 {mode === "signup" && (
                   <div>
                     <label className="text-sm font-semibold text-neutral-700 mb-2 block">Full Name</label>
-                    <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Bello" className="h-14 rounded-2xl" required />
+                    <Input
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder="Amina Bello"
+                      className="h-14 rounded-2xl"
+                      required
+                    />
                   </div>
                 )}
 
@@ -123,12 +188,14 @@ const LoginPage = () => {
                       type="tel"
                       placeholder="+234 800 000 0000"
                       value={phone}
-                      onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 15))}
+                      onChange={(event) => setPhone(event.target.value)}
                       className="pl-24 h-14 rounded-2xl border-2 border-neutral-200 focus:border-[#145C25] text-lg"
-                      minLength={10}
                       required
                     />
                   </div>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    Nigerian number (e.g., 08146117344, +2348146117344)
+                  </p>
                 </div>
 
                 {mode === "signup" && (
@@ -148,20 +215,24 @@ const LoginPage = () => {
                   </div>
                 )}
 
-                {error && <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
+                {error && (
+                  <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                    {error}
+                  </div>
+                )}
 
                 <Button
                   type="submit"
                   disabled={submitting}
                   className="w-full h-14 bg-[#145C25] hover:bg-[#0F4A1E] text-white font-bold text-base rounded-2xl shadow-brand disabled:opacity-50"
                 >
-                  {submitting ? "Preparing Verification..." : "Continue Securely"}
+                  {submitting ? "Sending verification code..." : "Continue Securely"}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
 
                 <div className="flex items-center gap-3 text-xs text-neutral-500">
                   <Shield className="w-4 h-4" />
-                  Sessions are server-issued and can be revoked on logout.
+                  Your session is stored securely with Supabase Auth.
                 </div>
               </form>
 
@@ -170,16 +241,16 @@ const LoginPage = () => {
                   <div className="w-full border-t border-neutral-200" />
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-neutral-400">D1-backed persistence enabled</span>
+                  <span className="bg-white px-3 text-neutral-400">Supabase Auth • Phone OTP</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-center gap-6 text-xs text-neutral-400">
                 <span className="flex items-center gap-1">
-                  <Shield className="w-3.5 h-3.5" /> Authenticated
+                  <Shield className="w-3.5 h-3.5" /> End-to-end encrypted
                 </span>
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Persistent Data
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Persistent profiles
                 </span>
               </div>
             </CardContent>
