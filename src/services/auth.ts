@@ -41,7 +41,7 @@ function friendlyAuthMessage(error: unknown): string {
   if (msg.includes("phone_provider_disabled") || msg.includes("Unsupported phone provider")) {
     return "Phone verification is being set up. Please try again shortly.";
   }
-  if (msg.includes("invalid_phone") || msg.includes("Invalid phone")) {
+  if (msg.includes("invalid_phone") || msg.includes("Invalid phone") || msg.includes("phone number")) {
     return "This phone number doesn't look right. Please check and try again.";
   }
   if (msg.includes("rate_limit") || msg.includes("too many") || msg.includes("too_many")) {
@@ -64,6 +64,15 @@ function friendlyAuthMessage(error: unknown): string {
   }
   if (msg.includes("URL") || msg.includes("url") || msg.includes("URL is required")) {
     return "Authentication is not configured. Please contact support.";
+  }
+  if (msg.includes("422") || msg.includes("Unprocessable")) {
+    if (msg.includes("Twilio") || msg.includes("twilio")) {
+      return "SMS delivery failed. The phone verification service may need additional setup.";
+    }
+    return "Your request could not be processed. Please verify your phone number and try again.";
+  }
+  if (msg.includes("403") || msg.includes("Forbidden") || msg.includes("not authorized")) {
+    return "Access denied. Please check that the authentication service is properly configured.";
   }
 
   // Generic fallback — show raw in dev, friendly in prod
