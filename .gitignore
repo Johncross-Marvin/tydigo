@@ -44,3 +44,4 @@ wastigo-sites-production-*.tar.gz
 
 # ── OS ───────────────────────────────────────────────────────────────────
 Thumbs.db
+.dyad/

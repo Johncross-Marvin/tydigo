@@ -11,7 +11,7 @@
  * PRODUCTION: Supabase env vars are REQUIRED.
  */
 
-import { supabase, isSupabaseAvailable, generateId } from "@/lib/supabase";
+import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { normalizeNigerianPhone } from "@/utils/phone";
 import { setSessionToken, clearSessionToken } from "@/lib/api";
 import { hasSupabase, ENABLE_MOCK_AUTH, APP_ENV } from "@/lib/env";
@@ -245,54 +245,78 @@ async function getOrCreateProfile(
     return mapProfileToUser(existing);
   }
 
-  // Create new profile
-  const profileId = generateId("pro");
+  // Create new profile — let the DB generate the UUID via uuid_generate_v4()
   const now = new Date().toISOString();
+
+  const insertPayload: Record<string, unknown> = {
+    auth_user_id: authUserId,
+    phone,
+    full_name: fullName || "Tydigo User",
+    role,
+    default_city: "Abuja",
+    default_state: "FCT",
+    ecopoints: 500,
+    rating: 5.0,
+    total_pickups: 0,
+    total_kg_recycled: 0,
+    created_at: now,
+    updated_at: now,
+  };
+
+  if (APP_ENV === "development") {
+    console.log("[Tydigo Auth] Inserting profile with payload:", JSON.stringify(insertPayload));
+  }
 
   const insertResult = await client
     .from("profiles")
-    .insert({
-      id: profileId,
-      auth_user_id: authUserId,
-      phone,
-      full_name: fullName || "Tydigo User",
-      role,
-      default_city: "Abuja",
-      default_state: "FCT",
-      ecopoints: 500,
-      rating: 5.0,
-      total_pickups: 0,
-      total_kg_recycled: 0,
-      created_at: now,
-      updated_at: now,
-    })
+    .insert(insertPayload)
     .select()
     .maybeSingle();
 
   if (insertResult.error) {
-    console.error("[Tydigo Auth] Profile insert error:", JSON.stringify(insertResult.error));
-    throw new AuthError("Unable to create your profile. Please contact support.");
+    // Log the FULL error object for debugging
+    const err = insertResult.error;
+    console.error("[Tydigo Auth] Profile insert error:", {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+    throw new AuthError("We couldn't finish setting up your account. Please try again.");
   }
 
   const created = insertResult.data;
   if (!created) {
     // Insert returned no data — might be RLS blocking
-    console.error("[Tydigo Auth] Profile insert returned no data. RLS may be blocking.");
+    console.error("[Tydigo Auth] Profile insert returned no data. RLS may be blocking.", {
+      authUserId,
+      phone,
+      role,
+    });
     throw new AuthError("We're setting up your account. Please try again in a moment.");
   }
 
-  // Award signup EcoPoints
+  if (APP_ENV === "development") {
+    console.log("[Tydigo Auth] Profile created successfully:", created.id);
+  }
+
+  // Award signup EcoPoints — let the DB generate the UUID
   try {
-    await client.from("ecopoint_transactions").insert({
-      id: generateId("eco"),
-      profile_id: profileId,
+    const ecoResult = await client.from("ecopoint_transactions").insert({
+      profile_id: created.id,
       points: 500,
       reason: "Signup bonus",
-      status: "confirmed",
+      status: "pending",
       created_at: now,
     });
-  } catch {
+    if (ecoResult.error && APP_ENV === "development") {
+      console.warn("[Tydigo Auth] EcoPoints insert warning:", ecoResult.error);
+    }
+  } catch (ecoErr) {
     // Non-fatal — EcoPoints can be awarded later
+    if (APP_ENV === "development") {
+      console.warn("[Tydigo Auth] EcoPoints insert failed (non-fatal):", ecoErr);
+    }
   }
 
   return mapProfileToUser(created);
