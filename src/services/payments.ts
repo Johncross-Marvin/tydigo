@@ -8,7 +8,7 @@
  * Real payment initialization happens server-side via Edge Functions.
  */
 
-import { supabase, isSupabaseAvailable, generateId } from "@/lib/supabase";
+import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { api as mockApi } from "@/lib/api";
 import { hasPaystack, PAYSTACK_PUBLIC_KEY } from "@/lib/env";
 
@@ -160,11 +160,9 @@ async function recordPayment(params: {
 }): Promise<void> {
   if (!isSupabaseAvailable() || !supabase) return;
 
-  const paymentId = generateId("pay");
   const now = new Date().toISOString();
 
   await supabase.from("payments").insert({
-    id: paymentId,
     pickup_id: params.pickupId,
     payer_id: params.userId,
     amount_ngn: params.amountNgn,
@@ -196,12 +194,11 @@ async function recordPayment(params: {
 
     if (pickup) {
       await supabase.from("ecopoint_transactions").insert({
-        id: generateId("eco"),
         profile_id: pickup.customer_id,
         pickup_id: params.pickupId,
         points,
         reason: "Pickup payment reward",
-        status: "confirmed",
+        status: "pending",
         created_at: now,
       });
 

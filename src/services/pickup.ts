@@ -5,7 +5,7 @@
  * Uses Supabase when available, falls back to mock API.
  */
 
-import { supabase, isSupabaseAvailable, generateId, generatePickupCode } from "@/lib/supabase";
+import { supabase, isSupabaseAvailable, generatePickupCode } from "@/lib/supabase";
 import { api as mockApi, type Pickup } from "@/lib/api";
 import { calculatePrice, type WasteType, type PriceBreakdown } from "./pricing";
 import type { AuthUser } from "./auth";
@@ -62,7 +62,6 @@ export async function createPickup(
       .maybeSingle();
 
     const profileId = profile?.id || user.id;
-    const pickupId = generateId("pku");
     const now = new Date().toISOString();
 
     // Map waste type for DB
@@ -72,8 +71,7 @@ export async function createPickup(
       : "requested";
     const paymentStatus = draft.paymentMethod === "transfer" ? "pay_on_pickup" : "pending";
 
-    const { error } = await supabase.from("pickup_requests").insert({
-      id: pickupId,
+    const { data: createdPickup, error } = await supabase.from("pickup_requests").insert({
       customer_id: profileId,
       waste_type: dbWasteType,
       estimated_weight_kg: draft.estimatedWeightKg,
@@ -92,14 +90,16 @@ export async function createPickup(
       payment_status: paymentStatus,
       created_at: now,
       updated_at: now,
-    });
+    }).select("id").maybeSingle();
 
     if (error) throw new Error(error.message);
+    if (!createdPickup) throw new Error("Failed to create pickup request");
+
+    const dbPickupId = createdPickup.id;
 
     // Create status event
     await supabase.from("pickup_status_events").insert({
-      id: generateId("evt"),
-      pickup_id: pickupId,
+      pickup_id: dbPickupId,
       to_status: "requested",
       notes: "Pickup request created",
       created_at: now,
@@ -108,9 +108,8 @@ export async function createPickup(
     // If EcoPoints were applied, create redemption transaction
     if (draft.ecopointsToApply > 0 && pricing.ecopointsDiscountNgn > 0 && supabase) {
       await supabase.from("ecopoint_transactions").insert({
-        id: generateId("eco"),
         profile_id: profileId,
-        pickup_id: pickupId,
+        pickup_id: dbPickupId,
         points: -pricing.ecopointsApplied,
         reason: "Pickup discount redemption",
         status: "pending",
@@ -133,7 +132,7 @@ export async function createPickup(
     }
 
     return {
-      id: pickupId,
+      id: dbPickupId,
       pickupCode,
       wasteType: draft.wasteType,
       estimatedWeightKg: draft.estimatedWeightKg,
