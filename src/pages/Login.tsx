@@ -11,7 +11,7 @@ import { normalizeNigerianPhone, isValidNigerianPhone } from "@/utils/phone";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const signupRoles: Array<{ value: UserRole; label: string }> = [
-  { value: "household", label: "Home / Household" },
+  { value: "customer", label: "Home / Household" },
   { value: "business", label: "Estate / Business" },
   { value: "collector", label: "Collector" },
   { value: "partner", label: "Recycler / Partner" },
@@ -23,7 +23,7 @@ const LoginPage = () => {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<UserRole>("household");
+  const [role, setRole] = useState<UserRole>("customer");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 

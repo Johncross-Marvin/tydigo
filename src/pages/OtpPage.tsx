@@ -14,7 +14,7 @@ type PendingAuth = {
   mode: "signin" | "signup";
   phone: string;
   name?: string;
-  role?: "household" | "collector" | "business" | "partner" | "admin";
+  role?: "customer" | "collector" | "business" | "partner" | "admin";
 };
 
 const readPendingAuth = (state: unknown): PendingAuth | null => {

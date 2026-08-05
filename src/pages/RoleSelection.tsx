@@ -17,7 +17,7 @@ import { roleHomePath, type UserRole } from "@/lib/api";
 
 const roles = [
   {
-    id: "household",
+    id: "customer",
     icon: Users,
     title: "Home / Estate",
     desc: "Schedule waste pickups, track collectors, and earn EcoPoints rewards.",

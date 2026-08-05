@@ -172,7 +172,7 @@ export async function verifyOtp(
     data.user.id,
     normalizedPhone,
     profileMeta?.name || (data.user.user_metadata?.full_name as string),
-    (profileMeta?.role || (data.user.user_metadata?.role as UserRole) || "household") as UserRole,
+    (profileMeta?.role || (data.user.user_metadata?.role as UserRole) || "customer") as UserRole,
   );
 
   // Store session token
@@ -218,7 +218,7 @@ async function getOrCreateProfile(
   authUserId: string,
   phone: string,
   fullName?: string,
-  role: UserRole = "household",
+  role: UserRole = "customer",
 ): Promise<AuthUser> {
   const client = requireSupabase();
 
@@ -270,7 +270,7 @@ async function getOrCreateProfile(
     .maybeSingle();
 
   if (insertResult.error) {
-    console.error("[Tydigo Auth] Profile insert error:", insertResult.error);
+    console.error("[Tydigo Auth] Profile insert error:", JSON.stringify(insertResult.error));
     throw new AuthError("Unable to create your profile. Please contact support.");
   }
 
