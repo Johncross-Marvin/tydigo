@@ -5,14 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth-provider";
-import { verifyOtp } from "@/services/auth";
 import { signInWithPhone } from "@/services/auth";
 import { roleHomePath } from "@/lib/api";
+import { maskPhone } from "@/utils/phone";
 
 type PendingAuth = {
-  verificationId?: string;
-  maskedPhone?: string;
-  verificationCode?: string;
   expiresInSeconds: number;
   mode: "signin" | "signup";
   phone: string;
@@ -38,7 +35,7 @@ const readPendingAuth = (state: unknown): PendingAuth | null => {
 const OtpPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifySession: verifyAndSetUser } = useAuth();
+  const { verifySession } = useAuth();
   const pendingAuth = useMemo(() => readPendingAuth(location.state), [location.state]);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(pendingAuth?.expiresInSeconds ?? 600);
@@ -66,8 +63,8 @@ const OtpPage = () => {
     setError("");
 
     try {
-      const user = await verifyAndSetUser(
-        pendingAuth.verificationId || pendingAuth.phone,
+      const user = await verifySession(
+        pendingAuth.phone,
         digits.join(""),
         pendingAuth.name || pendingAuth.role
           ? { name: pendingAuth.name, role: pendingAuth.role }
@@ -77,16 +74,7 @@ const OtpPage = () => {
       setVerified(true);
       setTimeout(() => navigate(roleHomePath[user.role], { replace: true }), 900);
     } catch (verifyError) {
-      const message = verifyError instanceof Error ? verifyError.message : "Unable to verify code.";
-      if (message.includes("expired")) {
-        setError("This verification code has expired. Please request a new one.");
-      } else if (message.includes("incorrect") || message.includes("invalid")) {
-        setError("Invalid code. Please check and try again.");
-      } else if (message.includes("not found") || message.includes("no account")) {
-        setError("No account found for this phone number. Please sign up first.");
-      } else {
-        setError(message);
-      }
+      setError(verifyError instanceof Error ? verifyError.message : "Unable to verify code. Please try again.");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -138,10 +126,7 @@ const OtpPage = () => {
     }
   };
 
-  // Mask phone for display
-  const displayPhone = pendingAuth?.phone
-    ? pendingAuth.phone.slice(0, 5) + "****" + pendingAuth.phone.slice(-3)
-    : pendingAuth?.maskedPhone ?? "";
+  const displayPhone = maskPhone(pendingAuth?.phone ?? "");
 
   if (!pendingAuth) return null;
 
@@ -158,30 +143,22 @@ const OtpPage = () => {
               <Shield className="w-6 h-6 text-amber-600" />
             </div>
             <CardTitle className="text-2xl font-extrabold text-neutral-900">
-              {verified ? "Verified ✅" : "Enter Verification Code"}
+              {verified ? "Verified ✅" : "Verify your phone"}
             </CardTitle>
             <CardDescription className="text-neutral-500">
               {verified
                 ? "Your secure session is ready."
-                : `A 6-digit code was sent to ${displayPhone}`}
+                : `Enter the 6-digit code sent to ${displayPhone}`}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6 pt-4">
             {!verified ? (
               <>
-                {/* Show mock code in dev mode */}
-                {pendingAuth.verificationCode ? (
-                  <div className="rounded-2xl bg-green-50 border border-green-100 p-4 text-sm text-green-800">
-                    <p className="font-semibold mb-1">🔧 Development Mode</p>
-                    Verification code: <span className="font-black tracking-widest">{pendingAuth.verificationCode}</span>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-blue-800 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span>Enter the 6-digit code sent via SMS to your phone number.</span>
-                  </div>
-                )}
+                <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-blue-800 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>A 6-digit verification code was sent via SMS to your phone number.</span>
+                </div>
 
                 <div className="flex justify-center gap-3">
                   {otp.map((digit, index) => (

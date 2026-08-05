@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { roleHomePath, type UserRole } from "@/lib/api";
 import { signInWithPhone } from "@/services/auth";
 import { useAuth } from "@/components/auth-provider";
+import { normalizeNigerianPhone, isValidNigerianPhone } from "@/utils/phone";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 
 const signupRoles: Array<{ value: UserRole; label: string }> = [
@@ -15,35 +16,6 @@ const signupRoles: Array<{ value: UserRole; label: string }> = [
   { value: "collector", label: "Collector" },
   { value: "partner", label: "Recycler / Partner" },
 ];
-
-/** Normalize a Nigerian phone number to E.164 format (+234XXXXXXXXXX) */
-function normalizeNigerianPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-
-  // Already international format
-  if (digits.startsWith("234") && digits.length >= 11) return `+${digits}`;
-  // Standard Nigerian mobile (11 digits starting with 0)
-  if (digits.startsWith("0") && digits.length === 11) return `+234${digits.slice(1)}`;
-  // Already 10 digits without leading 0 (e.g., 8146117344)
-  if (digits.length === 10) return `+234${digits}`;
-  // Other international
-  if (digits.length >= 11) return `+${digits}`;
-
-  // Fallback — prepend +234
-  return `+234${digits}`;
-}
-
-/** Validate a Nigerian phone number */
-function isValidNigerianPhone(raw: string): boolean {
-  const digits = raw.replace(/\D/g, "");
-  // Nigerian numbers: 10 digits (without country code) or 13 digits (with 234) or various formats
-  if (digits.startsWith("234") && digits.length === 13) return true;
-  if (digits.startsWith("0") && digits.length === 11) return true;
-  if (digits.length === 10) return true;
-  // Other international
-  if (digits.length >= 11 && digits.length <= 15) return true;
-  return false;
-}
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -63,12 +35,18 @@ const LoginPage = () => {
     event.preventDefault();
     setError("");
 
-    // Validate
+    // Validate name for signup
     if (mode === "signup" && !name.trim()) {
       setError("Please enter your full name.");
       return;
     }
-    if (!phone.trim() || !isValidNigerianPhone(phone)) {
+
+    // Validate phone
+    if (!phone.trim()) {
+      setError("Please enter your phone number.");
+      return;
+    }
+    if (!isValidNigerianPhone(phone)) {
       setError("Please enter a valid Nigerian phone number.");
       return;
     }
@@ -82,6 +60,7 @@ const LoginPage = () => {
         normalizedPhone,
         mode === "signup" ? { name: name.trim(), role } : undefined,
       );
+
       const pendingAuth = {
         ...response,
         phone: normalizedPhone,
@@ -92,17 +71,7 @@ const LoginPage = () => {
       sessionStorage.setItem("tydigo_pending_auth", JSON.stringify(pendingAuth));
       navigate("/otp", { state: pendingAuth });
     } catch (authError) {
-      const message = authError instanceof Error ? authError.message : "Unable to send verification code.";
-      // Map common Supabase errors to friendly messages
-      if (message.includes("phone_provider_disabled") || message.includes("Unsupported phone provider")) {
-        setError("Phone verification is not configured. Please contact support or try again later.");
-      } else if (message.includes("invalid")) {
-        setError("This phone number is invalid. Please use a valid Nigerian phone number.");
-      } else if (message.includes("rate") || message.includes("too many")) {
-        setError("Too many attempts. Please wait a moment and try again.");
-      } else {
-        setError(message);
-      }
+      setError(authError instanceof Error ? authError.message : "Unable to send verification code. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -194,7 +163,7 @@ const LoginPage = () => {
                     />
                   </div>
                   <p className="text-xs text-neutral-400 mt-1">
-                    Nigerian number (e.g., 08146117344, +2348146117344)
+                    Nigerian number, e.g. 0800 000 0000 or +234 800 000 0000
                   </p>
                 </div>
 
@@ -241,13 +210,13 @@ const LoginPage = () => {
                   <div className="w-full border-t border-neutral-200" />
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-neutral-400">Supabase Auth • Phone OTP</span>
+                  <span className="bg-white px-3 text-neutral-400">Phone OTP • End-to-end encrypted</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-center gap-6 text-xs text-neutral-400">
                 <span className="flex items-center gap-1">
-                  <Shield className="w-3.5 h-3.5" /> End-to-end encrypted
+                  <Shield className="w-3.5 h-3.5" /> Secure
                 </span>
                 <span className="flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Persistent profiles

@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { clearSessionToken, setSessionToken, type AuthUser, type UserRole, roleHomePath } from "@/lib/api";
+import { setSessionToken, clearSessionToken, roleHomePath, type AuthUser, type UserRole } from "@/lib/api";
 import { getCurrentUser, signOut, verifyOtp, updateProfile } from "@/services/auth";
+
+// Re-export for convenience
+export { roleHomePath };
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -22,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const nextUser = await getCurrentUser();
       setUser(nextUser);
     } catch {
+      clearSessionToken();
       setUser(null);
     }
   };
@@ -35,8 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loading,
       refreshUser,
-      verifySession: async (phoneOrId: string, code: string, profileMeta) => {
-        const { user: nextUser, token } = await verifyOtp(phoneOrId, code, phoneOrId, profileMeta);
+      verifySession: async (phone: string, code: string, profileMeta) => {
+        const { user: nextUser, token } = await verifyOtp(phone, code, profileMeta);
         if (token) setSessionToken(token);
         setUser(nextUser);
         return nextUser;
@@ -64,5 +68,3 @@ export function useAuth() {
   if (!value) throw new Error("useAuth must be used within AuthProvider");
   return value;
 }
-
-export { roleHomePath };

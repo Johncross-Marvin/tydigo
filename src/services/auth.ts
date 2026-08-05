@@ -3,16 +3,84 @@
  *
  * Handles Supabase phone OTP authentication, session management,
  * profile creation, and role-based routing.
- * Falls back to mock API when Supabase is not configured.
+ *
+ * Uses Supabase Auth directly from the browser.
+ * No API routes needed — phone OTP is handled entirely by Supabase.
+ *
+ * DEVELOPMENT: Set VITE_ENABLE_MOCK_AUTH=true to use mock API locally.
+ * PRODUCTION: Supabase env vars are REQUIRED.
  */
 
-import { supabase, isSupabaseAvailable, normalizePhone, generateId } from "@/lib/supabase";
-import { api as mockApi, type AuthUser, type UserRole, setSessionToken, clearSessionToken } from "@/lib/api";
-import { hasSupabase } from "@/lib/env";
+import { supabase, isSupabaseAvailable, generateId } from "@/lib/supabase";
+import { normalizeNigerianPhone } from "@/utils/phone";
+import { setSessionToken, clearSessionToken } from "@/lib/api";
+import { hasSupabase, ENABLE_MOCK_AUTH, APP_ENV } from "@/lib/env";
+import type { UserRole, AuthUser } from "@/lib/api";
 
-// ─── Types ────────────────────────────────────────────────────
-
+// Re-export types
 export type { AuthUser, UserRole };
+
+// ─── Error Helpers ────────────────────────────────────────────
+
+class AuthError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+    this.name = "AuthError";
+  }
+}
+
+function friendlyAuthMessage(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+
+  // Map Supabase error codes to friendly messages
+  if (msg.includes("phone_provider_disabled") || msg.includes("Unsupported phone provider")) {
+    return "Phone verification is being set up. Please try again shortly.";
+  }
+  if (msg.includes("invalid_phone") || msg.includes("Invalid phone")) {
+    return "This phone number doesn't look right. Please check and try again.";
+  }
+  if (msg.includes("rate_limit") || msg.includes("too many") || msg.includes("too_many")) {
+    return "Too many attempts. Please wait a moment before trying again.";
+  }
+  if (msg.includes("expired") || msg.includes("timeout")) {
+    return "This verification code has expired. Please request a new one.";
+  }
+  if (msg.includes("token_invalid") || msg.includes("incorrect") || msg.includes("invalid")) {
+    return "The verification code is incorrect. Please check and try again.";
+  }
+  if (msg.includes("user_not_found") || msg.includes("not found")) {
+    return "No account found. Please sign up first.";
+  }
+  if (msg.includes("already registered") || msg.includes("already exists")) {
+    return "An account with this phone number already exists. Please sign in instead.";
+  }
+  if (msg.includes("network") || msg.includes("fetch")) {
+    return "Network error. Please check your connection and try again.";
+  }
+
+  // Generic fallback
+  if (APP_ENV === "development") {
+    return msg; // Show raw error in dev
+  }
+  return "Something went wrong. Please try again.";
+}
+
+// ─── Supabase Check ───────────────────────────────────────────
+
+function requireSupabase(): NonNullable<typeof supabase> {
+  if (!isSupabaseAvailable() || !supabase) {
+    // In dev with mock mode, throw a descriptive error
+    if (ENABLE_MOCK_AUTH) {
+      throw new AuthError(
+        "Mock auth is not available in this environment. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+      );
+    }
+    throw new AuthError(
+      "Authentication is not configured. Please contact support.",
+    );
+  }
+  return supabase;
+}
 
 // ─── Phone OTP Sign In ────────────────────────────────────────
 
@@ -20,36 +88,34 @@ export async function signInWithPhone(
   phone: string,
   metadata?: { name?: string; role?: UserRole },
 ): Promise<{
-  verificationId?: string;
-  maskedPhone?: string;
   expiresInSeconds: number;
   delivery: string;
-  verificationCode?: string;
 }> {
-  if (isSupabaseAvailable() && supabase) {
-    const normalizedPhone = normalizePhone(phone);
-    const { data, error } = await supabase.auth.signInWithOtp({
-      phone: normalizedPhone,
-      options: {
-        shouldCreateUser: true,
-        channel: "sms",
-        data: metadata ? {
-          full_name: metadata.name,
-          role: metadata.role,
-        } : undefined,
-      },
-    });
+  const client = requireSupabase();
+  const normalizedPhone = normalizeNigerianPhone(phone);
 
-    if (error) throw new Error(error.message);
+  const { data, error } = await client.auth.signInWithOtp({
+    phone: normalizedPhone,
+    options: {
+      shouldCreateUser: true,
+      channel: "sms",
+      data: metadata
+        ? { full_name: metadata.name, role: metadata.role }
+        : undefined,
+    },
+  });
 
-    return {
-      expiresInSeconds: 600,
-      delivery: "sms",
-    };
+  if (error) throw new AuthError(friendlyAuthMessage(error), error.status?.toString());
+
+  // Check if Supabase returned an error about SMS not being configured
+  if (!data) {
+    throw new AuthError("We could not send your code. Please check your phone number.");
   }
 
-  // Fallback to mock API
-  return mockApi.startAuth({ mode: "signin", phone, name: metadata?.name, role: metadata?.role });
+  return {
+    expiresInSeconds: 600,
+    delivery: "sms",
+  };
 }
 
 // ─── Phone OTP Verify ─────────────────────────────────────────
@@ -57,47 +123,35 @@ export async function signInWithPhone(
 export async function verifyOtp(
   phone: string,
   code: string,
-  verificationId?: string,
   profileMeta?: { name?: string; role?: UserRole },
 ): Promise<{ user: AuthUser; token?: string }> {
-  if (isSupabaseAvailable() && supabase) {
-    const normalizedPhone = normalizePhone(phone);
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone: normalizedPhone,
-      token: code,
-      type: "sms",
-    });
+  const client = requireSupabase();
+  const normalizedPhone = normalizeNigerianPhone(phone);
 
-    if (error) throw new Error(error.message);
+  const { data, error } = await client.auth.verifyOtp({
+    phone: normalizedPhone,
+    token: code,
+    type: "sms",
+  });
 
-    if (!data.user) throw new Error("Verification failed. Please try again.");
+  if (error) throw new AuthError(friendlyAuthMessage(error), error.status?.toString());
+  if (!data.user) throw new AuthError("Verification failed. Please try again.");
 
-    // Get or create profile with user metadata
-    const profile = await getOrCreateProfile(
-      data.user.id,
-      normalizedPhone,
-      profileMeta?.name || (data.user.user_metadata?.full_name as string),
-      (profileMeta?.role || (data.user.user_metadata?.role as UserRole) || "household") as UserRole,
-    );
+  // Get or create profile
+  const profile = await getOrCreateProfile(
+    data.user.id,
+    normalizedPhone,
+    profileMeta?.name || (data.user.user_metadata?.full_name as string),
+    (profileMeta?.role || (data.user.user_metadata?.role as UserRole) || "household") as UserRole,
+  );
 
-    // Get session token
-    const session = data.session;
-    if (session?.access_token) {
-      setSessionToken(session.access_token);
-    }
-
-    return {
-      user: profile,
-      token: session?.access_token,
-    };
+  // Store session token
+  const session = data.session;
+  if (session?.access_token) {
+    setSessionToken(session.access_token);
   }
 
-  // Fallback to mock API
-  const result = await mockApi.verifyAuth({
-    verificationId: verificationId || "",
-    code,
-  });
-  return { user: result.user, token: result.token };
+  return { user: profile, token: session?.access_token };
 }
 
 // ─── Sign Out ─────────────────────────────────────────────────
@@ -106,32 +160,24 @@ export async function signOut(): Promise<void> {
   if (isSupabaseAvailable() && supabase) {
     await supabase.auth.signOut();
   }
-
   clearSessionToken();
-
-  // Also call mock logout if available
-  try {
-    await mockApi.logout();
-  } catch {
-    // Ignore — mock logout may fail if no mock session
-  }
 }
 
 // ─── Get Current User ─────────────────────────────────────────
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  if (isSupabaseAvailable() && supabase) {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return null;
-
-    return await getUserProfile(data.user.id);
+  if (!isSupabaseAvailable() || !supabase) {
+    // No Supabase = no user
+    return null;
   }
 
-  // Fallback to mock API
   try {
-    const { user } = await mockApi.me();
-    return user;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return null;
+    return await getUserProfile(data.user.id);
   } catch {
+    // Session expired or invalid
+    clearSessionToken();
     return null;
   }
 }
@@ -144,34 +190,19 @@ async function getOrCreateProfile(
   fullName?: string,
   role: UserRole = "household",
 ): Promise<AuthUser> {
-  if (!isSupabaseAvailable() || !supabase) {
-    // Mock fallback
-    try {
-      const { user } = await mockApi.me();
-      return user;
-    } catch {
-      return {
-        id: authUserId,
-        phone,
-        name: fullName || "Tydigo User",
-        role,
-        ecopoints: 500,
-        rating: 5,
-      };
-    }
-  }
+  const client = requireSupabase();
 
   // Check if profile exists
-  const { data: existing } = await supabase
+  const { data: existing } = await client
     .from("profiles")
     .select("*")
     .eq("auth_user_id", authUserId)
     .single();
 
   if (existing) {
-    // Update name/role if this is a new signup with additional info
-    if (fullName && existing.full_name === "Tydigo User") {
-      await supabase
+    // If user just signed up with a name, update the placeholder
+    if (fullName && (existing.full_name === "Tydigo User" || !existing.full_name)) {
+      await client
         .from("profiles")
         .update({ full_name: fullName, role, updated_at: new Date().toISOString() })
         .eq("auth_user_id", authUserId);
@@ -182,7 +213,9 @@ async function getOrCreateProfile(
 
   // Create new profile
   const profileId = generateId("pro");
-  const { data: created, error } = await supabase
+  const now = new Date().toISOString();
+
+  const { data: created, error } = await client
     .from("profiles")
     .insert({
       id: profileId,
@@ -194,35 +227,36 @@ async function getOrCreateProfile(
       default_state: "FCT",
       ecopoints: 500,
       rating: 5.0,
+      created_at: now,
+      updated_at: now,
     })
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // RLS may block — but this should work for authenticated users
+    throw new AuthError("Unable to create your profile. Please contact support.");
+  }
 
   // Award signup EcoPoints
-  if (supabase) {
-    await supabase.from("ecopoint_transactions").insert({
+  try {
+    await client.from("ecopoint_transactions").insert({
       id: generateId("eco"),
       profile_id: profileId,
       points: 500,
       reason: "Signup bonus",
       status: "confirmed",
+      created_at: now,
     });
+  } catch {
+    // Non-fatal — EcoPoints can be awarded later
   }
 
   return mapProfileToUser(created);
 }
 
 export async function getUserProfile(userId: string): Promise<AuthUser | null> {
-  if (!isSupabaseAvailable() || !supabase) {
-    try {
-      const { user } = await mockApi.me();
-      return user;
-    } catch {
-      return null;
-    }
-  }
+  if (!isSupabaseAvailable() || !supabase) return null;
 
   const { data } = await supabase
     .from("profiles")
@@ -238,32 +272,23 @@ export async function updateProfile(
   userId: string,
   updates: Partial<{ fullName: string; role: UserRole; address: string; city: string; avatarUrl: string }>,
 ): Promise<AuthUser> {
-  if (!isSupabaseAvailable() || !supabase) {
-    const { user } = await mockApi.updateMe({
-      name: updates.fullName,
-      role: updates.role,
-      address: updates.address,
-      city: updates.city,
-    });
-    return user;
-  }
+  const client = requireSupabase();
 
-  const dbUpdates: Record<string, unknown> = {};
+  const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.fullName) dbUpdates.full_name = updates.fullName;
   if (updates.role) dbUpdates.role = updates.role;
   if (updates.address) dbUpdates.default_city = updates.address;
   if (updates.city) dbUpdates.default_city = updates.city;
   if (updates.avatarUrl) dbUpdates.avatar_url = updates.avatarUrl;
-  dbUpdates.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("profiles")
     .update(dbUpdates)
     .eq("auth_user_id", userId)
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new AuthError("Unable to update profile.");
   return mapProfileToUser(data);
 }
 
@@ -276,13 +301,15 @@ export async function setUserRole(userId: string, role: UserRole): Promise<AuthU
 // ─── Session ──────────────────────────────────────────────────
 
 export async function refreshSession(): Promise<AuthUser | null> {
-  if (isSupabaseAvailable() && supabase) {
+  if (!isSupabaseAvailable() || !supabase) return null;
+
+  try {
     const { data } = await supabase.auth.refreshSession();
     if (!data.session) return null;
     return getUserProfile(data.session.user.id);
+  } catch {
+    return null;
   }
-
-  return getCurrentUser();
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
