@@ -32,6 +32,11 @@ class AuthError extends Error {
 function friendlyAuthMessage(error: unknown): string {
   const msg = error instanceof Error ? error.message : String(error);
 
+  // Log the full error in development for debugging
+  if (APP_ENV === "development") {
+    console.error("[Tydigo Auth] Raw error:", error);
+  }
+
   // Map Supabase error codes to friendly messages
   if (msg.includes("phone_provider_disabled") || msg.includes("Unsupported phone provider")) {
     return "Phone verification is being set up. Please try again shortly.";
@@ -54,13 +59,16 @@ function friendlyAuthMessage(error: unknown): string {
   if (msg.includes("already registered") || msg.includes("already exists")) {
     return "An account with this phone number already exists. Please sign in instead.";
   }
-  if (msg.includes("network") || msg.includes("fetch")) {
+  if (msg.includes("network") || msg.includes("fetch") || msg.includes("Failed to fetch")) {
     return "Network error. Please check your connection and try again.";
   }
+  if (msg.includes("URL") || msg.includes("url") || msg.includes("URL is required")) {
+    return "Authentication is not configured. Please contact support.";
+  }
 
-  // Generic fallback
+  // Generic fallback — show raw in dev, friendly in prod
   if (APP_ENV === "development") {
-    return msg; // Show raw error in dev
+    return `Auth error: ${msg}`;
   }
   return "Something went wrong. Please try again.";
 }
@@ -94,6 +102,10 @@ export async function signInWithPhone(
   const client = requireSupabase();
   const normalizedPhone = normalizeNigerianPhone(phone);
 
+  if (APP_ENV === "development") {
+    console.log("[Tydigo Auth] Sending OTP to:", normalizedPhone);
+  }
+
   const { data, error } = await client.auth.signInWithOtp({
     phone: normalizedPhone,
     options: {
@@ -105,11 +117,20 @@ export async function signInWithPhone(
     },
   });
 
-  if (error) throw new AuthError(friendlyAuthMessage(error), error.status?.toString());
+  if (error) {
+    if (APP_ENV === "development") {
+      console.error("[Tydigo Auth] signInWithOtp error:", error);
+    }
+    throw new AuthError(friendlyAuthMessage(error), error.status?.toString());
+  }
 
   // Check if Supabase returned an error about SMS not being configured
   if (!data) {
     throw new AuthError("We could not send your code. Please check your phone number.");
+  }
+
+  if (APP_ENV === "development") {
+    console.log("[Tydigo Auth] OTP sent successfully");
   }
 
   return {

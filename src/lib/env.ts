@@ -7,11 +7,17 @@
 
 // ─── Supabase ─────────────────────────────────────────────────
 
-export const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL as string || "";
+// Vite statically replaces import.meta.env.VITE_* at build time.
+// Direct property access is REQUIRED for Vite to work correctly.
+export const SUPABASE_URL: string =
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "";
 
-export const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string || "";
+export const SUPABASE_ANON_KEY: string =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "";
 
 export function hasSupabase(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
