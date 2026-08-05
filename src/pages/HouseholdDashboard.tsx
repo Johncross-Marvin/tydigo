@@ -313,7 +313,7 @@ const HouseholdDashboardPage = () => {
                 </Link>
               </div>
               <div className="space-y-4">
-                {(dashboard?.recentPickups.length
+                {(dashboard?.recentPickups?.length
                   ? dashboard.recentPickups.map((pickup) => ({
                       icon: Truck,
                       title: pickup.pickup_code,
