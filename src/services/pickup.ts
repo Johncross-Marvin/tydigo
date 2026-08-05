@@ -58,8 +58,8 @@ export async function createPickup(
     const { data: profile } = await supabase
       .from("profiles")
       .select("id")
-      .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
-      .single();
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
 
     const profileId = profile?.id || user.id;
     const pickupId = generateId("pku");
@@ -121,7 +121,7 @@ export async function createPickup(
         .from("profiles")
         .select("ecopoints")
         .eq("id", profileId)
-        .single();
+        .maybeSingle();
 
       if (currentProfile) {
         const newBalance = Math.max(0, Number(currentProfile.ecopoints || 0) - pricing.ecopointsApplied);
@@ -197,7 +197,7 @@ export async function getActivePickup(userId: string): Promise<Pickup | null> {
       .in("status", ["requested", "matching_collector", "collector_assigned", "collector_en_route", "collector_arrived", "pickup_verified", "waste_picked", "in_transit_to_destination", "delivered_to_partner"])
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error && error.code !== "PGRST116") throw new Error(error.message);
     return data ? mapDbPickupToPickup(data) : null;

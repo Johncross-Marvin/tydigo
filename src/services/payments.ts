@@ -192,7 +192,7 @@ async function recordPayment(params: {
       .from("pickup_requests")
       .select("customer_id")
       .eq("id", params.pickupId)
-      .single();
+      .maybeSingle();
 
     if (pickup) {
       await supabase.from("ecopoint_transactions").insert({
@@ -210,7 +210,7 @@ async function recordPayment(params: {
         .from("profiles")
         .select("ecopoints")
         .eq("id", pickup.customer_id)
-        .single();
+        .maybeSingle();
 
       if (prof) {
         await supabase
@@ -236,7 +236,7 @@ export async function verifyPayment(reference: string): Promise<{
       .from("payments")
       .select("status, amount_ngn")
       .eq("provider_reference", reference)
-      .single();
+      .maybeSingle();
 
     if (data) {
       return {

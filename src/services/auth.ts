@@ -223,11 +223,15 @@ async function getOrCreateProfile(
   const client = requireSupabase();
 
   // Check if profile exists
-  const { data: existing } = await client
+  const { data: existing, error: lookupError } = await client
     .from("profiles")
     .select("*")
     .eq("auth_user_id", authUserId)
-    .single();
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("[Tydigo Auth] Profile lookup error:", lookupError);
+  }
 
   if (existing) {
     // If user just signed up with a name, update the placeholder
@@ -245,7 +249,7 @@ async function getOrCreateProfile(
   const profileId = generateId("pro");
   const now = new Date().toISOString();
 
-  const { data: created, error } = await client
+  const insertResult = await client
     .from("profiles")
     .insert({
       id: profileId,
@@ -257,15 +261,24 @@ async function getOrCreateProfile(
       default_state: "FCT",
       ecopoints: 500,
       rating: 5.0,
+      total_pickups: 0,
+      total_kg_recycled: 0,
       created_at: now,
       updated_at: now,
     })
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) {
-    // RLS may block — but this should work for authenticated users
+  if (insertResult.error) {
+    console.error("[Tydigo Auth] Profile insert error:", insertResult.error);
     throw new AuthError("Unable to create your profile. Please contact support.");
+  }
+
+  const created = insertResult.data;
+  if (!created) {
+    // Insert returned no data — might be RLS blocking
+    console.error("[Tydigo Auth] Profile insert returned no data. RLS may be blocking.");
+    throw new AuthError("We're setting up your account. Please try again in a moment.");
   }
 
   // Award signup EcoPoints
@@ -288,11 +301,16 @@ async function getOrCreateProfile(
 export async function getUserProfile(userId: string): Promise<AuthUser | null> {
   if (!isSupabaseAvailable() || !supabase) return null;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .or(`auth_user_id.eq.${userId},id.eq.${userId}`)
-    .single();
+    .eq("auth_user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[Tydigo Auth] getUserProfile error:", error);
+    return null;
+  }
 
   if (!data) return null;
   return mapProfileToUser(data);
@@ -316,9 +334,13 @@ export async function updateProfile(
     .update(dbUpdates)
     .eq("auth_user_id", userId)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) throw new AuthError("Unable to update profile.");
+  if (error) {
+    console.error("[Tydigo Auth] updateProfile error:", error);
+    throw new AuthError("Unable to update profile.");
+  }
+  if (!data) throw new AuthError("Profile not found.");
   return mapProfileToUser(data);
 }
 
