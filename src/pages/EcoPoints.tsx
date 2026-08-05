@@ -24,7 +24,7 @@ const EcoPointsPage = () => {
     queryKey: ["dashboard"],
     queryFn: api.dashboard,
   });
-  const points = data?.stats.ecopoints ?? 0;
+  const points = data?.stats?.ecopoints ?? 0;
 
   return (
     <div className="min-h-screen bg-neutral-50">

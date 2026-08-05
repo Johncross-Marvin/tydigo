@@ -125,7 +125,7 @@ const TrackingPage = () => {
                     </div>
                     <div className="flex items-center gap-1 text-sm text-amber-500">
                       <Star className="w-3.5 h-3.5 fill-amber-400" />
-                      <span className="font-semibold">{data?.stats.rating.toFixed(1) ?? "4.8"}</span>
+                      <span className="font-semibold">{data?.stats?.rating?.toFixed(1) ?? "4.8"}</span>
                       <span className="text-neutral-400">collector rating</span>
                     </div>
                   </div>

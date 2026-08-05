@@ -181,10 +181,10 @@ const HouseholdDashboardPage = () => {
           {/* Stats Cards */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Award, label: "EcoPoints", value: (dashboard?.stats.ecopoints ?? user?.ecopoints ?? 0).toLocaleString(), sub: "Current balance", color: "bg-amber-100 text-amber-600" },
-              { icon: Truck, label: "Total Pickups", value: String(dashboard?.stats.totalPickups ?? 0), sub: "Stored pickups", color: "bg-blue-100 text-blue-600" },
-              { icon: Recycle, label: "Waste Recycled", value: formatWeight(dashboard?.stats.wasteRecycledKg ?? 0), sub: "From your records", color: "bg-green-100 text-[#145C25]" },
-              { icon: Star, label: "Rating", value: String(dashboard?.stats.rating ?? user?.rating ?? 5), sub: "Collector feedback", color: "bg-purple-100 text-purple-600" },
+              { icon: Award, label: "EcoPoints", value: (dashboard?.stats?.ecopoints ?? user?.ecopoints ?? 0).toLocaleString(), sub: "Current balance", color: "bg-amber-100 text-amber-600" },
+              { icon: Truck, label: "Total Pickups", value: String(dashboard?.stats?.totalPickups ?? 0), sub: "Stored pickups", color: "bg-blue-100 text-blue-600" },
+              { icon: Recycle, label: "Waste Recycled", value: formatWeight(dashboard?.stats?.wasteRecycledKg ?? 0), sub: "From your records", color: "bg-green-100 text-[#145C25]" },
+              { icon: Star, label: "Rating", value: String(dashboard?.stats?.rating ?? user?.rating ?? 5), sub: "Collector feedback", color: "bg-purple-100 text-purple-600" },
             ].map((stat, i) => (
               <Card key={i} className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
                 <CardContent className="p-5">
