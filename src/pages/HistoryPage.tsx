@@ -4,8 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Award, Clock, MapPin, Star, Truck } from "lucide-react";
 import { api, formatNaira, formatWeight } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 
 const HistoryPage = () => {
+  useSeo(seoConfig.history);
   const { data, isLoading } = useQuery({
     queryKey: ["pickups"],
     queryFn: api.listPickups,

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 import { PlatformKPIs } from "@/components/admin/PlatformKPIs";
 import { UserManager } from "@/components/admin/UserManager";
 import { KycReviewQueue } from "@/components/admin/KycReviewQueue";
@@ -38,6 +39,7 @@ const AdminDashboardPage = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [kpiPeriod, setKpiPeriod] = useState("month");
   const [userSearch, setUserSearch] = useState("");
+  useSeo(seoConfig.adminDashboard);
 
   const { data: overviewData } = useQuery({
     queryKey: ["admin-overview"],

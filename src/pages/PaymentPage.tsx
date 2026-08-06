@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, CreditCard, Shield, CheckCircle2, Lock } from "lucide-react";
 import { api, formatNaira } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 
 const PaymentPage = () => {
+  useSeo(seoConfig.payment);
   const queryClient = useQueryClient();
   const [paid, setPaid] = useState(false);
   const [paymentReference, setPaymentReference] = useState("");

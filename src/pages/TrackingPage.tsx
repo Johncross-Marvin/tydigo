@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 import { api, formatWeight } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 
 const TrackingPage = () => {
+  useSeo(seoConfig.tracking);
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: api.dashboard,

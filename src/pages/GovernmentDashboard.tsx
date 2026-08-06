@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 import { RegionalAnalytics } from "@/components/government/RegionalAnalytics";
 import { ComplianceMonitor } from "@/components/government/ComplianceMonitor";
 import { EnvironmentalImpact } from "@/components/government/EnvironmentalImpact";
@@ -30,6 +31,7 @@ const GovernmentDashboardPage = () => {
   const { user, logout } = useAuth();
   const { success, error: toastError } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  useSeo(seoConfig.governmentDashboard);
 
   const { data: regionalData } = useQuery({
     queryKey: ["regional-analytics"],

@@ -26,10 +26,12 @@ import {
   Sparkles,
 } from "lucide-react";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
+import { useSeo, seoConfig } from "@/lib/seo";
 
 const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  useSeo(seoConfig.home);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);

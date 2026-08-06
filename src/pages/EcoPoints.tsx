@@ -18,8 +18,10 @@ import {
 } from "lucide-react";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 import { api, formatNaira } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 
 const EcoPointsPage = () => {
+  useSeo(seoConfig.ecopoints);
   const { data } = useQuery({
     queryKey: ["dashboard"],
     queryFn: api.dashboard,

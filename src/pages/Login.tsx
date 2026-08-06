@@ -13,6 +13,7 @@ import { detectIdentifier, isEmail, isPhone } from "@/services/identifier";
 import { useAuth } from "@/components/auth-provider";
 import { normalizeNigerianPhone, isValidNigerianPhone } from "@/utils/phone";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
+import { useSeo, seoConfig } from "@/lib/seo";
 
 // ─── Role Options ─────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ const LoginPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [identifierType, setIdentifierType] = useState<"email" | "phone" | "username" | null>(null);
+
+  useSeo(seoConfig.login);
 
   // Redirect if already logged in
   useEffect(() => {

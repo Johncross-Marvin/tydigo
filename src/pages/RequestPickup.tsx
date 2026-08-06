@@ -14,6 +14,7 @@ import {
   ShieldCheck, Banknote, Wallet, Sparkles, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { useSeo, seoConfig } from "@/lib/seo";
 import { calculatePrice, formatNaira, type WasteType, type PriceBreakdown } from "@/services/pricing";
 import { createPickup, uploadPickupPhoto } from "@/services/pickup";
 import { initializePayment } from "@/services/payments";
@@ -69,6 +70,7 @@ const RequestPickupPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  useSeo(seoConfig.requestPickup);
 
   const [draft, dispatch] = useReducer(draftReducer, createInitialDraft(user?.address || ""));
   const [error, setError] = useState("");
