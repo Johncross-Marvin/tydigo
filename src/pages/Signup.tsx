@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { roleHomePath, type UserRole } from "@/lib/api";
-import { signUp, signInWithPhone } from "@/services/auth";
+import { signUp, resetPassword } from "@/services/auth";
 import { generateUsername, isUsernameAvailable, isValidUsername } from "@/services/username";
 import { getCities, getStateForCity, type City } from "@/services/cities";
 import { isEmail, isPhone } from "@/services/identifier";
@@ -206,41 +206,17 @@ const SignupPage = () => {
     setSubmitting(true);
 
     try {
-      const hasEmail = email.trim() && isEmail(email);
-      const hasPhone = phone.trim() && isPhone(phone);
-
-      if (hasPhone && !hasEmail) {
-        // Phone-only signup → OTP flow
-        const normalizedPhone = normalizeNigerianPhone(phone);
-        const response = await signInWithPhone(normalizedPhone, {
-          name: fullName.trim(),
-          role,
-        });
-
-        const pendingAuth = {
-          ...response,
-          phone: normalizedPhone,
-          mode: "signup" as const,
-          name: fullName.trim(),
-          role,
-          city: cityName,
-          username,
-        };
-        sessionStorage.setItem("tydigo_pending_auth", JSON.stringify(pendingAuth));
-        navigate("/otp", { state: pendingAuth });
-      } else if (hasEmail) {
-        // Email signup
-        await signUp({
-          fullName: fullName.trim(),
-          email: email.trim(),
-          phone: hasPhone ? phone.trim() : undefined,
-          password,
-          city: cityName,
-          state: getStateForCity(cityName, cities),
-          role,
-        });
-        navigate("/role-selection");
-      }
+      await signUp({
+        fullName: fullName.trim(),
+        username,
+        email: email.trim(),
+        phone: phone.trim(),
+        password,
+        city: cityName,
+        state: getStateForCity(cityName, cities),
+        role,
+      });
+      navigate("/check-email", { state: { email: email.trim() } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account. Please try again.");
     } finally {

@@ -1,133 +1,56 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { setSessionToken, clearSessionToken, roleHomePath, type AuthUser, type UserRole } from "@/lib/api";
-import { getCurrentUser, signOut, verifyOtp, updateProfile, signIn } from "@/services/auth";
-import { recordDeviceSession, getDeviceSessions, terminateSession, terminateOtherSessions, type DeviceSession } from "@/services/session";
-import { getSecurityLogs, type SecurityLog } from "@/services/security";
-import { getOnboardingState } from "@/services/onboarding";
+import { getCurrentUser, signOut } from "@/services/auth";
 
-// Re-export for convenience
 export { roleHomePath };
-export type { DeviceSession, SecurityLog };
 
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  onboardingComplete: boolean;
   refreshUser: () => Promise<void>;
-  verifySession: (phone: string, code: string, profileMeta?: { name?: string; role?: UserRole }) => Promise<AuthUser>;
-  signInWithPassword: (identifier: string, password: string) => Promise<AuthUser>;
-  updateRole: (role: UserRole) => Promise<AuthUser>;
+  updateRole?: (role: UserRole) => Promise<{ role: UserRole }>;
   logout: () => Promise<void>;
-  deviceSessions: DeviceSession[];
-  securityLogs: SecurityLog[];
-  loadDeviceSessions: () => Promise<void>;
-  loadSecurityLogs: () => Promise<void>;
-  terminateDeviceSession: (sessionId: string) => Promise<void>;
-  terminateOtherDeviceSessions: () => Promise<void>;
+  // Legacy stubs
+  deviceSessions?: DeviceSession[];
+  loadDeviceSessions?: () => Promise<void>;
+  terminateDeviceSession?: (id: string) => Promise<void>;
+  terminateOtherDeviceSessions?: () => Promise<void>;
+  securityLogs?: SecurityLog[];
+  loadSecurityLogs?: () => Promise<void>;
+  verifySession?: () => Promise<AuthUser>;
 };
+
+export type DeviceSession = { id: string; device_name: string; browser: string; os: string; is_current: boolean; last_seen_at: string; city: string };
+export type SecurityLog = { id: string; action: string; event_type: string; created_at: string; ip_address?: string };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
-  const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
-  const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = async () => {
     try {
-      const nextUser = await getCurrentUser();
-      setUser(nextUser);
-      if (nextUser) {
-        // Record device session on app load
-        const { data } = await import("@/lib/supabase").then(m => m.supabase?.auth.getUser());
-        if (data?.user) {
-          await recordDeviceSession(nextUser.id, data.user.id);
-        }
-        // Check onboarding status
-        getOnboardingState(nextUser.id, nextUser.role).then((s) => {
-          setOnboardingComplete(s.isComplete);
-        });
-      }
+      const u = await getCurrentUser();
+      setUser(u);
     } catch {
       clearSessionToken();
       setUser(null);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    refreshUser().finally(() => setLoading(false));
-  }, [refreshUser]);
+  useEffect(() => { refreshUser().finally(() => setLoading(false)); }, []);
 
-  const loadDeviceSessions = useCallback(async () => {
-    if (!user) return;
-    const sessions = await getDeviceSessions(user.id);
-    setDeviceSessions(sessions);
-  }, [user]);
-
-  const loadSecurityLogs = useCallback(async () => {
-    if (!user) return;
-    const logs = await getSecurityLogs(user.id);
-    setSecurityLogs(logs);
-  }, [user]);
-
-  const terminateDeviceSession = useCallback(async (sessionId: string) => {
-    await terminateSession(sessionId);
-    await loadDeviceSessions();
-  }, [loadDeviceSessions]);
-
-  const terminateOtherDeviceSessions = useCallback(async () => {
-    if (!user) return;
-    await terminateOtherSessions(user.id);
-    await loadDeviceSessions();
-  }, [user, loadDeviceSessions]);
-
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      loading,
-      onboardingComplete,
-      refreshUser,
-      verifySession: async (phone: string, code: string, profileMeta) => {
-        const { user: nextUser, token } = await verifyOtp(phone, code, profileMeta);
-        if (token) setSessionToken(token);
-        setUser(nextUser);
-        return nextUser;
-      },
-      signInWithPassword: async (identifier: string, password: string) => {
-        const result = await signIn({ identifier, password });
-        setUser(result.user);
-        return result.user;
-      },
-      updateRole: async (role) => {
-        if (!user) throw new Error("Not authenticated");
-        const nextUser = await updateProfile(user.id, { role });
-        setUser(nextUser);
-        return nextUser;
-      },
-      logout: async () => {
-        await signOut();
-        clearSessionToken();
-        setUser(null);
-        setDeviceSessions([]);
-        setSecurityLogs([]);
-      },
-      deviceSessions,
-      securityLogs,
-      loadDeviceSessions,
-      loadSecurityLogs,
-      terminateDeviceSession,
-      terminateOtherDeviceSessions,
-    }),
-    [user, loading, onboardingComplete, refreshUser, deviceSessions, securityLogs, loadDeviceSessions, loadSecurityLogs, terminateDeviceSession, terminateOtherDeviceSessions],
-  );
+  const value = useMemo<AuthContextValue>(() => ({
+    user, loading, refreshUser,
+    logout: async () => { await signOut(); clearSessionToken(); setUser(null); },
+  }), [user, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const value = useContext(AuthContext);
-  if (!value) throw new Error("useAuth must be used within AuthProvider");
-  return value;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }

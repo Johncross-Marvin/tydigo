@@ -50,14 +50,14 @@ export {
 export type { PickupStatus } from "./pickup-status";
 
 export {
-  signInWithPhone,
-  verifyOtp,
+  signUp,
+  signIn,
   signOut,
   getCurrentUser,
-  getUserProfile,
-  updateProfile,
-  setUserRole,
-  refreshSession,
+  resendVerification,
+  resetPassword,
+  updatePassword,
+  getPickupContactPhone,
 } from "./auth";
 export type { AuthUser, UserRole } from "./auth";
 
