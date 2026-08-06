@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api, formatWeight } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 import { ActivePickupCard } from "@/components/household/ActivePickupCard";
 import { QuickRequestForm } from "@/components/household/QuickRequestForm";
 import { PickupHistory } from "@/components/household/PickupHistory";
@@ -36,6 +37,7 @@ const HouseholdDashboardPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  useSeo(seoConfig.householdDashboard);
 
   const { data: dashboard } = useQuery({
     queryKey: ["dashboard"],

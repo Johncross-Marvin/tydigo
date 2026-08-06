@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 import { MaterialMarketplace } from "@/components/partner/MaterialMarketplace";
 import { BatchTracker } from "@/components/partner/BatchTracker";
 import { PartnerAnalytics } from "@/components/partner/PartnerAnalytics";
@@ -29,6 +30,7 @@ const PartnerDashboardPage = () => {
   const { user, logout } = useAuth();
   const { success, error: toastError } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  useSeo(seoConfig.partnerDashboard);
 
   const { data: requestsData } = useQuery({
     queryKey: ["partner-requests"],

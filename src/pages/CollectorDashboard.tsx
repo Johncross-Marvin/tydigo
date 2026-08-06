@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { api, formatNaira } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
+import { useSeo, seoConfig } from "@/lib/seo";
 import { AvailableJobsFeed } from "@/components/collector/AvailableJobsFeed";
 import { ActiveJobWorkflow } from "@/components/collector/ActiveJobWorkflow";
 import { EarningsSummary } from "@/components/collector/EarningsSummary";
@@ -32,6 +33,7 @@ const CollectorDashboardPage = () => {
   const { user, logout } = useAuth();
   const { success, error: toastError } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  useSeo(seoConfig.collectorDashboard);
   const [activeTab, setActiveTab] = useState("available");
 
   const { data: jobsData, isLoading: jobsLoading, refetch: refetchJobs } = useQuery({

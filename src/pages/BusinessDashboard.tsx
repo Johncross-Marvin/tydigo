@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
+import { useSeo, seoConfig } from "@/lib/seo";
 import { BulkScheduler } from "@/components/business/BulkScheduler";
 import { SubscriptionPlans } from "@/components/business/SubscriptionPlans";
 import { ImpactReport } from "@/components/business/ImpactReport";
@@ -32,6 +33,7 @@ const BusinessDashboardPage = () => {
   const { user, logout } = useAuth();
   const { success, error: toastError } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  useSeo(seoConfig.businessDashboard);
 
   const { data: locationsData } = useQuery({
     queryKey: ["business-locations"],

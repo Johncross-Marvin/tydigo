@@ -11,42 +11,62 @@ import { ToastProvider } from "@/components/ui/toast-provider";
 import { InstallPromptBanner, OfflineBanner, UpdateAvailableBanner } from "@/components/pwa-banner";
 import type { UserRole } from "@/lib/api";
 
+// ─── Eagerly loaded (critical path) ──────────────────────────
 import Index from "./pages/Index";
 import LoginPage from "./pages/Login";
-import SignupPage from "./pages/Signup";
-import OtpPage from "./pages/OtpPage";
-import RoleSelectionPage from "./pages/RoleSelection";
-import ForgotPasswordPage from "./pages/ForgotPassword";
-import ResetPasswordPage from "./pages/ResetPassword";
-
-import HouseholdDashboardPage from "./pages/HouseholdDashboard";
-import RequestPickupPage from "./pages/RequestPickup";
-import TrackingPage from "./pages/TrackingPage";
-import EcoPointsPage from "./pages/EcoPoints";
-import HistoryPage from "./pages/HistoryPage";
-import PaymentPage from "./pages/PaymentPage";
-import CompletionPage from "./pages/CompletionPage";
-import ChallengesPage from "./pages/ChallengesPage";
-import RedeemPage from "./pages/RedeemPage";
-import ProfilePage from "./pages/ProfilePage";
-
-import CollectorDashboardPage from "./pages/CollectorDashboard";
-import BusinessDashboardPage from "./pages/BusinessDashboard";
-import PartnerDashboardPage from "./pages/PartnerDashboard";
-import PartnerRequestPage from "./pages/PartnerRequest";
-import AdminDashboardPage from "./pages/AdminDashboard";
-import AdminKycPage from "./pages/AdminKyc";
-import AdminPricingPage from "./pages/AdminPricing";
-import AdminEcoPointsPage from "./pages/AdminEcoPoints";
-import AdminBatchesPage from "./pages/AdminBatches";
-import AdminImpactPage from "./pages/AdminImpact";
-
-import GovernmentDashboardPage from "./pages/GovernmentDashboard";
-
 import NotFound from "./pages/NotFound";
-import StatusPage from "./pages/StatusPage";
 
-const queryClient = new QueryClient();
+// ─── Lazy-loaded pages (code-split by role) ──────────────────
+const SignupPage = lazy(() => import("./pages/Signup"));
+const OtpPage = lazy(() => import("./pages/OtpPage"));
+const RoleSelectionPage = lazy(() => import("./pages/RoleSelection"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
+const StatusPage = lazy(() => import("./pages/StatusPage"));
+
+// Household
+const HouseholdDashboardPage = lazy(() => import("./pages/HouseholdDashboard"));
+const RequestPickupPage = lazy(() => import("./pages/RequestPickup"));
+const TrackingPage = lazy(() => import("./pages/TrackingPage"));
+const EcoPointsPage = lazy(() => import("./pages/EcoPoints"));
+const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+const PaymentPage = lazy(() => import("./pages/PaymentPage"));
+const CompletionPage = lazy(() => import("./pages/CompletionPage"));
+const ChallengesPage = lazy(() => import("./pages/ChallengesPage"));
+const RedeemPage = lazy(() => import("./pages/RedeemPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+
+// Collector
+const CollectorDashboardPage = lazy(() => import("./pages/CollectorDashboard"));
+
+// Business
+const BusinessDashboardPage = lazy(() => import("./pages/BusinessDashboard"));
+
+// Partner
+const PartnerDashboardPage = lazy(() => import("./pages/PartnerDashboard"));
+const PartnerRequestPage = lazy(() => import("./pages/PartnerRequest"));
+
+// Admin
+const AdminDashboardPage = lazy(() => import("./pages/AdminDashboard"));
+const AdminKycPage = lazy(() => import("./pages/AdminKyc"));
+const AdminPricingPage = lazy(() => import("./pages/AdminPricing"));
+const AdminEcoPointsPage = lazy(() => import("./pages/AdminEcoPoints"));
+const AdminBatchesPage = lazy(() => import("./pages/AdminBatches"));
+const AdminImpactPage = lazy(() => import("./pages/AdminImpact"));
+
+// Government
+const GovernmentDashboardPage = lazy(() => import("./pages/GovernmentDashboard"));
+
+// ─── Setup ────────────────────────────────────────────────────
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const protectedPage = (page: ReactNode, roles?: UserRole[]) => (
   <ProtectedRoute allowedRoles={roles}>{page}</ProtectedRoute>
@@ -81,58 +101,60 @@ const App = () => (
             <ErrorBoundary>
               <Suspense fallback={<LoadingFallback />}>
                 <Routes>
-            {/* Public */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/otp" element={<OtpPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/role-selection" element={protectedPage(<RoleSelectionPage />)} />
-            <Route path="/status" element={<StatusPage />} />
+                  {/* Public — eagerly loaded */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<LoginPage />} />
 
-            {/* Household / Customer */}
-            <Route path="/household/dashboard" element={protectedPage(<HouseholdDashboardPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/request-pickup" element={protectedPage(<RequestPickupPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/tracking" element={protectedPage(<TrackingPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/ecopoints" element={protectedPage(<EcoPointsPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/history" element={protectedPage(<HistoryPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/payment" element={protectedPage(<PaymentPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/completion" element={protectedPage(<CompletionPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/challenges" element={protectedPage(<ChallengesPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/redeem" element={protectedPage(<RedeemPage />, HOUSEHOLD_ROLES)} />
-            <Route path="/household/profile" element={protectedPage(<ProfilePage />)} />
+                  {/* Public — lazy loaded */}
+                  <Route path="/signup" element={<Suspense fallback={<LoadingFallback />}><SignupPage /></Suspense>} />
+                  <Route path="/otp" element={<Suspense fallback={<LoadingFallback />}><OtpPage /></Suspense>} />
+                  <Route path="/forgot-password" element={<Suspense fallback={<LoadingFallback />}><ForgotPasswordPage /></Suspense>} />
+                  <Route path="/reset-password" element={<Suspense fallback={<LoadingFallback />}><ResetPasswordPage /></Suspense>} />
+                  <Route path="/role-selection" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RoleSelectionPage /></Suspense>)} />
+                  <Route path="/status" element={<Suspense fallback={<LoadingFallback />}><StatusPage /></Suspense>} />
 
-            {/* Collector / Fleet */}
-            <Route path="/collector/dashboard" element={protectedPage(<CollectorDashboardPage />, COLLECTOR_ROLES)} />
+                  {/* Household / Customer */}
+                  <Route path="/household/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><HouseholdDashboardPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/request-pickup" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RequestPickupPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/tracking" element={protectedPage(<Suspense fallback={<LoadingFallback />}><TrackingPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/ecopoints" element={protectedPage(<Suspense fallback={<LoadingFallback />}><EcoPointsPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/history" element={protectedPage(<Suspense fallback={<LoadingFallback />}><HistoryPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/payment" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PaymentPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/completion" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CompletionPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/challenges" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ChallengesPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/redeem" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RedeemPage /></Suspense>, HOUSEHOLD_ROLES)} />
+                  <Route path="/household/profile" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ProfilePage /></Suspense>)} />
 
-            {/* Business / Estate / Corporate */}
-            <Route path="/business/dashboard" element={protectedPage(<BusinessDashboardPage />, BUSINESS_ROLES)} />
+                  {/* Collector / Fleet */}
+                  <Route path="/collector/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CollectorDashboardPage /></Suspense>, COLLECTOR_ROLES)} />
 
-            {/* Partner / Recycler / Organic Partner */}
-            <Route path="/partner/dashboard" element={protectedPage(<PartnerDashboardPage />, PARTNER_ROLES)} />
-            <Route path="/partner/request" element={protectedPage(<PartnerRequestPage />, PARTNER_ROLES)} />
+                  {/* Business / Estate / Corporate */}
+                  <Route path="/business/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><BusinessDashboardPage /></Suspense>, BUSINESS_ROLES)} />
 
-            {/* Admin / Government */}
-            <Route path="/admin/dashboard" element={protectedPage(<AdminDashboardPage />, ADMIN_ROLES)} />
-            <Route path="/admin/kyc" element={protectedPage(<AdminKycPage />, ADMIN_ROLES)} />
-            <Route path="/admin/pricing" element={protectedPage(<AdminPricingPage />, ADMIN_ROLES)} />
-            <Route path="/admin/ecopoints" element={protectedPage(<AdminEcoPointsPage />, ADMIN_ROLES)} />
-            <Route path="/admin/batches" element={protectedPage(<AdminBatchesPage />, ADMIN_ROLES)} />
-            <Route path="/admin/impact" element={protectedPage(<AdminImpactPage />, ADMIN_ROLES)} />
-            <Route path="/government/dashboard" element={protectedPage(<GovernmentDashboardPage />, ["government"])} />
+                  {/* Partner / Recycler / Organic Partner */}
+                  <Route path="/partner/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PartnerDashboardPage /></Suspense>, PARTNER_ROLES)} />
+                  <Route path="/partner/request" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PartnerRequestPage /></Suspense>, PARTNER_ROLES)} />
 
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-                </Suspense>
-              </ErrorBoundary>
-              <InstallPromptBanner />
-            </BrowserRouter>
-          </ToastProvider>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+                  {/* Admin / Government */}
+                  <Route path="/admin/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminDashboardPage /></Suspense>, ADMIN_ROLES)} />
+                  <Route path="/admin/kyc" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminKycPage /></Suspense>, ADMIN_ROLES)} />
+                  <Route path="/admin/pricing" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminPricingPage /></Suspense>, ADMIN_ROLES)} />
+                  <Route path="/admin/ecopoints" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminEcoPointsPage /></Suspense>, ADMIN_ROLES)} />
+                  <Route path="/admin/batches" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminBatchesPage /></Suspense>, ADMIN_ROLES)} />
+                  <Route path="/admin/impact" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminImpactPage /></Suspense>, ADMIN_ROLES)} />
+                  <Route path="/government/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><GovernmentDashboardPage /></Suspense>, ["government"])} />
+
+                  {/* 404 */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+            <InstallPromptBanner />
+          </BrowserRouter>
+        </ToastProvider>
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
 
 export default App;
