@@ -60,6 +60,7 @@ const BusinessDashboardPage = lazy(() => import("./pages/BusinessDashboard"));
 // Partner
 const PartnerDashboardPage = lazy(() => import("./pages/PartnerDashboard"));
 const PartnerRequestPage = lazy(() => import("./pages/PartnerRequest"));
+const RecyclerDashboardPage = lazy(() => import("./pages/RecyclerDashboard"));
 
 // Admin
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboard"));
@@ -162,6 +163,7 @@ const App = () => (
                   {/* Partner / Recycler / Organic Partner */}
                   <Route path="/partner/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PartnerDashboardPage /></Suspense>, PARTNER_ROLES)} />
                   <Route path="/partner/request" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PartnerRequestPage /></Suspense>, PARTNER_ROLES)} />
+                  <Route path="/recycler/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RecyclerDashboardPage /></Suspense>, PARTNER_ROLES)} />
 
                   {/* Admin / Government */}
                   <Route path="/admin/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminDashboardPage /></Suspense>, ADMIN_ROLES)} />
