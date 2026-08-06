@@ -392,9 +392,14 @@ const LoginPage = () => {
                       />
                       <span className="text-sm text-neutral-600">Remember me</span>
                     </label>
-                    <Link to="/forgot-password" className="text-sm font-semibold text-[#145C25] hover:underline">
-                      Forgot password?
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link to="/recover-username" className="text-sm text-neutral-500 hover:text-[#145C25] transition-colors">
+                        Find username
+                      </Link>
+                      <Link to="/forgot-password" className="text-sm font-semibold text-[#145C25] hover:underline">
+                        Forgot password?
+                      </Link>
+                    </div>
                   </div>
                 )}
 
