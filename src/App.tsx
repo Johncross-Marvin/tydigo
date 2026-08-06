@@ -40,6 +40,7 @@ const SecurityLogsPage = lazy(() => import("./pages/SecurityLogs"));
 const ChangePhonePage = lazy(() => import("./pages/ChangePhone"));
 const ChangeEmailPage = lazy(() => import("./pages/ChangeEmail"));
 const RecoverUsernamePage = lazy(() => import("./pages/RecoverUsername"));
+const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 
 // Collector
 const CollectorDashboardPage = lazy(() => import("./pages/CollectorDashboard"));
@@ -117,6 +118,7 @@ const App = () => (
                   <Route path="/reset-password" element={<Suspense fallback={<LoadingFallback />}><ResetPasswordPage /></Suspense>} />
                   <Route path="/recover-username" element={<Suspense fallback={<LoadingFallback />}><RecoverUsernamePage /></Suspense>} />
                   <Route path="/role-selection" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RoleSelectionPage /></Suspense>)} />
+                  <Route path="/onboarding" element={protectedPage(<Suspense fallback={<LoadingFallback />}><OnboardingPage /></Suspense>)} />
                   <Route path="/status" element={<Suspense fallback={<LoadingFallback />}><StatusPage /></Suspense>} />
 
                   {/* Household / Customer */}

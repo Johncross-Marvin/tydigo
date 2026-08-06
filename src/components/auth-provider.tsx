@@ -3,6 +3,7 @@ import { setSessionToken, clearSessionToken, roleHomePath, type AuthUser, type U
 import { getCurrentUser, signOut, verifyOtp, updateProfile, signIn } from "@/services/auth";
 import { recordDeviceSession, getDeviceSessions, terminateSession, terminateOtherSessions, type DeviceSession } from "@/services/session";
 import { getSecurityLogs, type SecurityLog } from "@/services/security";
+import { getOnboardingState } from "@/services/onboarding";
 
 // Re-export for convenience
 export { roleHomePath };
@@ -11,6 +12,7 @@ export type { DeviceSession, SecurityLog };
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
+  onboardingComplete: boolean;
   refreshUser: () => Promise<void>;
   verifySession: (phone: string, code: string, profileMeta?: { name?: string; role?: UserRole }) => Promise<AuthUser>;
   signInWithPassword: (identifier: string, password: string) => Promise<AuthUser>;
