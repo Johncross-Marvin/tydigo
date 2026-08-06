@@ -41,6 +41,8 @@ import AdminEcoPointsPage from "./pages/AdminEcoPoints";
 import AdminBatchesPage from "./pages/AdminBatches";
 import AdminImpactPage from "./pages/AdminImpact";
 
+import GovernmentDashboardPage from "./pages/GovernmentDashboard";
+
 import NotFound from "./pages/NotFound";
 import StatusPage from "./pages/StatusPage";
 
@@ -118,6 +120,7 @@ const App = () => (
             <Route path="/admin/ecopoints" element={protectedPage(<AdminEcoPointsPage />, ADMIN_ROLES)} />
             <Route path="/admin/batches" element={protectedPage(<AdminBatchesPage />, ADMIN_ROLES)} />
             <Route path="/admin/impact" element={protectedPage(<AdminImpactPage />, ADMIN_ROLES)} />
+            <Route path="/government/dashboard" element={protectedPage(<GovernmentDashboardPage />, ["government"])} />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />

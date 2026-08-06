@@ -2,94 +2,78 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Recycle,
-  Building2,
-  BarChart3,
+  LayoutDashboard,
   MapPin,
-  Calendar,
+  Shield,
+  Globe,
+  FileText,
   LogOut,
   Bell,
   Menu,
   X,
   Home,
-  Settings,
-  Users,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
-import { BulkScheduler } from "@/components/business/BulkScheduler";
-import { SubscriptionPlans } from "@/components/business/SubscriptionPlans";
-import { ImpactReport } from "@/components/business/ImpactReport";
-import { MultiAddressManager } from "@/components/business/MultiAddressManager";
+import { RegionalAnalytics } from "@/components/government/RegionalAnalytics";
+import { ComplianceMonitor } from "@/components/government/ComplianceMonitor";
+import { EnvironmentalImpact } from "@/components/government/EnvironmentalImpact";
+import { PublicReports } from "@/components/government/PublicReports";
 import { useToast } from "@/components/ui/toast-provider";
 
-const BusinessDashboardPage = () => {
+const GovernmentDashboardPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { success, error: toastError } = useToast();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const { data: locationsData } = useQuery({
-    queryKey: ["business-locations"],
-    queryFn: api.getBusinessLocations,
+  const { data: regionalData } = useQuery({
+    queryKey: ["regional-analytics"],
+    queryFn: api.getRegionalAnalytics,
+  });
+
+  const { data: complianceData } = useQuery({
+    queryKey: ["compliance-data"],
+    queryFn: api.getComplianceData,
   });
 
   const { data: impactData } = useQuery({
-    queryKey: ["impact-report"],
-    queryFn: () => api.getImpactReport("month"),
+    queryKey: ["environmental-impact"],
+    queryFn: api.getEnvironmentalImpact,
   });
 
-  const locations = locationsData?.locations ?? [];
+  const regions = regionalData?.regions ?? [];
+  const compliance = complianceData ?? {
+    registeredCollectors: 0,
+    licensedOperators: 0,
+    complianceRate: 0,
+  };
+  const impact = impactData ?? {
+    totalWasteDivertedKg: 0,
+    recyclingRate: 0,
+    carbonOffsetKg: 0,
+    landfillSavedKg: 0,
+  };
 
-  const handleBulkSchedule = async (data: {
-    locationIds: string[];
-    wasteType: string;
-    weightKg: number;
-    scheduleWindow: string;
-    frequency: string;
-  }) => {
+  const handleGenerateReport = async (period: string) => {
     try {
-      await api.scheduleBulkPickup({
-        ...data,
-        frequency: data.frequency as "once" | "daily" | "weekly" | "monthly",
-      });
-      success("Pickups Scheduled", `${data.locationIds.length} pickups have been scheduled.`);
+      await api.generatePublicReport(period);
+      success("Report Generated", `The ${period} report is being generated.`);
     } catch (err) {
-      toastError("Scheduling failed", err instanceof Error ? err.message : "Please try again.");
+      toastError("Generation failed", err instanceof Error ? err.message : "Please try again.");
     }
-  };
-
-  const handleAddLocation = async (address: string, label: string) => {
-    try {
-      await api.addBusinessLocation(address, label);
-      success("Location Added", `"${label}" has been added.`);
-    } catch (err) {
-      toastError("Failed to add location", err instanceof Error ? err.message : "Please try again.");
-    }
-  };
-
-  const handleRemoveLocation = (id: string) => {
-    toastError("Remove Location", "This feature will be available soon.");
-  };
-
-  const handleSelectPlan = (planId: string) => {
-    success("Plan Selected", `You've selected the ${planId} plan. Our team will contact you.`);
-  };
-
-  const handleDownloadReport = () => {
-    success("Report Downloading", "Your impact report is being generated.");
   };
 
   const menuItems = [
-    { icon: Home, label: "Dashboard", active: true },
-    { icon: Calendar, label: "Schedule", active: false },
-    { icon: BarChart3, label: "Reports", active: false },
-    { icon: MapPin, label: "Locations", active: false },
-    { icon: Settings, label: "Settings", active: false },
+    { icon: LayoutDashboard, label: "Dashboard", active: true },
+    { icon: MapPin, label: "Regional", active: false },
+    { icon: Shield, label: "Compliance", active: false },
+    { icon: Globe, label: "Environment", active: false },
+    { icon: FileText, label: "Reports", active: false },
   ];
 
   return (
@@ -140,7 +124,7 @@ const BusinessDashboardPage = () => {
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-64 bg-[#0A2F14] text-white p-5 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <span className="text-lg font-bold">Tydigo</span>
+              <span className="text-lg font-bold">Tydigo Gov</span>
               <button onClick={() => setMobileSidebarOpen(false)}>
                 <X className="w-5 h-5" />
               </button>
@@ -169,14 +153,14 @@ const BusinessDashboardPage = () => {
           <button className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-neutral-100" onClick={() => setMobileSidebarOpen(true)}>
             <Menu className="w-5 h-5 text-neutral-700" />
           </button>
-          <h1 className="font-bold text-neutral-900">Business Dashboard</h1>
+          <h1 className="font-bold text-neutral-900">Government Dashboard</h1>
           <div className="flex-1" />
           <Button variant="ghost" size="icon" className="rounded-xl">
             <Bell className="w-5 h-5 text-neutral-500" />
           </Button>
-          <Avatar className="w-8 h-8 ring-2 ring-green-100">
-            <AvatarFallback className="bg-green-100 text-[#145C25] font-bold text-sm">
-              {user?.name?.charAt(0) ?? "B"}
+          <Avatar className="w-8 h-8 ring-2 ring-blue-100">
+            <AvatarFallback className="bg-blue-100 text-blue-600 font-bold text-sm">
+              {user?.name?.charAt(0) ?? "G"}
             </AvatarFallback>
           </Avatar>
         </header>
@@ -184,45 +168,50 @@ const BusinessDashboardPage = () => {
         <main className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto">
           <div>
             <h1 className="text-2xl font-extrabold text-neutral-900">
-              Welcome, {user?.name?.split(" ")[0] ?? "Business"}
+              Government Oversight
             </h1>
-            <p className="text-neutral-500">Manage your waste collection across all locations.</p>
+            <p className="text-neutral-500">Monitor waste management compliance and environmental impact.</p>
           </div>
 
-          <Tabs defaultValue="schedule">
+          <Tabs defaultValue="regional">
             <TabsList className="rounded-xl bg-neutral-100 p-1">
-              <TabsTrigger value="schedule" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                Schedule
+              <TabsTrigger value="regional" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Regional
               </TabsTrigger>
-              <TabsTrigger value="plans" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                Plans
+              <TabsTrigger value="compliance" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Compliance
               </TabsTrigger>
-              <TabsTrigger value="impact" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                Impact
+              <TabsTrigger value="environment" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Environment
               </TabsTrigger>
-              <TabsTrigger value="locations" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                Locations
+              <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Reports
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="schedule" className="mt-4">
-              <BulkScheduler locations={locations} onSchedule={handleBulkSchedule} />
+            <TabsContent value="regional" className="mt-4">
+              <RegionalAnalytics regions={regions} />
             </TabsContent>
 
-            <TabsContent value="plans" className="mt-4">
-              <SubscriptionPlans onSelect={handleSelectPlan} />
-            </TabsContent>
-
-            <TabsContent value="impact" className="mt-4">
-              <ImpactReport report={impactData?.report} onDownload={handleDownloadReport} />
-            </TabsContent>
-
-            <TabsContent value="locations" className="mt-4">
-              <MultiAddressManager
-                locations={locations}
-                onAdd={handleAddLocation}
-                onRemove={handleRemoveLocation}
+            <TabsContent value="compliance" className="mt-4">
+              <ComplianceMonitor
+                registeredCollectors={compliance.registeredCollectors}
+                licensedOperators={compliance.licensedOperators}
+                complianceRate={compliance.complianceRate}
               />
+            </TabsContent>
+
+            <TabsContent value="environment" className="mt-4">
+              <EnvironmentalImpact
+                totalWasteDivertedKg={impact.totalWasteDivertedKg}
+                recyclingRate={impact.recyclingRate}
+                carbonOffsetKg={impact.carbonOffsetKg}
+                landfillSavedKg={impact.landfillSavedKg}
+              />
+            </TabsContent>
+
+            <TabsContent value="reports" className="mt-4">
+              <PublicReports onGenerate={handleGenerateReport} />
             </TabsContent>
           </Tabs>
         </main>
@@ -231,4 +220,4 @@ const BusinessDashboardPage = () => {
   );
 };
 
-export default BusinessDashboardPage;
+export default GovernmentDashboardPage;

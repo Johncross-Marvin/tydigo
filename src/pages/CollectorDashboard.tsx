@@ -36,12 +36,12 @@ const CollectorDashboardPage = () => {
 
   const { data: jobsData, isLoading: jobsLoading, refetch: refetchJobs } = useQuery({
     queryKey: ["collector-jobs"],
-    queryFn: api.listAvailableJobs,
+    queryFn: () => api.listAvailableJobs(),
   });
 
   const { data: myJobsData, refetch: refetchMyJobs } = useQuery({
     queryKey: ["my-jobs"],
-    queryFn: api.getMyJobs,
+    queryFn: () => api.getMyJobs(),
   });
 
   const availableJobs: CollectorJob[] = jobsData?.jobs ?? [];

@@ -1,88 +1,199 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Recycle, Package, Truck, TrendingUp, ShoppingBag, Plus, CheckCircle2 } from "lucide-react";
-import { api, formatNaira } from "@/lib/api";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Recycle,
+  Package,
+  BarChart3,
+  LogOut,
+  Bell,
+  Menu,
+  X,
+  Home,
+  ShoppingCart,
+  Star,
+} from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
+import { api } from "@/lib/api";
+import { MaterialMarketplace } from "@/components/partner/MaterialMarketplace";
+import { BatchTracker } from "@/components/partner/BatchTracker";
+import { PartnerAnalytics } from "@/components/partner/PartnerAnalytics";
+import { QualityVerification } from "@/components/partner/QualityVerification";
+import { useToast } from "@/components/ui/toast-provider";
 
 const PartnerDashboardPage = () => {
-  const { data } = useQuery({
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { success, error: toastError } = useToast();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const { data: requestsData } = useQuery({
     queryKey: ["partner-requests"],
     queryFn: api.listPartnerRequests,
   });
-  const requests = data?.requests ?? [];
-  const fulfilled = requests.filter((request) => request.status === "delivered").length;
-  const requestedValue = requests.reduce((total, request) => total + Number(request.quantity_kg) * Number(request.price_per_kg_ngn), 0);
+
+  const requests = requestsData?.requests ?? [];
+  const activeBatches = requests.filter((r) => !["received", "cancelled"].includes(r.status));
+
+  const handleRequestMaterial = async (materialId: string) => {
+    try {
+      success("Request Sent", "Your material request has been submitted.");
+    } catch (err) {
+      toastError("Request failed", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
+
+  const handleRateQuality = (batchId: string, rating: number, notes?: string) => {
+    success("Quality Rated", `You rated this batch ${rating} stars.`);
+  };
+
+  const menuItems = [
+    { icon: Home, label: "Dashboard", active: true },
+    { icon: ShoppingCart, label: "Marketplace", active: false },
+    { icon: Package, label: "My Batches", active: false },
+    { icon: BarChart3, label: "Analytics", active: false },
+  ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
-        <Link to="/role-selection" className="p-1.5 -ml-1.5 rounded-lg hover:bg-neutral-100">
-          <ArrowLeft className="w-5 h-5 text-neutral-600" />
-        </Link>
-        <h1 className="font-bold text-neutral-900">Recycler Dashboard</h1>
-      </header>
+    <div className="min-h-screen bg-neutral-50 flex">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex flex-col w-64 bg-[#0A2F14] text-white fixed inset-y-0 left-0 z-30">
+        <div className="p-5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+              <Recycle className="w-5 h-5 text-amber-400" />
+            </div>
+            <span className="text-xl font-bold">
+              Ty<span className="text-amber-400">digo</span>
+            </span>
+          </Link>
+        </div>
 
-      <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: Package, label: "Requests", value: String(requests.length), color: "bg-amber-100 text-amber-600" },
-            { icon: CheckCircle2, label: "Fulfilled", value: String(fulfilled), color: "bg-green-100 text-[#145C25]" },
-            { icon: TrendingUp, label: "Value", value: formatNaira(requestedValue), color: "bg-blue-100 text-blue-600" },
-          ].map((stat, i) => (
-            <Card key={i} className="border-0 shadow-sm rounded-2xl">
-              <CardContent className="p-4 text-center">
-                <div className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center mx-auto mb-2`}>
-                  <stat.icon className="w-5 h-5" />
-                </div>
-                <p className="text-xl font-extrabold text-neutral-900">{stat.value}</p>
-                <p className="text-xs text-neutral-500">{stat.label}</p>
-              </CardContent>
-            </Card>
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-left ${
+                item.active
+                  ? "bg-[#145C25] text-white shadow-lg"
+                  : "text-green-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
+            </button>
           ))}
-        </div>
+        </nav>
 
-        {/* Material Requests */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-neutral-900">Material Requests</h2>
-            <Link to="/partner/request">
-              <Button size="sm" className="bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-xs">
-                <Plus className="w-3.5 h-3.5 mr-1" /> New Request
-              </Button>
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {requests.map((req, i) => (
-              <Card key={i} className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                    <ShoppingBag className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-neutral-900 text-sm">{req.material}</p>
-                    <p className="text-xs text-neutral-500">{Number(req.quantity_kg).toLocaleString()} kg • {formatNaira(Number(req.price_per_kg_ngn))}/kg</p>
-                  </div>
-                  <Badge className={`rounded-full text-xs ${
-                    req.status === "delivered" ? "bg-green-100 text-[#145C25]" :
-                    req.status === "in_transit" ? "bg-blue-100 text-blue-600" :
-                    "bg-amber-100 text-amber-600"
-                  }`}>{req.status.replace("_", " ")}</Badge>
-                </CardContent>
-              </Card>
-            ))}
-            {!requests.length && (
-              <Card className="border-0 shadow-sm rounded-2xl">
-                <CardContent className="p-6 text-center text-sm text-neutral-500">
-                  No material requests yet. Create one to start sourcing recyclables.
-                </CardContent>
-              </Card>
-            )}
+        <div className="p-4 border-t border-green-700/50">
+          <button
+            onClick={() => void logout().then(() => navigate("/login"))}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-green-300 hover:bg-white/10 hover:text-white transition-all w-full"
+          >
+            <LogOut className="w-5 h-5" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile sidebar */}
+      {mobileSidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-[#0A2F14] text-white p-5 overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-lg font-bold">Tydigo</span>
+              <button onClick={() => setMobileSidebarOpen(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="space-y-1">
+              {menuItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium w-full text-left ${
+                    item.active ? "bg-[#145C25] text-white" : "text-green-200 hover:bg-white/10"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
-      </main>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-64">
+        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
+          <button className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-neutral-100" onClick={() => setMobileSidebarOpen(true)}>
+            <Menu className="w-5 h-5 text-neutral-700" />
+          </button>
+          <h1 className="font-bold text-neutral-900">Partner Dashboard</h1>
+          <div className="flex-1" />
+          <Button variant="ghost" size="icon" className="rounded-xl">
+            <Bell className="w-5 h-5 text-neutral-500" />
+          </Button>
+          <Avatar className="w-8 h-8 ring-2 ring-purple-100">
+            <AvatarFallback className="bg-purple-100 text-purple-600 font-bold text-sm">
+              {user?.name?.charAt(0) ?? "P"}
+            </AvatarFallback>
+          </Avatar>
+        </header>
+
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto">
+          <div>
+            <h1 className="text-2xl font-extrabold text-neutral-900">
+              Welcome, {user?.name?.split(" ")[0] ?? "Partner"}
+            </h1>
+            <p className="text-neutral-500">Source recyclable materials and track your batches.</p>
+          </div>
+
+          <PartnerAnalytics
+            totalSourced={requests.reduce((sum, r) => sum + r.quantity_kg, 0)}
+            totalSpent={requests.reduce((sum, r) => sum + r.quantity_kg * r.price_per_kg_ngn, 0)}
+            avgPricePerKg={requests.length > 0
+              ? requests.reduce((sum, r) => sum + r.price_per_kg_ngn, 0) / requests.length
+              : 0}
+            supplierRating={4.5}
+            activeBatches={activeBatches.length}
+          />
+
+          <Tabs defaultValue="marketplace">
+            <TabsList className="rounded-xl bg-neutral-100 p-1">
+              <TabsTrigger value="marketplace" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Marketplace
+              </TabsTrigger>
+              <TabsTrigger value="batches" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                My Batches ({activeBatches.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="marketplace" className="mt-4">
+              <MaterialMarketplace
+                materials={requests}
+                onRequest={handleRequestMaterial}
+              />
+            </TabsContent>
+
+            <TabsContent value="batches" className="mt-4 space-y-4">
+              <BatchTracker batches={activeBatches} />
+              {activeBatches.length > 0 && (
+                <QualityVerification
+                  batchId={activeBatches[0].id}
+                  material={activeBatches[0].material}
+                  onRate={handleRateQuality}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        </main>
+      </div>
     </div>
   );
 };

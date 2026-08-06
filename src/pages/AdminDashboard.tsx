@@ -1,89 +1,296 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Truck, Recycle, DollarSign, TrendingUp, Shield, Settings, BarChart3, Award, AlertTriangle } from "lucide-react";
-import { api, formatNaira, formatWeight } from "@/lib/api";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Recycle,
+  LayoutDashboard,
+  Users,
+  FileCheck,
+  DollarSign,
+  FileText,
+  LogOut,
+  Bell,
+  Menu,
+  X,
+  Home,
+  BarChart3,
+  Package,
+  Megaphone,
+} from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
+import { api } from "@/lib/api";
+import { PlatformKPIs } from "@/components/admin/PlatformKPIs";
+import { UserManager } from "@/components/admin/UserManager";
+import { KycReviewQueue } from "@/components/admin/KycReviewQueue";
+import { PricingConfig } from "@/components/admin/PricingConfig";
+import { AuditLogs } from "@/components/admin/AuditLogs";
+import { useToast } from "@/components/ui/toast-provider";
+import type { AdminUser, KycDocument, AuditLog } from "@/lib/api";
+import type { PricingConfig as PricingConfigType } from "@/services/admin";
 
 const AdminDashboardPage = () => {
-  const { data, error } = useQuery({
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { success, error: toastError } = useToast();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [kpiPeriod, setKpiPeriod] = useState("month");
+  const [userSearch, setUserSearch] = useState("");
+
+  const { data: overviewData } = useQuery({
     queryKey: ["admin-overview"],
     queryFn: api.adminOverview,
-    retry: false,
   });
-  const kpis = [
-    { icon: Users, label: "Total Users", value: String(data?.kpis.totalUsers ?? 0), change: "Live", color: "bg-blue-100 text-blue-600" },
-    { icon: Truck, label: "Active Collectors", value: String(data?.kpis.activeCollectors ?? 0), change: "Live", color: "bg-green-100 text-[#145C25]" },
-    { icon: Recycle, label: "Waste Collected", value: formatWeight(data?.kpis.wasteCollectedKg ?? 0), change: `${data?.kpis.pickups ?? 0} pickups`, color: "bg-amber-100 text-amber-600" },
-    { icon: DollarSign, label: "Revenue", value: formatNaira(data?.kpis.revenueNgn ?? 0), change: "Paid", color: "bg-purple-100 text-purple-600" },
-    { icon: Award, label: "EcoPoints Issued", value: (data?.kpis.ecopointsIssued ?? 0).toLocaleString(), change: "Live", color: "bg-orange-100 text-orange-600" },
-    { icon: AlertTriangle, label: "Pending KYC", value: String(data?.kpis.pendingKyc ?? 0), change: "Needs review", color: "bg-red-100 text-red-600" },
-  ];
+
+  const { data: usersData, refetch: refetchUsers } = useQuery({
+    queryKey: ["admin-users", userSearch],
+    queryFn: () => api.adminListUsers(userSearch),
+  });
+
+  const { data: pricingData } = useQuery({
+    queryKey: ["admin-pricing"],
+    queryFn: api.adminGetPricing,
+  });
+
+  const { data: auditData } = useQuery({
+    queryKey: ["admin-audit-logs"],
+    queryFn: () => api.adminGetAuditLogs(50),
+  });
+
+  const kpis = overviewData?.kpis ?? {
+    totalUsers: 0, activeCollectors: 0, wasteCollectedKg: 0,
+    totalPickups: 0, revenueNgn: 0, ecopointsIssued: 0, pendingKyc: 0,
+  };
+
+  const pendingKycDocs: Array<KycDocument & { name?: string; role?: string }> =
+    (overviewData?.pendingKyc ?? []).map((doc) => ({
+      ...doc,
+      document_url: "",
+      status: "pending" as const,
+    }));
+
+  const users: AdminUser[] = usersData?.users ?? [];
+  const pricingConfigs: PricingConfigType[] = (pricingData?.configs ?? []).map((c) => ({
+    ...c,
+    min_kg: (c as Record<string, unknown>).min_kg as number ?? 0,
+    max_kg: (c as Record<string, unknown>).max_kg as number | null ?? null,
+    updated_at: (c as Record<string, unknown>).updated_at as string ?? new Date().toISOString(),
+  }));
+  const auditLogs: AuditLog[] = auditData?.logs ?? [];
+
+  const handleSearchUsers = (query: string) => {
+    setUserSearch(query);
+    setTimeout(() => refetchUsers(), 100);
+  };
+
+  const handleSuspendUser = async (userId: string, suspend: boolean) => {
+    try {
+      await api.adminSuspendUser(userId, suspend);
+      success(suspend ? "User Suspended" : "User Activated", "The user status has been updated.");
+      refetchUsers();
+    } catch (err) {
+      toastError("Action failed", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
+
+  const handleViewUserDetails = (userId: string) => {
+    success("User Details", `Viewing details for user ${userId.slice(0, 8)}...`);
+  };
+
+  const handleApproveKyc = async (documentId: string) => {
+    try {
+      await api.adminReviewKyc(documentId, "approved");
+      success("KYC Approved", "Document has been approved.");
+    } catch (err) {
+      toastError("Approval failed", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
+
+  const handleRejectKyc = async (documentId: string) => {
+    try {
+      await api.adminReviewKyc(documentId, "rejected", "Document does not meet requirements.");
+      success("KYC Rejected", "Document has been rejected.");
+    } catch (err) {
+      toastError("Rejection failed", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
+
+  const handleViewKyc = (documentId: string) => {
+    success("Viewing Document", `Opening document ${documentId.slice(0, 8)}...`);
+  };
+
+  const handleUpdatePricing = async (configId: string, updates: Record<string, unknown>) => {
+    try {
+      await api.adminUpdatePricing(configId, updates);
+      success("Pricing Updated", "The pricing configuration has been updated.");
+    } catch (err) {
+      toastError("Update failed", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
 
   const menuItems = [
-    { icon: Shield, label: "KYC Verification", desc: "Approve collector and recycler identities", route: "/admin/kyc" },
-    { icon: DollarSign, label: "Pricing Engine", desc: "Manage pickup & weight pricing", route: "/admin/pricing" },
-    { icon: Award, label: "EcoPoints Rules", desc: "Configure earning & redemption rules", route: "/admin/ecopoints" },
-    { icon: Truck, label: "Batch Tracking", desc: "Monitor waste batches to recyclers", route: "/admin/batches" },
-    { icon: BarChart3, label: "Impact Reports", desc: "ESG & sustainability analytics", route: "/admin/impact" },
+    { icon: LayoutDashboard, label: "Dashboard", active: true },
+    { icon: Users, label: "Users", active: false },
+    { icon: FileCheck, label: "KYC Review", active: false },
+    { icon: DollarSign, label: "Pricing", active: false },
+    { icon: Package, label: "Batches", active: false },
+    { icon: BarChart3, label: "Impact", active: false },
+    { icon: FileText, label: "Audit Logs", active: false },
+    { icon: Megaphone, label: "Broadcast", active: false },
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
-        <Link to="/role-selection" className="p-1.5 -ml-1.5 rounded-lg hover:bg-neutral-100">
-          <ArrowLeft className="w-5 h-5 text-neutral-600" />
-        </Link>
-        <h1 className="font-bold text-neutral-900">Admin Dashboard</h1>
-        <Badge className="ml-auto bg-red-100 text-red-600 rounded-full">
-          <Settings className="w-3 h-3 mr-1" /> Super Admin
-        </Badge>
-      </header>
+    <div className="min-h-screen bg-neutral-50 flex">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex flex-col w-64 bg-[#0A2F14] text-white fixed inset-y-0 left-0 z-30">
+        <div className="p-5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+              <Recycle className="w-5 h-5 text-amber-400" />
+            </div>
+            <span className="text-xl font-bold">
+              Ty<span className="text-amber-400">digo</span>
+            </span>
+          </Link>
+        </div>
 
-      <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-5">
-        {error && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-            {error instanceof Error ? error.message : "Unable to load admin overview."}
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-left ${
+                item.active
+                  ? "bg-[#145C25] text-white shadow-lg"
+                  : "text-green-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-green-700/50">
+          <button
+            onClick={() => void logout().then(() => navigate("/login"))}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-green-300 hover:bg-white/10 hover:text-white transition-all w-full"
+          >
+            <LogOut className="w-5 h-5" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile sidebar */}
+      {mobileSidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-[#0A2F14] text-white p-5 overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-lg font-bold">Tydigo Admin</span>
+              <button onClick={() => setMobileSidebarOpen(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="space-y-1">
+              {menuItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium w-full text-left ${
+                    item.active ? "bg-[#145C25] text-white" : "text-green-200 hover:bg-white/10"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
-        )}
-
-        {/* KPIs */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {kpis.map((kpi, i) => (
-            <Card key={i} className="border-0 shadow-sm rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`w-10 h-10 rounded-xl ${kpi.color} flex items-center justify-center`}>
-                    <kpi.icon className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-semibold text-green-600">{kpi.change}</span>
-                </div>
-                <p className="text-2xl font-extrabold text-neutral-900">{kpi.value}</p>
-                <p className="text-sm text-neutral-500">{kpi.label}</p>
-              </CardContent>
-            </Card>
-          ))}
         </div>
+      )}
 
-        {/* Management Menu */}
-        <h2 className="font-bold text-neutral-900">Platform Management</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {menuItems.map((item, i) => (
-            <Link to={item.route} key={i}>
-              <Card className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl hover:shadow-md transition-all cursor-pointer h-full">
-                <CardContent className="p-5">
-                  <div className="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center mb-3">
-                    <item.icon className="w-6 h-6 text-neutral-600" />
-                  </div>
-                  <h3 className="font-bold text-neutral-900">{item.label}</h3>
-                  <p className="text-sm text-neutral-500 mt-1">{item.desc}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </main>
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-64">
+        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
+          <button className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-neutral-100" onClick={() => setMobileSidebarOpen(true)}>
+            <Menu className="w-5 h-5 text-neutral-700" />
+          </button>
+          <h1 className="font-bold text-neutral-900">Admin Dashboard</h1>
+          <div className="flex-1" />
+          <Button variant="ghost" size="icon" className="rounded-xl">
+            <Bell className="w-5 h-5 text-neutral-500" />
+          </Button>
+          <Avatar className="w-8 h-8 ring-2 ring-red-100">
+            <AvatarFallback className="bg-red-100 text-red-600 font-bold text-sm">
+              {user?.name?.charAt(0) ?? "A"}
+            </AvatarFallback>
+          </Avatar>
+        </header>
+
+        <main className="p-4 sm:p-6 lg:p-8 space-y-6">
+          <div>
+            <h1 className="text-2xl font-extrabold text-neutral-900">
+              Admin Panel
+            </h1>
+            <p className="text-neutral-500">Manage platform operations, users, and configurations.</p>
+          </div>
+
+          <PlatformKPIs
+            kpis={kpis}
+            period={kpiPeriod}
+            onPeriodChange={setKpiPeriod}
+          />
+
+          <Tabs defaultValue="users">
+            <TabsList className="rounded-xl bg-neutral-100 p-1 flex-wrap">
+              <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Users
+              </TabsTrigger>
+              <TabsTrigger value="kyc" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                KYC ({pendingKycDocs.length})
+              </TabsTrigger>
+              <TabsTrigger value="pricing" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Pricing
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Audit Logs
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="users" className="mt-4">
+              <UserManager
+                users={users}
+                onSearch={handleSearchUsers}
+                onSuspend={handleSuspendUser}
+                onViewDetails={handleViewUserDetails}
+              />
+            </TabsContent>
+
+            <TabsContent value="kyc" className="mt-4">
+              <KycReviewQueue
+                documents={pendingKycDocs}
+                onApprove={handleApproveKyc}
+                onReject={handleRejectKyc}
+                onView={handleViewKyc}
+              />
+            </TabsContent>
+
+            <TabsContent value="pricing" className="mt-4">
+              <PricingConfig
+                configs={pricingConfigs}
+                onUpdate={handleUpdatePricing}
+              />
+            </TabsContent>
+
+            <TabsContent value="audit" className="mt-4">
+              <AuditLogs logs={auditLogs} />
+            </TabsContent>
+          </Tabs>
+        </main>
+      </div>
     </div>
   );
 };
