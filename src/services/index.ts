@@ -61,8 +61,8 @@ export {
 } from "./auth";
 export type { AuthUser, UserRole } from "./auth";
 
-export { createPickup, getCustomerPickups, getActivePickup, uploadPickupPhoto } from "./pickup";
-export type { PickupDraftInput, CreatedPickup } from "./pickup";
+export { createPickup, getCustomerPickups, getActivePickup, getPickupById, updatePickupStatus, uploadPickupPhoto, createPickupWithItems } from "./pickup";
+export type { PickupDraftInput, CreatedPickup, PickupItemInput } from "./pickup";
 
 export { initializePayment, verifyPayment } from "./payments";
 export type { PaymentResult } from "./payments";
@@ -262,3 +262,26 @@ export {
   logActivity,
 } from "./activity";
 export type { ActivityLog } from "./activity";
+
+export {
+  findNearbyCollectors,
+  rankCollectors,
+  assignCollector,
+} from "./collector-matching";
+export type { NearbyCollector, MatchResult } from "./collector-matching";
+
+export {
+  recordTrackingPing,
+  getLatestTrackingPoint,
+  getTrackingHistory,
+  subscribeToTracking,
+  subscribeToPickupStatus,
+} from "./tracking";
+export type { TrackingPoint } from "./tracking";
+
+export {
+  generateReceipt,
+  getReceipt,
+  getReceiptDetails,
+} from "./receipt";
+export type { DigitalReceipt } from "./receipt";

@@ -1,172 +1,192 @@
+/**
+ * Tydigo Live Tracking Page
+ *
+ * Real-time collector tracking with map, ETA, status updates,
+ * and pickup verification.
+ */
+
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  ArrowLeft, MapPin, Clock, Truck, Phone, MessageCircle,
+  CheckCircle2, Navigation, Star,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import {
-  ArrowLeft,
-  MapPin,
-  Clock,
-  Phone,
-  MessageCircle,
-  Star,
-  Truck,
-  Navigation,
-  Shield,
-} from "lucide-react";
-import { IMAGE_IDS, gdUrl } from "@/lib/images";
-import { api, formatWeight } from "@/lib/api";
-import { useSeo, seoConfig } from "@/lib/seo";
+import { useAuth } from "@/components/auth-provider";
+import { getPickupById, updatePickupStatus } from "@/services/pickup";
+import { getLatestTrackingPoint, subscribeToTracking, subscribeToPickupStatus, type TrackingPoint } from "@/services/tracking";
+import { getStatusLabel, getStatusColor, isActivePickup, type PickupStatus } from "@/services/pickup-status";
+import { formatNaira } from "@/services/pricing";
+
+const STATUS_STEPS: PickupStatus[] = [
+  "requested", "matching_collector", "collector_assigned",
+  "collector_en_route", "collector_arrived", "pickup_verified",
+  "waste_picked", "completed",
+];
 
 const TrackingPage = () => {
-  useSeo(seoConfig.tracking);
-  const { data, isLoading } = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: api.dashboard,
-  });
-  const activePickup = data?.activePickup ?? data?.recentPickups?.[0] ?? null;
-  const [eta, setEta] = useState(activePickup?.eta_minutes ?? 12);
+  const [searchParams] = useSearchParams();
+  const pickupId = searchParams.get("id");
+  const { user } = useAuth();
+  const [pickup, setPickup] = useState<Record<string, unknown> | null>(null);
+  const [trackingPoint, setTrackingPoint] = useState<TrackingPoint | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setEta(activePickup?.eta_minutes ?? 12);
-  }, [activePickup?.eta_minutes]);
+    if (!pickupId || !user) return;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setEta((prev) => Math.max(1, prev - 1));
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    getPickupById(pickupId).then((data) => {
+      setPickup(data);
+      setLoading(false);
+    });
+
+    getLatestTrackingPoint(pickupId).then(setTrackingPoint);
+
+    // Subscribe to real-time tracking
+    const unsubTracking = subscribeToTracking(pickupId, (point) => {
+      setTrackingPoint(point);
+    });
+
+    // Subscribe to status changes
+    const unsubStatus = subscribeToPickupStatus(pickupId, (status, data) => {
+      setPickup((prev) => prev ? { ...prev, status, ...data } : prev);
+    });
+
+    return () => {
+      unsubTracking();
+      unsubStatus();
+    };
+  }, [pickupId, user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="h-10 w-10 rounded-full border-4 border-green-100 border-t-[#145C25] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!pickup) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <MapPin className="w-16 h-16 text-neutral-200 mx-auto mb-4" />
+          <p className="text-neutral-500 font-semibold">Pickup not found</p>
+          <Link to="/household/dashboard" className="text-sm text-[#145C25] font-semibold mt-2 inline-block">Back to Dashboard</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const status = (pickup.status as string) || "requested";
+  const statusIdx = STATUS_STEPS.indexOf(status as PickupStatus);
+  const isActive = isActivePickup(status as PickupStatus);
+  const assignment = pickup.assignment as Record<string, unknown> | null;
+  const etaMinutes = (assignment?.estimated_arrival_minutes as number) || null;
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
+    <div className="min-h-screen bg-neutral-50 flex flex-col">
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 h-14 flex items-center gap-4">
         <Link to="/household/dashboard" className="p-1.5 -ml-1.5 rounded-lg hover:bg-neutral-100">
           <ArrowLeft className="w-5 h-5 text-neutral-600" />
         </Link>
-        <h1 className="font-bold text-neutral-900">Live Tracking</h1>
-        {activePickup && (
-          <Badge className="ml-auto bg-green-100 text-[#145C25] rounded-full">
-            <span className="w-2 h-2 rounded-full bg-[#145C25] animate-pulse mr-1.5 inline-block" />
-            Live
-          </Badge>
-        )}
+        <h1 className="font-bold text-neutral-900 flex-1">Live Tracking</h1>
+        <Badge className={getStatusColor(status as PickupStatus)}>{getStatusLabel(status as PickupStatus)}</Badge>
       </header>
 
-      <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
-        {isLoading && <div className="rounded-2xl bg-white p-6 text-center text-neutral-500">Loading tracking details...</div>}
-
-        {!isLoading && !activePickup && (
-          <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Truck className="w-12 h-12 mx-auto text-neutral-400" />
-              <h2 className="mt-3 text-xl font-extrabold text-neutral-900">No pickup is being tracked</h2>
-              <p className="mt-1 text-sm text-neutral-500">Create a pickup request and it will appear here automatically.</p>
-              <Link to="/household/request-pickup">
-                <Button className="mt-4 rounded-xl bg-[#145C25] hover:bg-[#0F4A1E]">Request Pickup</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        )}
-
-        {activePickup && (
-          <>
-            <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl overflow-hidden">
-              <div className="relative h-64 sm:h-80 bg-neutral-100">
-                <img
-                  src={gdUrl(IMAGE_IDS.tracking)}
-                  alt="Live Tracking Map"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-4 left-4 right-4 flex gap-2">
-                  <Badge className="bg-white text-neutral-700 shadow-lg rounded-full px-3 py-1.5">
-                    <MapPin className="w-3.5 h-3.5 mr-1 text-[#145C25]" />
-                    Pickup Address
-                  </Badge>
-                  <Badge className="bg-white text-neutral-700 shadow-lg rounded-full px-3 py-1.5">
-                    <Truck className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                    Assigned Collector
-                  </Badge>
+      <main className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full space-y-4">
+        {/* Map Placeholder */}
+        <Card className="border-0 shadow-brand-lg rounded-3xl overflow-hidden">
+          <div className="bg-neutral-200 h-64 flex items-center justify-center relative">
+            <div className="text-center">
+              <Navigation className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
+              <p className="text-neutral-500 font-semibold text-sm">Live Map</p>
+              {trackingPoint && (
+                <p className="text-xs text-neutral-400 mt-1">
+                  Collector at {trackingPoint.latitude.toFixed(4)}, {trackingPoint.longitude.toFixed(4)}
+                </p>
+              )}
+            </div>
+            {isActive && (
+              <div className="absolute bottom-3 left-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-sm font-bold text-neutral-900">Live</span>
+                  </div>
+                  {etaMinutes && <span className="text-sm font-bold text-[#145C25]">ETA: {etaMinutes} min</span>}
                 </div>
               </div>
-            </Card>
+            )}
+          </div>
+        </Card>
 
-            <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl bg-gradient-to-r from-[#145C25] to-[#1A7A30] text-white">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-200 text-sm">Estimated Arrival</p>
-                    <p className="text-3xl font-extrabold">{eta} min</p>
+        {/* Status Timeline */}
+        <Card className="border-0 shadow-brand-lg rounded-2xl">
+          <CardContent className="p-4">
+            <h3 className="font-bold text-neutral-900 mb-3">Status</h3>
+            <div className="space-y-0">
+              {STATUS_STEPS.map((s, i) => {
+                const done = i <= statusIdx;
+                const current = i === statusIdx;
+                return (
+                  <div key={s} className="flex items-start gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${done ? "bg-[#145C25]" : "bg-neutral-200"}`}>
+                        {done ? <CheckCircle2 className="w-4 h-4 text-white" /> : <div className="w-2 h-2 rounded-full bg-neutral-400" />}
+                      </div>
+                      {i < STATUS_STEPS.length - 1 && <div className={`w-0.5 h-6 ${done ? "bg-[#145C25]" : "bg-neutral-200"}`} />}
+                    </div>
+                    <div className={`pb-4 ${current ? "" : ""}`}>
+                      <p className={`text-sm font-semibold ${done ? "text-neutral-900" : "text-neutral-400"}`}>{getStatusLabel(s)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-green-200 text-sm">Status</p>
-                    <p className="text-xl font-bold capitalize">{activePickup.status.replace("_", " ")}</p>
-                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pickup Details */}
+        <Card className="border-0 shadow-brand-lg rounded-2xl">
+          <CardContent className="p-4 space-y-2">
+            <h3 className="font-bold text-neutral-900">Pickup Details</h3>
+            <div className="flex justify-between text-sm"><span className="text-neutral-500">Code</span><span className="font-bold font-mono">{pickup.pickup_code as string}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-neutral-500">Address</span><span className="font-semibold text-right max-w-[60%]">{pickup.pickup_address as string}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-neutral-500">Weight</span><span className="font-semibold">{pickup.estimated_weight_kg as number}kg</span></div>
+            <div className="flex justify-between text-sm"><span className="text-neutral-500">Total</span><span className="font-bold text-[#145C25]">{formatNaira((pickup.final_total_ngn as number) || 0)}</span></div>
+          </CardContent>
+        </Card>
+
+        {/* Collector Info */}
+        {assignment && (
+          <Card className="border-0 shadow-brand-lg rounded-2xl">
+            <CardContent className="p-4">
+              <h3 className="font-bold text-neutral-900 mb-3">Collector</h3>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <Truck className="w-6 h-6 text-[#145C25]" />
                 </div>
-                <Progress value={Math.min(95, Math.max(10, 100 - eta * 5))} className="h-1.5 mt-3 rounded-full bg-white/20 [&>div]:bg-amber-400" />
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-4 mb-4">
-                  <Avatar className="w-14 h-14 ring-2 ring-green-100">
-                    <AvatarFallback className="bg-blue-100 text-blue-600 font-bold text-lg">
-                      {activePickup.collector_name.split(" ").map((name) => name[0]).join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-neutral-900">{activePickup.collector_name}</h3>
-                      <Badge className="bg-green-100 text-[#145C25] text-xs rounded-full">
-                        <Shield className="w-3 h-3 mr-1" /> Verified
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm text-amber-500">
-                      <Star className="w-3.5 h-3.5 fill-amber-400" />
-                      <span className="font-semibold">{data?.stats?.rating?.toFixed(1) ?? "4.8"}</span>
-                      <span className="text-neutral-400">collector rating</span>
-                    </div>
+                <div className="flex-1">
+                  <p className="font-bold text-neutral-900">{(pickup.collector as Record<string, unknown>)?.full_name as string || "Assigned Collector"}</p>
+                  <div className="flex items-center gap-1 text-amber-500 text-sm">
+                    <Star className="w-3 h-3 fill-current" /> 4.8
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50">
-                    <Phone className="w-4 h-4 mr-2" /> Call
-                  </Button>
-                  <Button variant="outline" className="flex-1 rounded-xl border-green-200 text-[#145C25] hover:bg-green-50">
-                    <MessageCircle className="w-4 h-4 mr-2" /> Chat
-                  </Button>
+                  <button className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-[#145C25]" />
+                  </button>
+                  <button className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <MessageCircle className="w-5 h-5 text-[#145C25]" />
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
-              <CardContent className="p-5 space-y-3">
-                <h3 className="font-bold text-neutral-900">Pickup Details</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-neutral-600">
-                    <MapPin className="w-4 h-4 text-neutral-400" />
-                    {activePickup.address}
-                  </div>
-                  <div className="flex items-center gap-2 text-neutral-600">
-                    <Navigation className="w-4 h-4 text-neutral-400" />
-                    {activePickup.waste_type} - {formatWeight(Number(activePickup.weight_kg))}
-                  </div>
-                  <div className="flex items-center gap-2 text-neutral-600">
-                    <Clock className="w-4 h-4 text-neutral-400" />
-                    Scheduled: {activePickup.schedule_window}
-                  </div>
-                </div>
-                <div className="p-3 bg-neutral-50 rounded-xl text-center">
-                  <p className="text-xs text-neutral-500">Pickup Code</p>
-                  <p className="text-2xl font-black text-[#145C25] tracking-widest">{activePickup.pickup_code}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </main>
     </div>

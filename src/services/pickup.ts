@@ -1,8 +1,8 @@
 /**
  * Tydigo Pickup Service
  *
- * Handles creating, reading, and updating pickup requests.
- * Uses Supabase when available, falls back to mock API.
+ * Full pickup lifecycle: create, read, update, status events,
+ * multi-item support, image uploads, and tracking.
  */
 
 import { supabase, isSupabaseAvailable, generatePickupCode } from "@/lib/supabase";
@@ -25,6 +25,12 @@ export type PickupDraftInput = {
   paymentMethod: "card" | "ecopoints" | "transfer";
 };
 
+export type PickupItemInput = {
+  wasteCategoryId: string;
+  estimatedWeightKg: number;
+  notes?: string;
+};
+
 export type CreatedPickup = {
   id: string;
   pickupCode: string;
@@ -44,7 +50,6 @@ export async function createPickup(
   user: AuthUser,
   draft: PickupDraftInput,
 ): Promise<CreatedPickup> {
-  // Calculate pricing
   const pricing = calculatePrice({
     weightKg: draft.estimatedWeightKg,
     wasteType: draft.wasteType,
@@ -54,7 +59,6 @@ export async function createPickup(
   const pickupCode = generatePickupCode();
 
   if (isSupabaseAvailable() && supabase) {
-    // Get profile ID
     const { data: profile } = await supabase
       .from("profiles")
       .select("id")
@@ -64,11 +68,8 @@ export async function createPickup(
     const profileId = profile?.id || user.id;
     const now = new Date().toISOString();
 
-    // Map waste type for DB
     const dbWasteType = mapWasteTypeToDb(draft.wasteType);
-    const dbStatus = draft.paymentMethod === "transfer"
-      ? "requested"
-      : "requested";
+    const dbStatus = "requested";
     const paymentStatus = draft.paymentMethod === "transfer" ? "pay_on_pickup" : "pending";
 
     const { data: createdPickup, error } = await supabase.from("pickup_requests").insert({
@@ -105,8 +106,8 @@ export async function createPickup(
       created_at: now,
     });
 
-    // If EcoPoints were applied, create redemption transaction
-    if (draft.ecopointsToApply > 0 && pricing.ecopointsDiscountNgn > 0 && supabase) {
+    // Handle EcoPoints redemption
+    if (draft.ecopointsToApply > 0 && pricing.ecopointsDiscountNgn > 0) {
       await supabase.from("ecopoint_transactions").insert({
         profile_id: profileId,
         pickup_id: dbPickupId,
@@ -115,7 +116,6 @@ export async function createPickup(
         status: "pending",
       });
 
-      // Update profile ecopoints balance by reading current + subtracting
       const { data: currentProfile } = await supabase
         .from("profiles")
         .select("ecopoints")
@@ -145,7 +145,6 @@ export async function createPickup(
     };
   }
 
-  // Fallback to mock API
   const { pickup } = await mockApi.createPickup({
     wasteType: draft.wasteType,
     weightKg: draft.estimatedWeightKg,
@@ -166,6 +165,28 @@ export async function createPickup(
     finalTotalNgn: pickup.price_ngn,
     createdAt: pickup.created_at,
   };
+}
+
+// ─── Multi-Item Pickup ────────────────────────────────────────
+
+export async function createPickupWithItems(
+  user: AuthUser,
+  draft: PickupDraftInput,
+  items: PickupItemInput[],
+): Promise<CreatedPickup> {
+  const result = await createPickup(user, draft);
+
+  if (isSupabaseAvailable() && supabase && items.length > 0) {
+    const inserts = items.map((item) => ({
+      pickup_request_id: result.id,
+      waste_category_id: item.wasteCategoryId,
+      estimated_weight_kg: item.estimatedWeightKg,
+      notes: item.notes || null,
+    }));
+    await supabase.from("pickup_items").insert(inserts);
+  }
+
+  return result;
 }
 
 // ─── Get Pickups ──────────────────────────────────────────────
@@ -205,6 +226,63 @@ export async function getActivePickup(userId: string): Promise<Pickup | null> {
   return null;
 }
 
+export async function getPickupById(pickupId: string): Promise<Record<string, unknown> | null> {
+  if (!isSupabaseAvailable() || !supabase) return null;
+
+  const { data } = await supabase
+    .from("pickup_requests")
+    .select(`
+      *,
+      items:pickup_items(*, waste_category:waste_category_id(name, icon)),
+      images:pickup_images(*),
+      assignment:collector_assignments(*),
+      receipt:digital_receipts(*)
+    `)
+    .eq("id", pickupId)
+    .maybeSingle();
+
+  return data;
+}
+
+// ─── Status Updates ───────────────────────────────────────────
+
+export async function updatePickupStatus(
+  pickupId: string,
+  newStatus: string,
+  notes?: string,
+): Promise<void> {
+  if (!isSupabaseAvailable() || !supabase) return;
+
+  const now = new Date().toISOString();
+
+  // Get current status
+  const { data: current } = await supabase
+    .from("pickup_requests")
+    .select("status")
+    .eq("id", pickupId)
+    .maybeSingle();
+
+  const fromStatus = (current as Record<string, unknown> | null)?.status || null;
+
+  // Update pickup
+  const updates: Record<string, unknown> = { status: newStatus, updated_at: now };
+
+  if (newStatus === "collector_arrived") updates.collector_arrived_at = now;
+  if (newStatus === "completed") updates.completed_at = now;
+  if (newStatus === "cancelled") updates.cancelled_at = now;
+
+  await supabase.from("pickup_requests").update(updates).eq("id", pickupId);
+
+  // Record status event
+  await supabase.from("pickup_status_events").insert({
+    pickup_id: pickupId,
+    from_status: fromStatus,
+    to_status: newStatus,
+    notes: notes || null,
+    created_at: now,
+  });
+}
+
 // ─── Upload Pickup Photo ──────────────────────────────────────
 
 export async function uploadPickupPhoto(
@@ -215,22 +293,25 @@ export async function uploadPickupPhoto(
   if (isSupabaseAvailable() && supabase) {
     const fileName = `${userId}/${pickupId}/${Date.now()}-${file.name}`;
     const { data, error } = await supabase.storage
-      .from("waste-photos")
-      .upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+      .from("pickup-images")
+      .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
     if (error) throw new Error(error.message);
 
     const { data: urlData } = supabase.storage
-      .from("waste-photos")
+      .from("pickup-images")
       .getPublicUrl(data.path);
+
+    // Record in pickup_images
+    await supabase.from("pickup_images").insert({
+      pickup_request_id: pickupId,
+      image_url: urlData.publicUrl,
+      storage_path: data.path,
+    });
 
     return urlData.publicUrl;
   }
 
-  // Mock fallback — create a local object URL
   return URL.createObjectURL(file);
 }
 
@@ -238,14 +319,9 @@ export async function uploadPickupPhoto(
 
 function mapWasteTypeToDb(wasteType: WasteType): string {
   const mapping: Record<string, string> = {
-    plastic: "plastic",
-    organic: "organic",
-    general_waste: "general_waste",
-    paper_cardboard: "paper_cardboard",
-    metal_cans: "metal_cans",
-    glass: "glass",
-    e_waste: "e_waste",
-    mixed_waste: "mixed_waste",
+    plastic: "plastic", organic: "organic", general_waste: "general_waste",
+    paper_cardboard: "paper_cardboard", metal_cans: "metal_cans",
+    glass: "glass", e_waste: "e_waste", mixed_waste: "mixed_waste",
   };
   return mapping[wasteType] || "general_waste";
 }
