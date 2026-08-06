@@ -11,8 +11,11 @@ import type { UserRole } from "@/lib/api";
 
 import Index from "./pages/Index";
 import LoginPage from "./pages/Login";
+import SignupPage from "./pages/Signup";
 import OtpPage from "./pages/OtpPage";
 import RoleSelectionPage from "./pages/RoleSelection";
+import ForgotPasswordPage from "./pages/ForgotPassword";
+import ResetPasswordPage from "./pages/ResetPassword";
 
 import HouseholdDashboardPage from "./pages/HouseholdDashboard";
 import RequestPickupPage from "./pages/RequestPickup";
@@ -65,7 +68,10 @@ const App = () => (
             {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
             <Route path="/otp" element={<OtpPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/role-selection" element={protectedPage(<RoleSelectionPage />)} />
             <Route path="/status" element={<StatusPage />} />
 
