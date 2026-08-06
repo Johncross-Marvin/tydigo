@@ -1,4 +1,16 @@
-export type UserRole = "household" | "customer" | "collector" | "business" | "partner" | "admin";
+export type UserRole =
+  | "customer"
+  | "household"
+  | "estate"
+  | "business"
+  | "collector"
+  | "recycler"
+  | "organic_partner"
+  | "fleet"
+  | "corporate"
+  | "government"
+  | "partner"
+  | "admin";
 
 export type AuthUser = {
   id: string;
@@ -62,10 +74,16 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? ""
 const SESSION_TOKEN_KEY = "tydigo_session_token";
 
 export const roleHomePath: Record<UserRole, string> = {
-  household: "/household/dashboard",
   customer: "/household/dashboard",
-  collector: "/collector/dashboard",
+  household: "/household/dashboard",
+  estate: "/business/dashboard",
   business: "/business/dashboard",
+  collector: "/collector/dashboard",
+  recycler: "/partner/dashboard",
+  organic_partner: "/partner/dashboard",
+  fleet: "/collector/dashboard",
+  corporate: "/business/dashboard",
+  government: "/admin/dashboard",
   partner: "/partner/dashboard",
   admin: "/admin/dashboard",
 };

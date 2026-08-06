@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { setSessionToken, clearSessionToken, roleHomePath, type AuthUser, type UserRole } from "@/lib/api";
-import { getCurrentUser, signOut, verifyOtp, updateProfile } from "@/services/auth";
+import { getCurrentUser, signOut, verifyOtp, updateProfile, signIn } from "@/services/auth";
 
 // Re-export for convenience
 export { roleHomePath };
@@ -10,6 +10,7 @@ type AuthContextValue = {
   loading: boolean;
   refreshUser: () => Promise<void>;
   verifySession: (phone: string, code: string, profileMeta?: { name?: string; role?: UserRole }) => Promise<AuthUser>;
+  signInWithPassword: (identifier: string, password: string) => Promise<AuthUser>;
   updateRole: (role: UserRole) => Promise<AuthUser>;
   logout: () => Promise<void>;
 };
@@ -20,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const nextUser = await getCurrentUser();
       setUser(nextUser);
@@ -28,11 +29,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearSessionToken();
       setUser(null);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshUser().finally(() => setLoading(false));
-  }, []);
+  }, [refreshUser]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -44,6 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (token) setSessionToken(token);
         setUser(nextUser);
         return nextUser;
+      },
+      signInWithPassword: async (identifier: string, password: string) => {
+        const result = await signIn({ identifier, password });
+        setUser(result.user);
+        return result.user;
       },
       updateRole: async (role) => {
         if (!user) throw new Error("Not authenticated");
@@ -57,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       },
     }),
-    [user, loading],
+    [user, loading, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
