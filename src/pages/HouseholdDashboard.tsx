@@ -3,13 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import {
   Recycle,
   MapPin,
-  Clock,
+  Truck,
   Star,
   Award,
   History,
@@ -19,8 +17,6 @@ import {
   Bell,
   Plus,
   ChevronRight,
-  TrendingUp,
-  Truck,
   Gift,
   Target,
   Home,
@@ -29,21 +25,26 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api, formatWeight } from "@/lib/api";
-
-const GOOGLE_DRIVE_IDS = {
-  dashboard: "1b5h3vD3HPb_4iPqCUZSRqBPXC5sCL0_k",
-};
-
-const gd = (id: string) => `https://drive.google.com/uc?export=view&id=${id}`;
+import { ActivePickupCard } from "@/components/household/ActivePickupCard";
+import { QuickRequestForm } from "@/components/household/QuickRequestForm";
+import { PickupHistory } from "@/components/household/PickupHistory";
+import { EcoPointsCard } from "@/components/household/EcoPointsCard";
+import { ImpactStats } from "@/components/household/ImpactStats";
+import type { WasteType } from "@/services/pricing";
 
 const HouseholdDashboardPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   const { data: dashboard } = useQuery({
     queryKey: ["dashboard"],
     queryFn: api.dashboard,
   });
+
+  const handleQuickRequest = (wasteType: WasteType) => {
+    navigate(`/household/request-pickup?wasteType=${wasteType}`);
+  };
 
   const menuItems = [
     { icon: Home, label: "Dashboard", route: "/household/dashboard", active: true },
@@ -99,7 +100,7 @@ const HouseholdDashboardPage = () => {
         <div className="p-4 border-t border-green-700/50">
           <button
             onClick={() => void logout().then(() => navigate("/login"))}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-green-300 hover:bg-white/10 hover:text-white transition-all"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-green-300 hover:bg-white/10 hover:text-white transition-all w-full"
           >
             <LogOut className="w-5 h-5" />
             Sign Out
@@ -155,7 +156,9 @@ const HouseholdDashboardPage = () => {
               <Bell className="w-5 h-5 text-neutral-500" />
             </Button>
             <Avatar className="w-9 h-9 ring-2 ring-green-100">
-              <AvatarFallback className="bg-green-100 text-[#145C25] font-bold">AB</AvatarFallback>
+              <AvatarFallback className="bg-green-100 text-[#145C25] font-bold">
+                {user?.name?.charAt(0) ?? "U"}
+              </AvatarFallback>
             </Avatar>
           </div>
         </header>
@@ -182,7 +185,7 @@ const HouseholdDashboardPage = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { icon: Award, label: "EcoPoints", value: (dashboard?.stats?.ecopoints ?? user?.ecopoints ?? 0).toLocaleString(), sub: "Current balance", color: "bg-amber-100 text-amber-600" },
-              { icon: Truck, label: "Total Pickups", value: String(dashboard?.stats?.totalPickups ?? 0), sub: "Stored pickups", color: "bg-blue-100 text-blue-600" },
+              { icon: Truck, label: "Total Pickups", value: String(dashboard?.stats?.totalPickups ?? 0), sub: "Completed pickups", color: "bg-blue-100 text-blue-600" },
               { icon: Recycle, label: "Waste Recycled", value: formatWeight(dashboard?.stats?.wasteRecycledKg ?? 0), sub: "From your records", color: "bg-green-100 text-[#145C25]" },
               { icon: Star, label: "Rating", value: String(dashboard?.stats?.rating ?? user?.rating ?? 5), sub: "Collector feedback", color: "bg-purple-100 text-purple-600" },
             ].map((stat, i) => (
@@ -220,124 +223,26 @@ const HouseholdDashboardPage = () => {
             </div>
           </div>
 
-          {/* Active Pickup + Challenges */}
+          {/* Active Pickup + EcoPoints */}
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Active Pickup */}
-            <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-neutral-900">Active Pickup</h3>
-                  <Badge className="bg-blue-100 text-blue-600 rounded-full">In Progress</Badge>
-                </div>
-                {dashboard?.activePickup ? (
-                  <>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                        <Truck className="w-6 h-6 text-[#145C25]" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-neutral-900">{dashboard.activePickup.collector_name}</p>
-                        <p className="text-sm text-neutral-500 capitalize">{dashboard.activePickup.status.replace("_", " ")}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-sm text-neutral-600">
-                        <MapPin className="w-4 h-4 text-neutral-400" />
-                        {dashboard.activePickup.address}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-neutral-600">
-                        <Clock className="w-4 h-4 text-neutral-400" />
-                        {dashboard.activePickup.schedule_window}
-                      </div>
-                    </div>
-                    <Progress value={dashboard.activePickup.payment_status === "paid" ? 70 : 35} className="h-2 rounded-full bg-neutral-100 [&>div]:bg-[#145C25]" />
-                    <div className="flex gap-2 mt-4">
-                      <Link to="/household/tracking" className="flex-1">
-                        <Button variant="outline" className="w-full rounded-xl border-[#145C25] text-[#145C25]">
-                          Track Live
-                        </Button>
-                      </Link>
-                      <Link to="/household/payment" className="flex-1">
-                        <Button className="w-full rounded-xl bg-[#145C25] hover:bg-[#0F4A1E] text-white">Pay</Button>
-                      </Link>
-                    </div>
-                  </>
-                ) : (
-                  <div className="rounded-2xl bg-neutral-50 p-5 text-center">
-                    <p className="font-semibold text-neutral-700">No active pickup yet.</p>
-                    <p className="text-sm text-neutral-500 mt-1">Create your first pickup request to start tracking.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Challenges */}
-            <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-neutral-900">Active Challenges</h3>
-                  <Link to="/household/challenges">
-                    <Button variant="ghost" size="sm" className="text-[#145C25] text-xs">
-                      View All <ChevronRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {(dashboard?.challenges ?? [
-                    { title: "Sort 10kg Plastic", progress: 0, points: 500 },
-                    { title: "5 Pickups This Month", progress: 0, points: 1000 },
-                    { title: "Refer a Neighbor", progress: 0, points: 2000 },
-                  ]).map((challenge, i) => (
-                    <div key={i} className="space-y-1.5">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium text-neutral-700">{challenge.title}</span>
-                        <span className="text-xs text-[#145C25] font-semibold">+{challenge.points.toLocaleString()} pts</span>
-                      </div>
-                      <Progress value={challenge.progress} className="h-1.5 rounded-full bg-neutral-100 [&>div]:bg-[#145C25]" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <ActivePickupCard pickup={dashboard?.activePickup} />
+            <EcoPointsCard
+              balance={dashboard?.stats?.ecopoints ?? user?.ecopoints ?? 0}
+              lifetime={(dashboard?.stats?.ecopoints ?? 0) + 500}
+            />
           </div>
 
-          {/* Recent Activity */}
-          <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-neutral-900">Recent Activity</h3>
-                <Link to="/household/history">
-                  <Button variant="ghost" size="sm" className="text-[#145C25] text-xs">
-                    View All <ChevronRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="space-y-4">
-                {(dashboard?.recentPickups?.length
-                  ? dashboard.recentPickups.map((pickup) => ({
-                      icon: Truck,
-                      title: pickup.pickup_code,
-                      desc: `${pickup.waste_type} - ${formatWeight(Number(pickup.weight_kg))}`,
-                      time: new Date(pickup.created_at).toLocaleDateString(),
-                      color: "bg-green-100 text-[#145C25]",
-                    }))
-                  : [
-                      { icon: Award, title: "Welcome Bonus", desc: "Your account is ready and saved.", time: "Today", color: "bg-amber-100 text-amber-600" },
-                    ]).map((activity, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl ${activity.color} flex items-center justify-center shrink-0`}>
-                      <activity.icon className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-neutral-900 text-sm">{activity.title}</p>
-                      <p className="text-sm text-neutral-500">{activity.desc}</p>
-                    </div>
-                    <span className="text-xs text-neutral-400 shrink-0">{activity.time}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Quick Request + Impact */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            <QuickRequestForm onRequest={handleQuickRequest} />
+            <ImpactStats
+              wasteRecycledKg={dashboard?.stats?.wasteRecycledKg ?? 0}
+              totalPickups={dashboard?.stats?.totalPickups ?? 0}
+            />
+          </div>
+
+          {/* Pickup History */}
+          <PickupHistory pickups={dashboard?.recentPickups ?? []} />
         </main>
       </div>
     </div>

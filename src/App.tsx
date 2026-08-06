@@ -3,9 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { AuthProvider } from "@/components/auth-provider";
 import { ProtectedRoute } from "@/components/protected-route";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ToastProvider } from "@/components/ui/toast-provider";
 import { InstallPromptBanner, OfflineBanner, UpdateAvailableBanner } from "@/components/pwa-banner";
 import type { UserRole } from "@/lib/api";
 
@@ -55,16 +57,28 @@ const COLLECTOR_ROLES: UserRole[] = ["collector", "fleet"];
 const PARTNER_ROLES: UserRole[] = ["partner", "recycler", "organic_partner"];
 const ADMIN_ROLES: UserRole[] = ["admin", "government"];
 
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="h-10 w-10 rounded-full border-4 border-green-100 border-t-[#145C25] animate-spin" />
+      <p className="text-sm text-neutral-500">Loading...</p>
+    </div>
+  </div>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <OfflineBanner />
-          <UpdateAvailableBanner />
-          <Routes>
+        <ToastProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <OfflineBanner />
+            <UpdateAvailableBanner />
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
             {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<LoginPage />} />
@@ -105,14 +119,17 @@ const App = () => (
             <Route path="/admin/batches" element={protectedPage(<AdminBatchesPage />, ADMIN_ROLES)} />
             <Route path="/admin/impact" element={protectedPage(<AdminImpactPage />, ADMIN_ROLES)} />
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <InstallPromptBanner />
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+                </Suspense>
+              </ErrorBoundary>
+              <InstallPromptBanner />
+            </BrowserRouter>
+          </ToastProvider>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
 
 export default App;

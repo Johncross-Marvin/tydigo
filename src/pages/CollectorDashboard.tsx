@@ -1,103 +1,256 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ArrowLeft, Truck, MapPin, Clock, Star, DollarSign,
-  CheckCircle2, Navigation, Award, Bell,
+  ArrowLeft,
+  Truck,
+  Star,
+  Bell,
+  Menu,
+  X,
+  Recycle,
+  LogOut,
+  Home,
+  ClipboardList,
+  DollarSign,
+  User,
 } from "lucide-react";
-import { api, formatNaira, formatWeight } from "@/lib/api";
+import { api, formatNaira } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
+import { AvailableJobsFeed } from "@/components/collector/AvailableJobsFeed";
+import { ActiveJobWorkflow } from "@/components/collector/ActiveJobWorkflow";
+import { EarningsSummary } from "@/components/collector/EarningsSummary";
+import { useToast } from "@/components/ui/toast-provider";
+import type { CollectorJob } from "@/lib/api";
 
 const CollectorDashboardPage = () => {
-  const { user } = useAuth();
-  const { data, isLoading } = useQuery({
-    queryKey: ["pickups"],
-    queryFn: api.listPickups,
+  const { user, logout } = useAuth();
+  const { success, error: toastError } = useToast();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("available");
+
+  const { data: jobsData, isLoading: jobsLoading, refetch: refetchJobs } = useQuery({
+    queryKey: ["collector-jobs"],
+    queryFn: api.listAvailableJobs,
   });
-  const jobs = data?.pickups ?? [];
-  const openJobs = jobs.filter((job) => job.status !== "completed");
-  const completed = jobs.filter((job) => job.status === "completed").length;
-  const potentialEarnings = openJobs.reduce((total, job) => total + Number(job.price_ngn), 0);
+
+  const { data: myJobsData, refetch: refetchMyJobs } = useQuery({
+    queryKey: ["my-jobs"],
+    queryFn: api.getMyJobs,
+  });
+
+  const availableJobs: CollectorJob[] = jobsData?.jobs ?? [];
+  const myJobs: CollectorJob[] = myJobsData?.jobs ?? [];
+  const activeJob = myJobs.find(
+    (j) => !["completed", "cancelled"].includes(j.status),
+  );
+  const completedJobs = myJobs.filter((j) => j.status === "completed").length;
+
+  const todayEarnings = myJobs
+    .filter((j) => j.status === "completed")
+    .reduce((sum, j) => sum + j.price_ngn, 0);
+  const weekEarnings = todayEarnings; // Simplified — would be filtered by date range
+
+  const handleAcceptJob = async (jobId: string) => {
+    try {
+      await api.acceptJob(jobId);
+      success("Job Accepted", "You've been assigned to this pickup.");
+      refetchJobs();
+      refetchMyJobs();
+      setActiveTab("active");
+    } catch (err) {
+      toastError("Failed to accept job", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
+
+  const handleNavigate = (job: CollectorJob) => {
+    // Open maps or navigate to tracking
+    window.open(`https://maps.google.com/?q=${encodeURIComponent(job.address)}`, "_blank");
+  };
+
+  const handleUpdateStatus = async (jobId: string, status: string) => {
+    try {
+      await api.updateJobProgress(jobId, status);
+      success("Status Updated", `Job status changed to ${status.replace(/_/g, " ")}.`);
+      refetchMyJobs();
+    } catch (err) {
+      toastError("Update failed", err instanceof Error ? err.message : "Please try again.");
+    }
+  };
+
+  const menuItems = [
+    { icon: Home, label: "Dashboard", active: true },
+    { icon: ClipboardList, label: "My Jobs", active: false },
+    { icon: DollarSign, label: "Earnings", active: false },
+    { icon: User, label: "Profile", active: false },
+  ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
-        <Link to="/role-selection" className="p-1.5 -ml-1.5 rounded-lg hover:bg-neutral-100">
-          <ArrowLeft className="w-5 h-5 text-neutral-600" />
-        </Link>
-        <h1 className="font-bold text-neutral-900">Collector Dashboard</h1>
-        <Button variant="ghost" size="icon" className="ml-auto rounded-xl">
-          <Bell className="w-5 h-5 text-neutral-500" />
-        </Button>
-      </header>
-
-      <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
-        <Card className="border-0 shadow-brand-lg rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white">
-          <CardContent className="p-6">
-            <p className="text-blue-200 text-sm">Available Route Value</p>
-            <p className="text-4xl font-black tracking-tight mt-1">{formatNaira(potentialEarnings)}</p>
-            <div className="flex gap-4 mt-3 text-sm text-blue-200">
-              <span>{openJobs.length} open jobs</span>
-              <span>{completed} completed</span>
+    <div className="min-h-screen bg-neutral-50 flex">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex flex-col w-64 bg-[#0A2F14] text-white fixed inset-y-0 left-0 z-30">
+        <div className="p-5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+              <Recycle className="w-5 h-5 text-amber-400" />
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: Star, label: "Rating", value: (user?.rating ?? 5).toFixed(1) },
-            { icon: CheckCircle2, label: "Completed", value: String(completed) },
-            { icon: Award, label: "Open Value", value: formatNaira(potentialEarnings) },
-          ].map((stat) => (
-            <Card key={stat.label} className="border-0 shadow-sm rounded-2xl">
-              <CardContent className="p-4 text-center">
-                <stat.icon className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                <p className="text-lg font-extrabold text-neutral-900">{stat.value}</p>
-                <p className="text-xs text-neutral-500">{stat.label}</p>
-              </CardContent>
-            </Card>
-          ))}
+            <span className="text-xl font-bold">
+              Ty<span className="text-amber-400">digo</span>
+            </span>
+          </Link>
         </div>
 
-        <div>
-          <h2 className="font-bold text-neutral-900 mb-3">Open Pickup Jobs</h2>
-          <div className="space-y-3">
-            {isLoading && <div className="rounded-2xl bg-white p-6 text-center text-neutral-500">Loading saved pickup jobs...</div>}
-            {!isLoading && openJobs.length === 0 && (
-              <Card className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl">
-                <CardContent className="p-6 text-center text-sm text-neutral-500">
-                  No customer pickup jobs are available yet.
-                </CardContent>
-              </Card>
-            )}
-            {openJobs.map((job) => (
-              <Card key={job.id} className="border-0 shadow-sm shadow-neutral-200/20 rounded-2xl">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge className="bg-blue-100 text-blue-600 rounded-full text-xs">{job.pickup_code}</Badge>
-                    <span className="text-sm font-bold text-[#145C25]">{formatNaira(job.price_ngn)}</span>
-                  </div>
-                  <div className="space-y-1.5 text-sm text-neutral-600 mb-3">
-                    <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{job.address}</div>
-                    <div className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" />{job.waste_type} - {formatWeight(Number(job.weight_kg))}</div>
-                    <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Window: {job.schedule_window}</div>
-                  </div>
-                  <Progress value={job.payment_status === "paid" ? 70 : 35} className="mb-3 h-1.5 rounded-full bg-neutral-100 [&>div]:bg-blue-600" />
-                  <div className="flex gap-2">
-                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm">
-                      <Navigation className="w-4 h-4 mr-1.5" /> Navigate
-                    </Button>
-                    <Button variant="outline" className="rounded-xl text-sm">Accept</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-left ${
+                item.active
+                  ? "bg-[#145C25] text-white shadow-lg"
+                  : "text-green-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-green-700/50">
+          <button
+            onClick={() => void logout()}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-green-300 hover:bg-white/10 hover:text-white transition-all w-full"
+          >
+            <LogOut className="w-5 h-5" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile sidebar */}
+      {mobileSidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-[#0A2F14] text-white p-5 overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-lg font-bold">Tydigo</span>
+              <button onClick={() => setMobileSidebarOpen(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="space-y-1">
+              {menuItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium w-full text-left ${
+                    item.active ? "bg-[#145C25] text-white" : "text-green-200 hover:bg-white/10"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
-      </main>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-64">
+        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 sm:px-6 h-14 flex items-center gap-4">
+          <button className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-neutral-100" onClick={() => setMobileSidebarOpen(true)}>
+            <Menu className="w-5 h-5 text-neutral-700" />
+          </button>
+          <h1 className="font-bold text-neutral-900">Collector Dashboard</h1>
+          <div className="flex-1" />
+          <Button variant="ghost" size="icon" className="rounded-xl">
+            <Bell className="w-5 h-5 text-neutral-500" />
+          </Button>
+          <Avatar className="w-8 h-8 ring-2 ring-blue-100">
+            <AvatarFallback className="bg-blue-100 text-blue-600 font-bold text-sm">
+              {user?.name?.charAt(0) ?? "C"}
+            </AvatarFallback>
+          </Avatar>
+        </header>
+
+        <main className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
+          {/* Earnings Card */}
+          <Card className="border-0 shadow-brand-lg rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white">
+            <CardContent className="p-6">
+              <p className="text-blue-200 text-sm">Available Route Value</p>
+              <p className="text-4xl font-black tracking-tight mt-1">
+                {formatNaira(availableJobs.reduce((sum, j) => sum + j.price_ngn, 0))}
+              </p>
+              <div className="flex gap-4 mt-3 text-sm text-blue-200">
+                <span>{availableJobs.length} open jobs</span>
+                <span>{completedJobs} completed</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Earnings Summary */}
+          <EarningsSummary
+            todayEarnings={todayEarnings}
+            weekEarnings={weekEarnings}
+            completedJobs={completedJobs}
+            rating={user?.rating ?? 5}
+          />
+
+          {/* Tabs: Available Jobs / Active Job */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2 rounded-xl bg-neutral-100 p-1">
+              <TabsTrigger value="available" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Available Jobs ({availableJobs.length})
+              </TabsTrigger>
+              <TabsTrigger value="active" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                Active Job {activeJob ? "✓" : ""}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="available" className="mt-4">
+              <AvailableJobsFeed
+                jobs={availableJobs}
+                onAccept={handleAcceptJob}
+                onNavigate={handleNavigate}
+                loading={jobsLoading}
+              />
+            </TabsContent>
+
+            <TabsContent value="active" className="mt-4">
+              {activeJob ? (
+                <ActiveJobWorkflow
+                  job={activeJob}
+                  onUpdateStatus={handleUpdateStatus}
+                />
+              ) : (
+                <Card className="border-0 shadow-sm rounded-2xl">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                      <Truck className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <h3 className="font-bold text-neutral-800 mb-1">No Active Job</h3>
+                    <p className="text-sm text-neutral-500 mb-4">
+                      Accept a job from the Available Jobs tab to get started.
+                    </p>
+                    <Button
+                      onClick={() => setActiveTab("available")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                    >
+                      Browse Available Jobs
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        </main>
+      </div>
     </div>
   );
 };

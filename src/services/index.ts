@@ -76,3 +76,42 @@ export {
   getSignedUrl,
   BUCKETS,
 } from "./storage";
+
+export {
+  getNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+  createNotification,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  subscribeToNotifications,
+} from "./notification";
+export type { Notification, NotificationPreferences } from "./notification";
+
+export {
+  uploadKycDocument,
+  getKycStatus,
+  listPendingKyc,
+  reviewKyc,
+  getKycStats,
+} from "./kyc";
+export type { KycDocument, KycStatus } from "./kyc";
+
+export {
+  getPlatformKpis,
+  listUsers,
+  suspendUser,
+  getUserDetails,
+  getPricingConfigs,
+  updatePricingConfig,
+  createPricingConfig,
+  getEcopointsConfig,
+  updateEcopointsConfig,
+  getAuditLogs,
+  createAuditLog,
+  listBatches,
+  updateBatchStatus,
+  broadcastNotification,
+} from "./admin";
+export type { PlatformKpi, AdminUser, PricingConfig, AuditLog, WasteBatch } from "./admin";
