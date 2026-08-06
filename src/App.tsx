@@ -35,6 +35,13 @@ const CompletionPage = lazy(() => import("./pages/CompletionPage"));
 const ChallengesPage = lazy(() => import("./pages/ChallengesPage"));
 const RedeemPage = lazy(() => import("./pages/RedeemPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const ProfileDashboardPage = lazy(() => import("./pages/ProfileDashboard"));
+const EditProfilePage = lazy(() => import("./pages/EditProfile"));
+const AddressManagementPage = lazy(() => import("./pages/AddressManagement"));
+const BankAccountsPage = lazy(() => import("./pages/BankAccounts"));
+const EmergencyContactsPage = lazy(() => import("./pages/EmergencyContacts"));
+const PrivacySettingsPage = lazy(() => import("./pages/PrivacySettings"));
+const ActivityHistoryPage = lazy(() => import("./pages/ActivityHistory"));
 const DeviceManagementPage = lazy(() => import("./pages/DeviceManagement"));
 const SecurityLogsPage = lazy(() => import("./pages/SecurityLogs"));
 const ChangePhonePage = lazy(() => import("./pages/ChangePhone"));
@@ -134,7 +141,13 @@ const App = () => (
                   <Route path="/household/completion" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CompletionPage /></Suspense>, HOUSEHOLD_ROLES)} />
                   <Route path="/household/challenges" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ChallengesPage /></Suspense>, HOUSEHOLD_ROLES)} />
                   <Route path="/household/redeem" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RedeemPage /></Suspense>, HOUSEHOLD_ROLES)} />
-                  <Route path="/household/profile" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ProfilePage /></Suspense>)} />
+                  <Route path="/household/profile" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ProfileDashboardPage /></Suspense>)} />
+                  <Route path="/household/profile/edit" element={protectedPage(<Suspense fallback={<LoadingFallback />}><EditProfilePage /></Suspense>)} />
+                  <Route path="/household/profile/addresses" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AddressManagementPage /></Suspense>)} />
+                  <Route path="/household/profile/bank" element={protectedPage(<Suspense fallback={<LoadingFallback />}><BankAccountsPage /></Suspense>)} />
+                  <Route path="/household/profile/emergency" element={protectedPage(<Suspense fallback={<LoadingFallback />}><EmergencyContactsPage /></Suspense>)} />
+                  <Route path="/household/profile/settings" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PrivacySettingsPage /></Suspense>)} />
+                  <Route path="/household/profile/activity" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ActivityHistoryPage /></Suspense>)} />
                   <Route path="/household/devices" element={protectedPage(<Suspense fallback={<LoadingFallback />}><DeviceManagementPage /></Suspense>)} />
                   <Route path="/household/security" element={protectedPage(<Suspense fallback={<LoadingFallback />}><SecurityLogsPage /></Suspense>)} />
                   <Route path="/household/change-phone" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ChangePhonePage /></Suspense>)} />

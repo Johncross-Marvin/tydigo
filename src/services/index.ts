@@ -142,10 +142,14 @@ export {
   getProfile,
   getProfileById,
   updateProfile as updateProfileService,
+  uploadAvatar as uploadProfileAvatar,
+  deleteAvatar,
   createRoleProfile,
   mapProfileToUser,
+  syncProfileCompletion,
+  calculateProfileCompletion,
 } from "./profile";
-export type { Profile } from "./profile";
+export type { Profile, ProfileUpdate } from "./profile";
 
 export {
   getWallet,
@@ -180,7 +184,6 @@ export {
   getTutorials,
   markTooltipSeen,
   getTooltipsSeen,
-  calculateProfileCompletion,
 } from "./onboarding";
 export type {
   OnboardingJourney,
@@ -214,3 +217,48 @@ export {
   isOnline,
   onOnlineChange,
 } from "./offline";
+
+export {
+  getAddresses,
+  getAddress,
+  createAddress,
+  updateAddress,
+  deleteAddress,
+  setDefaultAddress,
+  getPickupLocations,
+  addPickupLocation,
+  toggleFavoritePickup,
+} from "./address";
+export type { Address, AddressInput, PickupLocation } from "./address";
+
+export {
+  getBankAccounts,
+  addBankAccount,
+  updateBankAccount,
+  deleteBankAccount,
+  setDefaultBankAccount,
+  verifyBankAccount,
+  NIGERIAN_BANKS,
+} from "./bank";
+export type { BankAccount, BankAccountInput } from "./bank";
+
+export {
+  getEmergencyContacts,
+  addEmergencyContact,
+  updateEmergencyContact,
+  deleteEmergencyContact,
+  RELATIONSHIP_OPTIONS,
+} from "./emergency";
+export type { EmergencyContact, EmergencyContactInput } from "./emergency";
+
+export {
+  getPrivacySettings,
+  updatePrivacySettings,
+} from "./privacy";
+export type { PrivacySettings, PrivacySettingsInput } from "./privacy";
+
+export {
+  getActivityLogs,
+  logActivity,
+} from "./activity";
+export type { ActivityLog } from "./activity";
