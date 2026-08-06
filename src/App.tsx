@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { AuthProvider } from "@/components/auth-provider";
 import { ProtectedRoute } from "@/components/protected-route";
 import { InstallPromptBanner, OfflineBanner, UpdateAvailableBanner } from "@/components/pwa-banner";
+import type { UserRole } from "@/lib/api";
 
 import Index from "./pages/Index";
 import LoginPage from "./pages/Login";
@@ -40,7 +41,16 @@ import StatusPage from "./pages/StatusPage";
 
 const queryClient = new QueryClient();
 
-const protectedPage = (page: ReactNode) => <ProtectedRoute>{page}</ProtectedRoute>;
+const protectedPage = (page: ReactNode, roles?: UserRole[]) => (
+  <ProtectedRoute allowedRoles={roles}>{page}</ProtectedRoute>
+);
+
+// Role groups for access control
+const HOUSEHOLD_ROLES: UserRole[] = ["customer", "household"];
+const BUSINESS_ROLES: UserRole[] = ["business", "estate", "corporate"];
+const COLLECTOR_ROLES: UserRole[] = ["collector", "fleet"];
+const PARTNER_ROLES: UserRole[] = ["partner", "recycler", "organic_partner"];
+const ADMIN_ROLES: UserRole[] = ["admin", "government"];
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -59,35 +69,35 @@ const App = () => (
             <Route path="/role-selection" element={protectedPage(<RoleSelectionPage />)} />
             <Route path="/status" element={<StatusPage />} />
 
-            {/* Household */}
-            <Route path="/household/dashboard" element={protectedPage(<HouseholdDashboardPage />)} />
-            <Route path="/household/request-pickup" element={protectedPage(<RequestPickupPage />)} />
-            <Route path="/household/tracking" element={protectedPage(<TrackingPage />)} />
-            <Route path="/household/ecopoints" element={protectedPage(<EcoPointsPage />)} />
-            <Route path="/household/history" element={protectedPage(<HistoryPage />)} />
-            <Route path="/household/payment" element={protectedPage(<PaymentPage />)} />
-            <Route path="/household/completion" element={protectedPage(<CompletionPage />)} />
-            <Route path="/household/challenges" element={protectedPage(<ChallengesPage />)} />
-            <Route path="/household/redeem" element={protectedPage(<RedeemPage />)} />
+            {/* Household / Customer */}
+            <Route path="/household/dashboard" element={protectedPage(<HouseholdDashboardPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/request-pickup" element={protectedPage(<RequestPickupPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/tracking" element={protectedPage(<TrackingPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/ecopoints" element={protectedPage(<EcoPointsPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/history" element={protectedPage(<HistoryPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/payment" element={protectedPage(<PaymentPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/completion" element={protectedPage(<CompletionPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/challenges" element={protectedPage(<ChallengesPage />, HOUSEHOLD_ROLES)} />
+            <Route path="/household/redeem" element={protectedPage(<RedeemPage />, HOUSEHOLD_ROLES)} />
             <Route path="/household/profile" element={protectedPage(<ProfilePage />)} />
 
-            {/* Collector */}
-            <Route path="/collector/dashboard" element={protectedPage(<CollectorDashboardPage />)} />
+            {/* Collector / Fleet */}
+            <Route path="/collector/dashboard" element={protectedPage(<CollectorDashboardPage />, COLLECTOR_ROLES)} />
 
-            {/* Business */}
-            <Route path="/business/dashboard" element={protectedPage(<BusinessDashboardPage />)} />
+            {/* Business / Estate / Corporate */}
+            <Route path="/business/dashboard" element={protectedPage(<BusinessDashboardPage />, BUSINESS_ROLES)} />
 
-            {/* Partner */}
-            <Route path="/partner/dashboard" element={protectedPage(<PartnerDashboardPage />)} />
-            <Route path="/partner/request" element={protectedPage(<PartnerRequestPage />)} />
+            {/* Partner / Recycler / Organic Partner */}
+            <Route path="/partner/dashboard" element={protectedPage(<PartnerDashboardPage />, PARTNER_ROLES)} />
+            <Route path="/partner/request" element={protectedPage(<PartnerRequestPage />, PARTNER_ROLES)} />
 
-            {/* Admin */}
-            <Route path="/admin/dashboard" element={protectedPage(<AdminDashboardPage />)} />
-            <Route path="/admin/kyc" element={protectedPage(<AdminKycPage />)} />
-            <Route path="/admin/pricing" element={protectedPage(<AdminPricingPage />)} />
-            <Route path="/admin/ecopoints" element={protectedPage(<AdminEcoPointsPage />)} />
-            <Route path="/admin/batches" element={protectedPage(<AdminBatchesPage />)} />
-            <Route path="/admin/impact" element={protectedPage(<AdminImpactPage />)} />
+            {/* Admin / Government */}
+            <Route path="/admin/dashboard" element={protectedPage(<AdminDashboardPage />, ADMIN_ROLES)} />
+            <Route path="/admin/kyc" element={protectedPage(<AdminKycPage />, ADMIN_ROLES)} />
+            <Route path="/admin/pricing" element={protectedPage(<AdminPricingPage />, ADMIN_ROLES)} />
+            <Route path="/admin/ecopoints" element={protectedPage(<AdminEcoPointsPage />, ADMIN_ROLES)} />
+            <Route path="/admin/batches" element={protectedPage(<AdminBatchesPage />, ADMIN_ROLES)} />
+            <Route path="/admin/impact" element={protectedPage(<AdminImpactPage />, ADMIN_ROLES)} />
 
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
