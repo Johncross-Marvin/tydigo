@@ -1,7 +1,7 @@
 /**
  * Tydigo Profile Service
  *
- * Profile CRUD, role profile management, and identity operations.
+ * Profile CRUD, avatar upload, profile completion, role profile management.
  */
 
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
@@ -18,6 +18,8 @@ export type Profile = {
   account_type: string;
   avatar_url: string | null;
   bio: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
   default_city: string;
   default_state: string;
   country: string;
@@ -30,32 +32,33 @@ export type Profile = {
   rating: number;
   total_pickups: number;
   total_kg_recycled: number;
+  profile_completion: number;
   last_login: string | null;
   created_at: string;
   updated_at: string;
 };
 
+export type ProfileUpdate = Partial<Pick<Profile, "full_name" | "bio" | "date_of_birth" | "gender" | "language" | "timezone" | "username">>;
+
+// ─── CRUD ──────────────────────────────────────────────────
+
 export async function getProfile(authUserId: string): Promise<Profile | null> {
   if (!isSupabaseAvailable() || !supabase) return null;
-
   const { data } = await supabase
     .from("profiles")
     .select("*")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
-
   return data as Profile | null;
 }
 
 export async function getProfileById(profileId: string): Promise<Profile | null> {
   if (!isSupabaseAvailable() || !supabase) return null;
-
   const { data } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", profileId)
     .maybeSingle();
-
   return data as Profile | null;
 }
 
@@ -64,16 +67,96 @@ export async function updateProfile(
   updates: Partial<Profile>,
 ): Promise<Profile | null> {
   if (!isSupabaseAvailable() || !supabase) return null;
-
   const { data } = await supabase
     .from("profiles")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("auth_user_id", authUserId)
     .select()
     .maybeSingle();
-
   return data as Profile | null;
 }
+
+// ─── Avatar ────────────────────────────────────────────────
+
+export async function uploadAvatar(profileId: string, file: File): Promise<string | null> {
+  if (!isSupabaseAvailable() || !supabase) return null;
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const fileName = `${profileId}/avatar-${Date.now()}.${ext}`;
+
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(fileName, file, { cacheControl: "3600", upsert: true });
+
+  if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+  const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(uploadData.path);
+  const avatarUrl = urlData.publicUrl;
+
+  await supabase
+    .from("profiles")
+    .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+
+  return avatarUrl;
+}
+
+export async function deleteAvatar(profileId: string): Promise<void> {
+  if (!isSupabaseAvailable() || !supabase) return;
+  // List and delete existing avatars
+  const { data: files } = await supabase.storage.from("avatars").list(profileId);
+  if (files?.length) {
+    await supabase.storage.from("avatars").remove(files.map((f) => `${profileId}/${f.name}`));
+  }
+  await supabase
+    .from("profiles")
+    .update({ avatar_url: null, updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+}
+
+// ─── Profile Completion ────────────────────────────────────
+
+export function calculateProfileCompletion(profile: Record<string, unknown>): number {
+  const fields = [
+    { key: "full_name", weight: 10 },
+    { key: "phone", weight: 10 },
+    { key: "email", weight: 10 },
+    { key: "username", weight: 5 },
+    { key: "avatar_url", weight: 5 },
+    { key: "bio", weight: 5 },
+    { key: "date_of_birth", weight: 5 },
+    { key: "gender", weight: 5 },
+    { key: "default_city", weight: 5 },
+    { key: "kyc_status", weight: 15, check: (v: unknown) => v === "approved" },
+    { key: "email_verified", weight: 10, check: (v: unknown) => v === true },
+    { key: "phone_verified", weight: 10, check: (v: unknown) => v === true },
+    { key: "last_login", weight: 5, check: (v: unknown) => !!v },
+  ];
+
+  let score = 0;
+  for (const field of fields) {
+    const val = profile[field.key];
+    if (field.check ? field.check(val) : !!val) {
+      score += field.weight;
+    }
+  }
+
+  return Math.min(100, score);
+}
+
+export async function syncProfileCompletion(profileId: string): Promise<number> {
+  if (!isSupabaseAvailable() || !supabase) return 0;
+  const profile = await getProfileById(profileId);
+  if (!profile) return 0;
+  const pct = calculateProfileCompletion(profile as unknown as Record<string, unknown>);
+  await supabase
+    .from("profiles")
+    .update({ profile_completion: pct, updated_at: new Date().toISOString() })
+    .eq("id", profileId);
+  return pct;
+}
+
+// ─── Role Profiles ─────────────────────────────────────────
 
 export async function createRoleProfile(profileId: string, role: UserRole): Promise<void> {
   if (!isSupabaseAvailable() || !supabase) return;
@@ -96,12 +179,7 @@ export async function createRoleProfile(profileId: string, role: UserRole): Prom
   const table = tableMap[role];
   if (!table) return;
 
-  const { data: existing } = await supabase
-    .from(table)
-    .select("id")
-    .eq("profile_id", profileId)
-    .maybeSingle();
-
+  const { data: existing } = await supabase.from(table).select("id").eq("profile_id", profileId).maybeSingle();
   if (existing) return;
 
   const defaults: Record<string, unknown> = {};
