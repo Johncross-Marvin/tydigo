@@ -25,7 +25,7 @@ const TrackingPage = () => {
     queryKey: ["dashboard"],
     queryFn: api.dashboard,
   });
-  const activePickup = data?.activePickup ?? data?.recentPickups[0] ?? null;
+  const activePickup = data?.activePickup ?? data?.recentPickups?.[0] ?? null;
   const [eta, setEta] = useState(activePickup?.eta_minutes ?? 12);
 
   useEffect(() => {
