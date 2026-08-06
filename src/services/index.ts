@@ -167,3 +167,37 @@ export {
   ROLE_DESCRIPTIONS,
   ROLE_DASHBOARD_PATHS,
 } from "./role";
+
+export {
+  getOnboardingState,
+  getJourney,
+  getSteps,
+  getProgress,
+  completeStep,
+  skipStep,
+  grantOnboardingReward,
+  completeTutorial,
+  getTutorials,
+  markTooltipSeen,
+  getTooltipsSeen,
+  calculateProfileCompletion,
+} from "./onboarding";
+export type {
+  OnboardingJourney,
+  OnboardingStep,
+  OnboardingProgress,
+  OnboardingState,
+} from "./onboarding";
+
+export {
+  getFeatureGates,
+  isFeatureUnlocked,
+  getRequiredStepsForFeature,
+} from "./unlock";
+export type { FeatureGate } from "./unlock";
+
+export {
+  trackOnboardingEvent,
+  getOnboardingStats,
+} from "./analytics";
+export type { AnalyticsEvent } from "./analytics";

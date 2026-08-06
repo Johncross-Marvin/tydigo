@@ -41,6 +41,8 @@ const ChangePhonePage = lazy(() => import("./pages/ChangePhone"));
 const ChangeEmailPage = lazy(() => import("./pages/ChangeEmail"));
 const RecoverUsernamePage = lazy(() => import("./pages/RecoverUsername"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const HelpCenterPage = lazy(() => import("./pages/HelpCenter"));
+const AdminOnboardingPage = lazy(() => import("./pages/AdminOnboarding"));
 
 // Collector
 const CollectorDashboardPage = lazy(() => import("./pages/CollectorDashboard"));
@@ -119,6 +121,7 @@ const App = () => (
                   <Route path="/recover-username" element={<Suspense fallback={<LoadingFallback />}><RecoverUsernamePage /></Suspense>} />
                   <Route path="/role-selection" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RoleSelectionPage /></Suspense>)} />
                   <Route path="/onboarding" element={protectedPage(<Suspense fallback={<LoadingFallback />}><OnboardingPage /></Suspense>)} />
+                  <Route path="/help" element={<Suspense fallback={<LoadingFallback />}><HelpCenterPage /></Suspense>} />
                   <Route path="/status" element={<Suspense fallback={<LoadingFallback />}><StatusPage /></Suspense>} />
 
                   {/* Household / Customer */}
@@ -154,6 +157,7 @@ const App = () => (
                   <Route path="/admin/ecopoints" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminEcoPointsPage /></Suspense>, ADMIN_ROLES)} />
                   <Route path="/admin/batches" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminBatchesPage /></Suspense>, ADMIN_ROLES)} />
                   <Route path="/admin/impact" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminImpactPage /></Suspense>, ADMIN_ROLES)} />
+                  <Route path="/admin/onboarding" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminOnboardingPage /></Suspense>, ["admin"])} />
                   <Route path="/government/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><GovernmentDashboardPage /></Suspense>, ["government"])} />
 
                   {/* 404 */}
