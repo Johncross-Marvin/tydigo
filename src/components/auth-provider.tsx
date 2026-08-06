@@ -31,6 +31,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [deviceSessions, setDeviceSessions] = useState<DeviceSession[]>([]);
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
 
@@ -44,6 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data?.user) {
           await recordDeviceSession(nextUser.id, data.user.id);
         }
+        // Check onboarding status
+        getOnboardingState(nextUser.id, nextUser.role).then((s) => {
+          setOnboardingComplete(s.isComplete);
+        });
       }
     } catch {
       clearSessionToken();
@@ -82,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       loading,
+      onboardingComplete,
       refreshUser,
       verifySession: async (phone: string, code: string, profileMeta) => {
         const { user: nextUser, token } = await verifyOtp(phone, code, profileMeta);
@@ -114,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       terminateDeviceSession,
       terminateOtherDeviceSessions,
     }),
-    [user, loading, refreshUser, deviceSessions, securityLogs, loadDeviceSessions, loadSecurityLogs, terminateDeviceSession, terminateOtherDeviceSessions],
+    [user, loading, onboardingComplete, refreshUser, deviceSessions, securityLogs, loadDeviceSessions, loadSecurityLogs, terminateDeviceSession, terminateOtherDeviceSessions],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
