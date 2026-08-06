@@ -6,11 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, CheckCircle2, XCircle, Eye } from "lucide-react";
 import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 const AdminKycPage = () => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-overview"],
-    queryFn: api.adminOverview,
+    queryFn: async () => {
+      if (!supabase) return { kpis: { pendingKyc: 0 }, pendingKyc: [] };
+      const { data } = await supabase.from("kyc_documents").select("*").eq("status", "pending").order("created_at", { ascending: false });
+      return { kpis: { pendingKyc: data?.length || 0 }, pendingKyc: data || [] };
+    },
     retry: false,
   });
   const pending = data?.pendingKyc ?? [];

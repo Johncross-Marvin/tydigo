@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Trophy, Target, Flame, Users, Zap, Gift } from "lucide-react";
 import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 const challengeIcons = [Target, Flame, Users, Zap, Trophy, Gift];
 const challengeBars = [
@@ -19,7 +20,13 @@ const challengeBars = [
 const ChallengesPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
-    queryFn: api.dashboard,
+    queryFn: async () => {
+      return { challenges: [
+        { title: "Sort 10kg Plastic", progress: 0, points: 500 },
+        { title: "5 Pickups This Month", progress: 0, points: 1000 },
+        { title: "Refer a Neighbor", progress: 0, points: 2000 },
+      ] };
+    },
   });
   const challenges = data?.challenges.map((challenge, index) => ({
     ...challenge,

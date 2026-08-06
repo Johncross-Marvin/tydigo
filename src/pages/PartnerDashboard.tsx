@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { MaterialMarketplace } from "@/components/partner/MaterialMarketplace";
 import { BatchTracker } from "@/components/partner/BatchTracker";
@@ -34,7 +35,11 @@ const PartnerDashboardPage = () => {
 
   const { data: requestsData } = useQuery({
     queryKey: ["partner-requests"],
-    queryFn: api.listPartnerRequests,
+    queryFn: async () => {
+      if (!supabase || !user) return { requests: [] };
+      const { data } = await supabase.from("partner_material_requests").select("*").eq("partner_id", user.id).order("created_at", { ascending: false }).limit(10);
+      return { requests: data || [] };
+    },
   });
 
   const requests = requestsData?.requests ?? [];

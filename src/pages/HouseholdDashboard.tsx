@@ -24,7 +24,8 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api, formatWeight } from "@/lib/api";
+import { formatWeight } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { ActivePickupCard } from "@/components/household/ActivePickupCard";
 import { QuickRequestForm } from "@/components/household/QuickRequestForm";
@@ -40,8 +41,27 @@ const HouseholdDashboardPage = () => {
   useSeo(seoConfig.householdDashboard);
 
   const { data: dashboard } = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: api.dashboard,
+    queryKey: ["household-dashboard", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const s = supabase;
+      if (!s) return null;
+      const [profileRes, pickupsRes, ecoRes] = await Promise.all([
+        s.from("profiles").select("*").eq("auth_user_id", user.id).maybeSingle(),
+        s.from("pickup_requests").select("*").eq("customer_id", user.id).order("created_at", { ascending: false }).limit(5),
+        s.from("ecopoint_transactions").select("points").eq("profile_id", user.id),
+      ]);
+      const totalEco = ecoRes.data?.reduce((sum, r) => sum + (r.points || 0), 0) || 0;
+      return {
+        user: { ...user, ecopoints: totalEco },
+        stats: { ecopoints: totalEco, totalPickups: pickupsRes.data?.length || 0, wasteRecycledKg: 0, rating: profileRes.data?.rating || 5 },
+        activePickup: pickupsRes.data?.find((p: Record<string,unknown>) => !["completed","cancelled"].includes(p.status as string)) || null,
+        recentPickups: pickupsRes.data || [],
+        partnerRequests: [],
+        challenges: [],
+      };
+    },
+    enabled: !!user,
   });
 
   const handleQuickRequest = (wasteType: WasteType) => {

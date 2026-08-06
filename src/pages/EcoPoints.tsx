@@ -18,13 +18,18 @@ import {
 } from "lucide-react";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 import { api, formatNaira } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
 
 const EcoPointsPage = () => {
   useSeo(seoConfig.ecopoints);
   const { data } = useQuery({
     queryKey: ["dashboard"],
-    queryFn: api.dashboard,
+    queryFn: async () => {
+      const { data } = await supabase?.from("ecopoint_transactions").select("points").limit(100) || { data: [] };
+      const total = (data || []).reduce((s: number, r: Record<string,unknown>) => s + (r.points as number || 0), 0);
+      return { stats: { ecopoints: total } };
+    },
   });
   const points = data?.stats?.ecopoints ?? 0;
 

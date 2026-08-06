@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { PlatformKPIs } from "@/components/admin/PlatformKPIs";
 import { UserManager } from "@/components/admin/UserManager";
@@ -43,7 +44,27 @@ const AdminDashboardPage = () => {
 
   const { data: overviewData } = useQuery({
     queryKey: ["admin-overview"],
-    queryFn: api.adminOverview,
+    queryFn: async () => {
+      if (!supabase) return null;
+      const [usersRes, pickupsRes, kycRes] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("pickup_requests").select("id, status, final_total_ngn, estimated_weight_kg", { count: "exact" }),
+        supabase.from("kyc_documents").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(10),
+      ]);
+      const totalPickups = pickupsRes.data || [];
+      return {
+        kpis: {
+          totalUsers: (usersRes as { count?: number })?.count ?? 0,
+          activeCollectors: 0,
+          wasteCollectedKg: totalPickups.reduce((s: number, p: Record<string,unknown>) => s + Number(p.estimated_weight_kg || 0), 0),
+          totalPickups: totalPickups.length,
+          revenueNgn: totalPickups.reduce((s: number, p: Record<string,unknown>) => s + Number(p.final_total_ngn || 0), 0),
+          ecopointsIssued: 0,
+          pendingKyc: kycRes.data?.length || 0,
+        },
+        pendingKyc: kycRes.data || [],
+      };
+    },
   });
 
   const { data: usersData, refetch: refetchUsers } = useQuery({

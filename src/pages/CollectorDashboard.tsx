@@ -146,7 +146,11 @@ const CollectorDashboardPage = () => {
             <ActiveJobWorkflow job={null} onUpdateStatus={(id, status) => console.log("Update", id, status)} />
           </TabsContent>
           <TabsContent value="wallet" className="mt-4">
-            {wallet && <CollectorWalletCard wallet={wallet} onWithdraw={() => alert("Withdrawal coming soon")} />}
+            {wallet && <CollectorWalletCard wallet={wallet} onWithdraw={() => {
+              if (isSupabaseAvailable() && supabase && user) {
+                supabase.functions.invoke("generate-receipt", { body: { collectorId: user.id } }).catch(console.error);
+              }
+            }} />}
           </TabsContent>
           <TabsContent value="stats" className="mt-4">
             {performance && <CollectorPerformancePanel performance={performance} />}
