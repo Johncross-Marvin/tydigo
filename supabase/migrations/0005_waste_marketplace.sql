@@ -62,17 +62,9 @@ CREATE TABLE IF NOT EXISTS pickup_tracking (
 );
 
 -- ── Pickup Status Events (audit trail) ───────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS pickup_status_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  pickup_request_id UUID REFERENCES pickup_requests(id) ON DELETE CASCADE,
-  from_status TEXT,
-  to_status TEXT NOT NULL,
-  created_by UUID REFERENCES profiles(id),
-  notes TEXT,
-  metadata JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- NOTE: This table already exists with pickup_id (not pickup_request_id)
+-- and changed_by (not created_by). This migration is for reference only.
+-- The existing table is used as-is.
 
 -- ── Digital Receipts ─────────────────────────────────────────────────────────
 
@@ -108,7 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_collector_assignments_pickup ON collector_assignm
 CREATE INDEX IF NOT EXISTS idx_collector_assignments_collector ON collector_assignments(collector_id, accepted_at);
 CREATE INDEX IF NOT EXISTS idx_pickup_tracking_request ON pickup_tracking(pickup_request_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_pickup_tracking_collector ON pickup_tracking(collector_id, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_pickup_status_events_request ON pickup_status_events(pickup_request_id, created_at DESC);
+-- pickup_status_events already exists with pickup_id column and indexes
 CREATE INDEX IF NOT EXISTS idx_digital_receipts_request ON digital_receipts(pickup_request_id);
 CREATE INDEX IF NOT EXISTS idx_pricing_rules_category ON pricing_rules(waste_category_id, city, is_active);
 
@@ -118,7 +110,7 @@ ALTER TABLE pickup_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pickup_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collector_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pickup_tracking ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pickup_status_events ENABLE ROW LEVEL SECURITY;
+-- pickup_status_events RLS already enabled
 ALTER TABLE digital_receipts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pricing_rules ENABLE ROW LEVEL SECURITY;
 
@@ -159,16 +151,7 @@ CREATE POLICY pickup_tracking_customer ON pickup_tracking FOR SELECT
 CREATE POLICY pickup_tracking_collector ON pickup_tracking FOR ALL
   USING (collector_id IN (SELECT id FROM profiles WHERE auth_user_id = auth.uid()));
 
--- Status events: customer + collector read
-CREATE POLICY pickup_status_events_read ON pickup_status_events FOR SELECT
-  USING (pickup_request_id IN (
-    SELECT id FROM pickup_requests WHERE
-      customer_id IN (SELECT id FROM profiles WHERE auth_user_id = auth.uid())
-      OR collector_id IN (SELECT id FROM profiles WHERE auth_user_id = auth.uid())
-  ));
-
-CREATE POLICY pickup_status_events_insert ON pickup_status_events FOR INSERT
-  WITH CHECK (true); -- System inserts only, validated by edge functions
+-- pickup_status_events RLS policies already exist (pickup_status_events_select_own, pickup_status_events_insert_own)
 
 -- Digital receipts: customer + collector read
 CREATE POLICY digital_receipts_customer ON digital_receipts FOR SELECT
