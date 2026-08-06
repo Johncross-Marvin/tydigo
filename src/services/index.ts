@@ -201,3 +201,16 @@ export {
   getOnboardingStats,
 } from "./analytics";
 export type { AnalyticsEvent } from "./analytics";
+
+export {
+  enqueueOfflineAction,
+  getOfflineQueue,
+  markOfflineActionSynced,
+  syncOfflineQueue,
+  cacheOnboardingState,
+  getCachedState,
+  cacheJourney,
+  getCachedJourney,
+  isOnline,
+  onOnlineChange,
+} from "./offline";

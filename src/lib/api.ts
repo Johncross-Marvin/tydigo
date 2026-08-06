@@ -498,6 +498,53 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  // ─── Onboarding ──────────────────────────────────────────
+
+  getOnboardingJourney: (role: UserRole) =>
+    requestJson<{
+      journey: { id: string; role: string; title: string; description: string | null; is_active: boolean };
+      steps: Array<{
+        id: string; step_number: number; title: string; subtitle: string | null;
+        description: string | null; icon: string | null; illustration: string | null;
+        video_url: string | null; estimated_minutes: number; action_type: string;
+        action_value: string | null; is_required: boolean; sort_order: number;
+      }>;
+      progress: Array<{
+        id: string; step_id: string; completed: boolean; completed_at: string | null;
+        time_spent: number; skipped: boolean;
+      }>;
+      completionPct: number;
+      completedCount: number;
+      totalSteps: number;
+      estimatedMinutes: number;
+    }>(`/api/onboarding/journey?role=${role}`),
+
+  completeOnboardingStep: (stepId: string, timeSpent?: number) =>
+    requestJson<{ ok: true; completedAt: string }>("/api/onboarding/complete-step", {
+      method: "POST",
+      body: JSON.stringify({ stepId, timeSpent }),
+    }),
+
+  skipOnboardingStep: (stepId: string) =>
+    requestJson<{ ok: true }>("/api/onboarding/skip-step", {
+      method: "POST",
+      body: JSON.stringify({ stepId }),
+    }),
+
+  grantOnboardingReward: (points: number, reason: string) =>
+    requestJson<{ ok: true; pointsAwarded: number }>("/api/onboarding/grant-reward", {
+      method: "POST",
+      body: JSON.stringify({ points, reason }),
+    }),
+
+  getOnboardingProgress: () =>
+    requestJson<{
+      completed: boolean;
+      completionPct: number;
+      completedCount: number;
+      totalSteps: number;
+    }>("/api/onboarding/progress"),
+
   // ─── Government ──────────────────────────────────────────
   getRegionalAnalytics: () =>
     requestJson<{
