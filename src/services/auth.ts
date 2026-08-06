@@ -17,6 +17,8 @@ import { setSessionToken, clearSessionToken } from "@/lib/api";
 import { hasSupabase, APP_ENV } from "@/lib/env";
 import { generateUniqueUsername } from "./username";
 import { detectIdentifier, type IdentifierResult } from "./identifier";
+import { recordDeviceSession } from "./session";
+import { logSecurityEvent } from "./security";
 import type { UserRole, AuthUser } from "@/lib/api";
 
 // Re-export types
@@ -321,6 +323,10 @@ export async function signIn(params: SignInParams): Promise<{
 
     // Update last_login
     await updateLastLogin(profile.id);
+
+    // Record device session & security log
+    await recordDeviceSession(profile.id, data.user.id);
+    await logSecurityEvent(profile.id, data.user.id, "login");
 
     if (data.session?.access_token) {
       setSessionToken(data.session.access_token);
