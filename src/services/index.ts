@@ -115,3 +115,25 @@ export {
   broadcastNotification,
 } from "./admin";
 export type { PlatformKpi, AdminUser, PricingConfig, AuditLog, WasteBatch } from "./admin";
+
+export {
+  getCities,
+  getCitiesByState,
+  getStateForCity,
+  searchCities,
+} from "./location";
+export type { Country, State, City } from "./location";
+
+export {
+  recordDeviceSession,
+  getDeviceSessions,
+  terminateSession,
+  terminateOtherSessions,
+} from "./session";
+export type { DeviceSession } from "./session";
+
+export {
+  logSecurityEvent,
+  getSecurityLogs,
+} from "./security";
+export type { SecurityEventType, SecurityLog } from "./security";

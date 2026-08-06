@@ -360,6 +360,10 @@ export async function signIn(params: SignInParams): Promise<{
 
     await updateLastLogin(profile.id);
 
+    // Record device session & security log
+    await recordDeviceSession(profile.id, data.user.id);
+    await logSecurityEvent(profile.id, data.user.id, "login");
+
     if (data.session?.access_token) {
       setSessionToken(data.session.access_token);
     }
@@ -438,6 +442,12 @@ export async function verifyOtp(
     setSessionToken(session.access_token);
   }
 
+  // Record device session & security log
+  if (profile.id && data.user) {
+    await recordDeviceSession(profile.id, data.user.id);
+    await logSecurityEvent(profile.id, data.user.id, "login");
+  }
+
   return { user: profile, token: session?.access_token };
 }
 
@@ -445,6 +455,21 @@ export async function verifyOtp(
 
 export async function signOut(): Promise<void> {
   if (isSupabaseAvailable() && supabase) {
+    // Log security event before signing out
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("auth_user_id", data.user.id)
+          .maybeSingle();
+        if (profile) {
+          await logSecurityEvent(profile.id, data.user.id, "logout");
+        }
+      }
+    } catch { /* non-fatal */ }
+
     await supabase.auth.signOut();
   }
   clearSessionToken();

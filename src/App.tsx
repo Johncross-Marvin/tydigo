@@ -35,6 +35,8 @@ const CompletionPage = lazy(() => import("./pages/CompletionPage"));
 const ChallengesPage = lazy(() => import("./pages/ChallengesPage"));
 const RedeemPage = lazy(() => import("./pages/RedeemPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const DeviceManagementPage = lazy(() => import("./pages/DeviceManagement"));
+const SecurityLogsPage = lazy(() => import("./pages/SecurityLogs"));
 
 // Collector
 const CollectorDashboardPage = lazy(() => import("./pages/CollectorDashboard"));
@@ -124,6 +126,8 @@ const App = () => (
                   <Route path="/household/challenges" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ChallengesPage /></Suspense>, HOUSEHOLD_ROLES)} />
                   <Route path="/household/redeem" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RedeemPage /></Suspense>, HOUSEHOLD_ROLES)} />
                   <Route path="/household/profile" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ProfilePage /></Suspense>)} />
+                  <Route path="/household/devices" element={protectedPage(<Suspense fallback={<LoadingFallback />}><DeviceManagementPage /></Suspense>)} />
+                  <Route path="/household/security" element={protectedPage(<Suspense fallback={<LoadingFallback />}><SecurityLogsPage /></Suspense>)} />
 
                   {/* Collector / Fleet */}
                   <Route path="/collector/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CollectorDashboardPage /></Suspense>, COLLECTOR_ROLES)} />
