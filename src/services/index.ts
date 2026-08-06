@@ -137,3 +137,33 @@ export {
   getSecurityLogs,
 } from "./security";
 export type { SecurityEventType, SecurityLog } from "./security";
+
+export {
+  getProfile,
+  getProfileById,
+  updateProfile as updateProfileService,
+  createRoleProfile,
+  mapProfileToUser,
+} from "./profile";
+export type { Profile } from "./profile";
+
+export {
+  getWallet,
+  createWallet,
+  getWalletTransactions,
+  getEcoPointsWallet,
+  createEcoPointsWallet,
+} from "./wallet";
+export type { Wallet, WalletTransaction, EcoPointsWallet } from "./wallet";
+
+export {
+  getRoleLabel,
+  getRoleDashboardPath,
+  isAdminRole,
+  isCollectorRole,
+  isBusinessRole,
+  isPartnerRole,
+  ROLE_LABELS,
+  ROLE_DESCRIPTIONS,
+  ROLE_DASHBOARD_PATHS,
+} from "./role";

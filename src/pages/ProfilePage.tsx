@@ -2,18 +2,32 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ArrowLeft, User, Phone, MapPin, Settings, Shield, LogOut, ChevronRight, Award } from "lucide-react";
+import {
+  ArrowLeft, User, Phone, MapPin, Settings, Shield, LogOut,
+  ChevronRight, Award, Mail, Monitor, Clock, KeyRound,
+} from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const menuItems = [
-    { icon: User, label: "Personal Information", desc: "Name, phone, address" },
-    { icon: Shield, label: "KYC Verification", desc: "Verify your identity" },
-    { icon: MapPin, label: "Saved Addresses", desc: "Home, work, other" },
-    { icon: Award, label: "EcoPoints Tier", desc: `${(user?.ecopoints ?? 0).toLocaleString()} pts saved` },
-    { icon: Settings, label: "App Settings", desc: "Notifications, language" },
+
+  const accountItems = [
+    { icon: User, label: "Personal Information", desc: "Name, phone, address", path: "/household/profile" },
+    { icon: Mail, label: "Change Email", desc: "Update your email address", path: "/household/change-email" },
+    { icon: Phone, label: "Change Phone", desc: "Update your phone number", path: "/household/change-phone" },
+    { icon: KeyRound, label: "Change Password", desc: "Update your password", path: "/forgot-password" },
+  ];
+
+  const securityItems = [
+    { icon: Shield, label: "KYC Verification", desc: "Verify your identity", path: "/household/profile" },
+    { icon: Monitor, label: "Device Sessions", desc: "Manage active devices", path: "/household/devices" },
+    { icon: Clock, label: "Security Logs", desc: "View account activity", path: "/household/security" },
+  ];
+
+  const otherItems = [
+    { icon: Award, label: "EcoPoints Tier", desc: `${(user?.ecopoints ?? 0).toLocaleString()} pts saved`, path: "/household/ecopoints" },
+    { icon: Settings, label: "App Settings", desc: "Notifications, language", path: "/household/profile" },
   ];
 
   return (
@@ -37,7 +51,7 @@ const ProfilePage = () => {
             <div>
               <h2 className="text-xl font-extrabold text-neutral-900">{user?.name ?? "Tydigo User"}</h2>
               <div className="flex items-center gap-1 text-sm text-neutral-500 mt-0.5">
-                <Phone className="w-3.5 h-3.5" /> +{user?.phone ?? ""}
+                <Phone className="w-3.5 h-3.5" /> {user?.phone || "No phone"}
               </div>
               <div className="flex items-center gap-1 text-sm text-neutral-500">
                 <MapPin className="w-3.5 h-3.5" /> {user?.address || `${user?.city ?? "Abuja"}, ${user?.state ?? "FCT"}`}
@@ -46,24 +60,74 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
 
-        {/* Menu */}
-        <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl overflow-hidden">
-          {menuItems.map((item, i) => (
-            <button
-              key={i}
-              className="w-full flex items-center gap-4 p-4 hover:bg-neutral-50 transition-colors text-left border-b border-neutral-100 last:border-0"
-            >
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
-                <item.icon className="w-5 h-5 text-neutral-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-neutral-900 text-sm">{item.label}</p>
-                <p className="text-xs text-neutral-500">{item.desc}</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-neutral-400" />
-            </button>
-          ))}
-        </Card>
+        {/* Account Section */}
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2 px-1">Account</h3>
+          <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl overflow-hidden">
+            {accountItems.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => navigate(item.path)}
+                className="w-full flex items-center gap-4 p-4 hover:bg-neutral-50 transition-colors text-left border-b border-neutral-100 last:border-0"
+              >
+                <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
+                  <item.icon className="w-5 h-5 text-neutral-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-neutral-900 text-sm">{item.label}</p>
+                  <p className="text-xs text-neutral-500">{item.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-neutral-400" />
+              </button>
+            ))}
+          </Card>
+        </div>
+
+        {/* Security Section */}
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2 px-1">Security</h3>
+          <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl overflow-hidden">
+            {securityItems.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => navigate(item.path)}
+                className="w-full flex items-center gap-4 p-4 hover:bg-neutral-50 transition-colors text-left border-b border-neutral-100 last:border-0"
+              >
+                <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
+                  <item.icon className="w-5 h-5 text-neutral-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-neutral-900 text-sm">{item.label}</p>
+                  <p className="text-xs text-neutral-500">{item.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-neutral-400" />
+              </button>
+            ))}
+          </Card>
+        </div>
+
+        {/* Other Section */}
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-2 px-1">Other</h3>
+          <Card className="border-0 shadow-md shadow-neutral-200/30 rounded-2xl overflow-hidden">
+            {otherItems.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => navigate(item.path)}
+                className="w-full flex items-center gap-4 p-4 hover:bg-neutral-50 transition-colors text-left border-b border-neutral-100 last:border-0"
+              >
+                <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
+                  <item.icon className="w-5 h-5 text-neutral-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-neutral-900 text-sm">{item.label}</p>
+                  <p className="text-xs text-neutral-500">{item.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-neutral-400" />
+              </button>
+            ))}
+          </Card>
+        </div>
 
         <Button
           variant="outline"

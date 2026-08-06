@@ -37,6 +37,9 @@ const RedeemPage = lazy(() => import("./pages/RedeemPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const DeviceManagementPage = lazy(() => import("./pages/DeviceManagement"));
 const SecurityLogsPage = lazy(() => import("./pages/SecurityLogs"));
+const ChangePhonePage = lazy(() => import("./pages/ChangePhone"));
+const ChangeEmailPage = lazy(() => import("./pages/ChangeEmail"));
+const RecoverUsernamePage = lazy(() => import("./pages/RecoverUsername"));
 
 // Collector
 const CollectorDashboardPage = lazy(() => import("./pages/CollectorDashboard"));
@@ -112,6 +115,7 @@ const App = () => (
                   <Route path="/otp" element={<Suspense fallback={<LoadingFallback />}><OtpPage /></Suspense>} />
                   <Route path="/forgot-password" element={<Suspense fallback={<LoadingFallback />}><ForgotPasswordPage /></Suspense>} />
                   <Route path="/reset-password" element={<Suspense fallback={<LoadingFallback />}><ResetPasswordPage /></Suspense>} />
+                  <Route path="/recover-username" element={<Suspense fallback={<LoadingFallback />}><RecoverUsernamePage /></Suspense>} />
                   <Route path="/role-selection" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RoleSelectionPage /></Suspense>)} />
                   <Route path="/status" element={<Suspense fallback={<LoadingFallback />}><StatusPage /></Suspense>} />
 
@@ -128,6 +132,8 @@ const App = () => (
                   <Route path="/household/profile" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ProfilePage /></Suspense>)} />
                   <Route path="/household/devices" element={protectedPage(<Suspense fallback={<LoadingFallback />}><DeviceManagementPage /></Suspense>)} />
                   <Route path="/household/security" element={protectedPage(<Suspense fallback={<LoadingFallback />}><SecurityLogsPage /></Suspense>)} />
+                  <Route path="/household/change-phone" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ChangePhonePage /></Suspense>)} />
+                  <Route path="/household/change-email" element={protectedPage(<Suspense fallback={<LoadingFallback />}><ChangeEmailPage /></Suspense>)} />
 
                   {/* Collector / Fleet */}
                   <Route path="/collector/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CollectorDashboardPage /></Suspense>, COLLECTOR_ROLES)} />
