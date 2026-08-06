@@ -285,3 +285,43 @@ export {
   getReceiptDetails,
 } from "./receipt";
 export type { DigitalReceipt } from "./receipt";
+
+export {
+  getCollectorProfile,
+  toggleAvailability,
+  updateLocation,
+  getCollectorDashboard,
+} from "./collector";
+export type { CollectorProfile, CollectorDashboard } from "./collector";
+
+export {
+  getWallet as getCollectorWallet,
+  ensureWallet as ensureCollectorWallet,
+  getTransactions as getCollectorTransactions,
+  getWithdrawals as getCollectorWithdrawals,
+  requestWithdrawal as requestCollectorWithdrawal,
+} from "./collector-wallet";
+export type { CollectorWallet, CollectorTransaction, CollectorWithdrawal } from "./collector-wallet";
+
+export {
+  getVehicles,
+  getVehicle,
+  addVehicle,
+  updateVehicle,
+  deleteVehicle,
+  uploadVehiclePhoto,
+  VEHICLE_TYPES,
+  FUEL_TYPES,
+} from "./collector-vehicle";
+export type { CollectorVehicle, VehicleInput } from "./collector-vehicle";
+
+export {
+  getPerformance,
+  getLevels,
+  getNextLevel,
+  getBadges,
+  getBonusPrograms,
+  getLeaderboard,
+  LEVEL_COLORS,
+} from "./collector-performance";
+export type { CollectorPerformance as PerfData, CollectorLevel, CollectorBadge, BonusProgram } from "./collector-performance";
