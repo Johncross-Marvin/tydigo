@@ -37,7 +37,8 @@ const PartnerDashboardPage = () => {
     queryKey: ["partner-requests"],
     queryFn: async () => {
       if (!supabase || !user) return { requests: [] };
-      const { data } = await supabase.from("partner_material_requests").select("*").eq("partner_id", user.id).order("created_at", { ascending: false }).limit(10);
+      const profileId = user.id; // profiles.id
+      const { data } = await supabase.from("partner_material_requests").select("*").eq("partner_id", profileId).order("created_at", { ascending: false }).limit(10);
       return { requests: data || [] };
     },
   });

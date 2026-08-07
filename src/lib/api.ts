@@ -181,7 +181,7 @@ export const roleHomePath: Record<UserRole, string> = {
   organic_partner: "/recycler/dashboard",
   fleet_owner: "/collector/dashboard",
   corporate_partner: "/business/dashboard",
-  government: "/admin/dashboard",
+  government: "/government/dashboard",
   partner: "/partner/dashboard",
   admin: "/admin/dashboard",
 };

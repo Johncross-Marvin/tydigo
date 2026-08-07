@@ -46,10 +46,11 @@ const HouseholdDashboardPage = () => {
       if (!user) return null;
       const s = supabase;
       if (!s) return null;
+      const profileId = user.id; // profiles.id
       const [profileRes, pickupsRes, ecoWalletRes] = await Promise.all([
-        s.from("profiles").select("*").eq("auth_user_id", user.id).maybeSingle(),
-        s.from("pickup_requests").select("*").eq("customer_id", user.id).order("created_at", { ascending: false }).limit(5),
-        s.from("eco_points_wallets").select("balance, lifetime_earned").eq("profile_id", user.id).maybeSingle(),
+        s.from("profiles").select("*").eq("id", profileId).maybeSingle(),
+        s.from("pickup_requests").select("*").eq("customer_id", profileId).order("created_at", { ascending: false }).limit(5),
+        s.from("eco_points_wallets").select("balance, lifetime_earned").eq("profile_id", profileId).maybeSingle(),
       ]);
       const totalEco = ecoWalletRes.data?.balance || profileRes.data?.ecopoints || 0;
       return {

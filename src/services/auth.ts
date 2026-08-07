@@ -218,7 +218,9 @@ export async function getPickupContactPhone(pickupId: string): Promise<string | 
 
 function mapProfile(p: Record<string, unknown>): AuthUser {
   return {
-    id: (p.auth_user_id as string) || (p.id as string),
+    // id = profiles.id (UUID) for database queries
+    // authUserId = auth.users.id for auth operations
+    id: (p.id as string) || (p.auth_user_id as string) || "",
     phone: (p.phone as string) || "",
     name: (p.full_name as string) || "Tydigo User",
     role: (p.role as UserRole) || "customer",
