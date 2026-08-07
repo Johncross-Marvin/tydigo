@@ -23,17 +23,11 @@ export {
   ecopointsToNaira,
   nairaToEcopoints,
   formatEcopoints,
-  findRule,
-  getRulesForRole,
-  CUSTOMER_EARNING_RULES,
-  COLLECTOR_EARNING_RULES,
-  ALL_EARNING_RULES,
   REDEMPTION_OPTIONS,
   ECOPOINTS_PER_NAIRA,
+  ECOPOINT_VALUE_NGN,
 } from "./ecopoints";
-export type { EcopointStatus, EcopointRule, RedemptionOption } from "./ecopoints";
-
-export { ECOPOINT_VALUE_NGN } from "./ecopoints";
+export type { EcopointStatus, RedemptionOption } from "./ecopoints";
 
 export {
   canTransition,
