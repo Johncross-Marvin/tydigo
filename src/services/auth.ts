@@ -55,6 +55,9 @@ export async function signUp(params: SignUpParams) {
   const phoneE164 = normalizeNigerianPhone(params.phone);
   const normalizedEmail = params.email.toLowerCase().trim();
 
+  // Map frontend role to canonical DB role
+  const canonicalRole = mapToCanonicalRole(params.role);
+
   const { data, error } = await client.auth.signUp({
     email: normalizedEmail,
     password: params.password,
@@ -64,7 +67,7 @@ export async function signUp(params: SignUpParams) {
         username: params.username.toLowerCase().trim(),
         phone: params.phone.trim(),
         phone_e164: phoneE164,
-        role: params.role,
+        role: canonicalRole,
         city: params.city,
         state: params.state || "FCT",
       },
@@ -74,6 +77,27 @@ export async function signUp(params: SignUpParams) {
 
   if (error) throw new AuthError(friendlyMessage(error));
   return { user: data.user, needsVerification: !data.user?.email_confirmed_at };
+}
+
+/** Map any role alias to the canonical DB role value. */
+function mapToCanonicalRole(role: string): string {
+  const mapping: Record<string, string> = {
+    fleet: "fleet_owner",
+    fleet_owner: "fleet_owner",
+    corporate: "corporate_partner",
+    corporate_partner: "corporate_partner",
+    household: "household",
+    estate: "estate",
+    business: "business",
+    collector: "collector",
+    recycler: "recycler",
+    organic_partner: "organic_partner",
+    government: "government",
+    partner: "partner",
+    admin: "admin",
+    customer: "customer",
+  };
+  return mapping[role] || role;
 }
 
 // ─── Sign In (Multi-Identifier) ───────────────────────────────

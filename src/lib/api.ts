@@ -6,8 +6,8 @@ export type UserRole =
   | "collector"
   | "recycler"
   | "organic_partner"
-  | "fleet"
-  | "corporate"
+  | "fleet_owner"
+  | "corporate_partner"
   | "government"
   | "partner"
   | "admin";
@@ -179,8 +179,8 @@ export const roleHomePath: Record<UserRole, string> = {
   collector: "/collector/dashboard",
   recycler: "/recycler/dashboard",
   organic_partner: "/recycler/dashboard",
-  fleet: "/collector/dashboard",
-  corporate: "/business/dashboard",
+  fleet_owner: "/collector/dashboard",
+  corporate_partner: "/business/dashboard",
   government: "/admin/dashboard",
   partner: "/partner/dashboard",
   admin: "/admin/dashboard",

@@ -47,8 +47,8 @@ const ROLE_OPTIONS: Array<{
   { value: "collector", label: "Collector", desc: "Accept jobs & earn", icon: Truck, color: "bg-blue-100 text-blue-600 border-blue-300" },
   { value: "recycler", label: "Recycler", desc: "Source recyclable materials", icon: Recycle, color: "bg-amber-100 text-amber-600 border-amber-300" },
   { value: "organic_partner", label: "Organic Partner", desc: "BSF farms & compost", icon: Leaf, color: "bg-lime-100 text-lime-600 border-lime-300" },
-  { value: "fleet", label: "Fleet Operator", desc: "Manage collection vehicles", icon: Truck, color: "bg-indigo-100 text-indigo-600 border-indigo-300" },
-  { value: "corporate", label: "Corporate", desc: "Sustainability partnerships", icon: Globe, color: "bg-rose-100 text-rose-600 border-rose-300" },
+  { value: "fleet_owner", label: "Fleet Operator", desc: "Manage collection vehicles", icon: Truck, color: "bg-indigo-100 text-indigo-600 border-indigo-300" },
+  { value: "corporate_partner", label: "Corporate", desc: "Sustainability partnerships", icon: Globe, color: "bg-rose-100 text-rose-600 border-rose-300" },
   { value: "government", label: "Government", desc: "Agency oversight & reports", icon: Shield, color: "bg-slate-100 text-slate-600 border-slate-300" },
 ];
 

@@ -72,8 +72,31 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
 }
 
 /**
- * Validate username format.
+ * Reserved usernames that cannot be registered.
+ */
+const RESERVED_USERNAMES = new Set([
+  "admin", "administrator", "support", "tydigo", "help",
+  "security", "billing", "api", "system", "root",
+  "official", "government", "moderator", "mod", "staff",
+  "team", "info", "contact", "service", "mail", "email",
+  "webmaster", "postmaster", "hostmaster", "abuse", "noc",
+  "null", "undefined", "true", "false", "everyone", "all",
+  "here", "there", "test", "testing", "demo", "guest",
+  "anonymous", "anon", "nobody", "anyone", "someone",
+]);
+
+/**
+ * Check if a username is reserved.
+ */
+export function isReservedUsername(username: string): boolean {
+  return RESERVED_USERNAMES.has(username.toLowerCase());
+}
+
+/**
+ * Validate username format and check reserved names.
  */
 export function isValidUsername(username: string): boolean {
-  return /^[a-z0-9]{3,30}$/.test(username);
+  if (!/^[a-z0-9]{3,30}$/.test(username)) return false;
+  if (isReservedUsername(username)) return false;
+  return true;
 }
