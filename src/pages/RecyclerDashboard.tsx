@@ -1,9 +1,8 @@
 /**
- * Recycler Marketplace Dashboard
+ * Recycler Marketplace Dashboard — Production
  * 
- * Enterprise dashboard for recyclers, BSF farms, compost operators,
- * and material buyers. Shows inventory, purchase requests, marketplace,
- * warehouse capacity, and transaction history.
+ * Live marketplace: listings, purchase requests, offers, trades,
+ * warehouses, inventory, inspections, settlements, analytics.
  */
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -14,199 +13,180 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
-  ArrowLeft, Building2, Package, ShoppingCart, TrendingUp,
-  Warehouse, Gavel, Truck, FileText, BarChart3, Settings,
-  DollarSign, Leaf, Award, AlertCircle, CheckCircle2,
+  ArrowLeft, Package, ShoppingCart, TrendingUp, Warehouse, Gavel,
+  Truck, FileText, BarChart3, DollarSign, Leaf, Award, AlertCircle,
+  CheckCircle2, Clock, Plus, Search, Filter,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { supabase } from "@/lib/supabase";
+import {
+  getMarketplaceListings, getPurchaseRequests, getMyOffers, getMyTrades,
+  getMyWarehouses, getWarehouseInventory, getMySettlements,
+  getAcceptedMaterials, getRecyclerAnalytics,
+} from "@/services/marketplace";
 
 const formatNgn = (v: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(v);
+const formatKg = (v: number) => `${v.toLocaleString()} kg`;
 
 const RecyclerDashboard = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [tab, setTab] = useState("overview");
+  const profileId = user?.id || "";
 
-  // Fetch recycler profile
-  const { data: profile } = useQuery({
-    queryKey: ["recycler-profile", user?.id],
-    queryFn: async () => {
-      if (!supabase || !user) return null;
-      const { data } = await supabase.from("partner_profiles").select("*").eq("profile_id", user.id).maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
+  const { data: listings } = useQuery({ queryKey: ["listings"], queryFn: () => getMarketplaceListings({ status: "active" }) });
+  const { data: requests } = useQuery({ queryKey: ["purchase-requests", profileId], queryFn: () => getPurchaseRequests(profileId), enabled: !!profileId });
+  const { data: offers } = useQuery({ queryKey: ["offers", profileId], queryFn: () => getMyOffers(profileId), enabled: !!profileId });
+  const { data: trades } = useQuery({ queryKey: ["trades", profileId], queryFn: () => getMyTrades(profileId), enabled: !!profileId });
+  const { data: warehouses } = useQuery({ queryKey: ["warehouses", profileId], queryFn: () => getMyWarehouses(profileId), enabled: !!profileId });
+  const { data: settlements } = useQuery({ queryKey: ["settlements", profileId], queryFn: () => getMySettlements(profileId), enabled: !!profileId });
+  const { data: materials } = useQuery({ queryKey: ["accepted-materials", profileId], queryFn: () => getAcceptedMaterials(profileId), enabled: !!profileId });
+  const { data: analytics } = useQuery({ queryKey: ["recycler-analytics", profileId], queryFn: () => getRecyclerAnalytics(profileId), enabled: !!profileId });
 
-  // Fetch purchase requests
-  const { data: purchaseRequests } = useQuery({
-    queryKey: ["purchase-requests", user?.id],
-    queryFn: async () => {
-      if (!supabase || !user) return [];
-      const { data } = await supabase.from("partner_material_requests").select("*").eq("partner_id", user.id).order("created_at", { ascending: false }).limit(10);
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Fetch waste batches (incoming)
-  const { data: incomingBatches } = useQuery({
-    queryKey: ["incoming-batches", user?.id],
-    queryFn: async () => {
-      if (!supabase || !user) return [];
-      const { data } = await supabase.from("waste_batches").select("*").eq("partner_id", user.id).order("created_at", { ascending: false }).limit(10);
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Marketplace listings
-  const { data: listings } = useQuery({
-    queryKey: ["marketplace-listings"],
-    queryFn: async () => {
-      if (!supabase) return [];
-      const { data } = await supabase.from("waste_batches").select("*").eq("verified", true).order("created_at", { ascending: false }).limit(20);
-      return data || [];
-    },
-  });
-
-  const verifiedBatches = incomingBatches?.filter((b: Record<string,unknown>) => b.verified) || [];
-  const pendingBatches = incomingBatches?.filter((b: Record<string,unknown>) => !b.verified) || [];
-  const totalPurchased = incomingBatches?.reduce((s: number, b: Record<string,unknown>) => s + Number(b.quantity_kg || 0), 0) || 0;
-  const impactCredits = profile?.impact_credits || 0;
+  const activeListings = listings?.filter((l: Record<string,unknown>) => l.status === "active") || [];
+  const activeRequests = requests?.filter((r: Record<string,unknown>) => r.status === "active") || [];
+  const pendingOffers = offers?.filter((o: Record<string,unknown>) => o.status === "pending") || [];
+  const activeTrades = trades?.filter((t: Record<string,unknown>) => !["completed","cancelled"].includes(t.status as string)) || [];
+  const totalInventory = warehouses?.reduce((s: number, w: Record<string,unknown>) => s + Number(w.current_capacity || 0), 0) || 0;
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-20">
-      {/* Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-neutral-200 px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/" className="p-1.5 rounded-lg hover:bg-neutral-100"><ArrowLeft className="w-5 h-5 text-neutral-600" /></Link>
           <h1 className="font-bold text-neutral-900">Recycler Marketplace</h1>
-          {profile?.verified && <Badge className="bg-green-100 text-green-700 text-xs">Verified</Badge>}
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-4 space-y-4">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-emerald-50">
-            <CardContent className="p-3"><p className="text-xs text-neutral-500">Total Purchased</p><p className="text-lg font-extrabold text-[#145C25]">{totalPurchased.toLocaleString()} kg</p></CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-sky-50">
-            <CardContent className="p-3"><p className="text-xs text-neutral-500">Active Requests</p><p className="text-lg font-extrabold text-blue-600">{purchaseRequests?.length || 0}</p></CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-50 to-yellow-50">
-            <CardContent className="p-3"><p className="text-xs text-neutral-500">Impact Credits</p><p className="text-lg font-extrabold text-amber-600">{impactCredits.toLocaleString()}</p></CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-50 to-violet-50">
-            <CardContent className="p-3"><p className="text-xs text-neutral-500">Pending</p><p className="text-lg font-extrabold text-purple-600">{pendingBatches.length}</p></CardContent>
-          </Card>
+          <KPICard label="Active Listings" value={activeListings.length} color="text-green-600" bg="bg-green-50" />
+          <KPICard label="My Requests" value={activeRequests.length} color="text-blue-600" bg="bg-blue-50" />
+          <KPICard label="Pending Offers" value={pendingOffers.length} color="text-amber-600" bg="bg-amber-50" />
+          <KPICard label="Active Trades" value={activeTrades.length} color="text-purple-600" bg="bg-purple-50" />
         </div>
 
+        {/* Analytics Summary */}
+        {analytics && (
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center"><p className="text-xs text-neutral-500">Purchased</p><p className="font-extrabold text-lg">{formatKg(analytics.totalKgPurchased)}</p></CardContent></Card>
+            <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center"><p className="text-xs text-neutral-500">Spent</p><p className="font-extrabold text-lg text-[#145C25]">{formatNgn(analytics.totalSpendNgn)}</p></CardContent></Card>
+            <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center"><p className="text-xs text-neutral-500">Trades</p><p className="font-extrabold text-lg">{analytics.completedTrades}/{analytics.totalTrades}</p></CardContent></Card>
+          </div>
+        )}
+
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-4 rounded-2xl bg-neutral-100 p-1">
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="w-full grid grid-cols-5 rounded-2xl bg-neutral-100 p-1">
             <TabsTrigger value="overview" className="rounded-xl text-xs">Overview</TabsTrigger>
-            <TabsTrigger value="marketplace" className="rounded-xl text-xs">Marketplace</TabsTrigger>
+            <TabsTrigger value="marketplace" className="rounded-xl text-xs">Market</TabsTrigger>
+            <TabsTrigger value="trades" className="rounded-xl text-xs">Trades</TabsTrigger>
+            <TabsTrigger value="warehouse" className="rounded-xl text-xs">Warehouse</TabsTrigger>
             <TabsTrigger value="requests" className="rounded-xl text-xs">Requests</TabsTrigger>
-            <TabsTrigger value="batches" className="rounded-xl text-xs">Batches</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4 space-y-4">
-            {/* Marketplace Overview */}
+            {/* Accepted Materials */}
             <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-2"><CardTitle className="text-base">Marketplace Activity</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3">
-                <div className="p-4 bg-green-50 rounded-xl text-center">
-                  <Package className="w-6 h-6 text-[#145C25] mx-auto mb-1" />
-                  <p className="text-xl font-extrabold">{listings?.length || 0}</p>
-                  <p className="text-xs text-neutral-500">Available Listings</p>
-                </div>
-                <div className="p-4 bg-blue-50 rounded-xl text-center">
-                  <ShoppingCart className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-                  <p className="text-xl font-extrabold">{purchaseRequests?.length || 0}</p>
-                  <p className="text-xs text-neutral-500">Open Requests</p>
+              <CardHeader className="pb-2"><CardTitle className="text-base">Accepted Materials</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {(materials || []).slice(0, 8).map((m: Record<string,unknown>, i: number) => (
+                    <Badge key={i} variant="outline" className="rounded-full text-xs">
+                      {(m as { waste_categories?: { name?: string } }).waste_categories?.name || "Material"}
+                    </Badge>
+                  ))}
+                  {!materials?.length && <p className="text-sm text-neutral-400">No materials configured yet.</p>}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Impact */}
+            {/* Warehouses */}
             <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Leaf className="w-4 h-4 text-green-500" /> Environmental Impact</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm"><span className="text-neutral-500">Waste Diverted</span><span className="font-bold">{totalPurchased.toLocaleString()} kg</span></div>
-                <div className="flex justify-between text-sm"><span className="text-neutral-500">CO₂ Equivalent Saved</span><span className="font-bold">{(totalPurchased * 0.5).toLocaleString()} kg</span></div>
-                <div className="flex justify-between text-sm"><span className="text-neutral-500">Impact Credits</span><span className="font-bold text-amber-600">{impactCredits.toLocaleString()}</span></div>
-                <Progress value={Math.min(100, (totalPurchased / 10000) * 100)} className="h-2 rounded-full bg-neutral-200 [&>div]:bg-green-500" />
-                <p className="text-xs text-neutral-400">{Math.round((totalPurchased / 10000) * 100)}% to 10,000kg milestone</p>
+              <CardHeader className="pb-2"><CardTitle className="text-base">Warehouses ({warehouses?.length || 0})</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {(warehouses || []).map((w: Record<string,unknown>, i: number) => (
+                  <div key={i} className="flex justify-between items-center p-3 bg-neutral-50 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <Warehouse className="w-4 h-4 text-neutral-500" />
+                      <span className="text-sm font-semibold">{w.name as string}</span>
+                    </div>
+                    <Badge className="text-xs">{w.status as string || "active"}</Badge>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="marketplace" className="mt-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-neutral-900">Available Waste Batches</h2>
-              <Badge className="bg-green-100 text-green-700">{listings?.length || 0} listings</Badge>
+              <h2 className="font-bold">Available Materials</h2>
+              <Badge className="bg-green-100 text-green-700">{activeListings.length} listings</Badge>
             </div>
-            {(listings || []).slice(0, 8).map((batch: Record<string,unknown>, i: number) => (
+            {(listings || []).slice(0, 10).map((l: Record<string,unknown>, i: number) => (
               <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-sm capitalize">{(batch.material_type as string)?.replace(/_/g, " ") || "Waste"}</p>
-                    <p className="text-xs text-neutral-500">{Number(batch.quantity_kg || 0).toLocaleString()} kg • Grade: {(batch.quality_grade as string) || "Standard"}</p>
+                    <p className="font-bold text-sm">{l.title as string || "Material"}</p>
+                    <p className="text-xs text-neutral-500">{formatKg(Number(l.quantity_available_kg || 0))} • Grade: {l.quality_grade as string || "Standard"}</p>
                   </div>
                   <div className="text-right">
-                    <Badge className={batch.verified ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}>
-                      {batch.verified ? "Verified" : "Pending"}
-                    </Badge>
-                    <Button size="sm" variant="outline" className="mt-2 rounded-xl text-xs">View</Button>
+                    <p className="font-extrabold text-[#145C25]">{formatNgn(Number(l.asking_price_per_kg_minor || 0) / 100)}/kg</p>
+                    <Button size="sm" variant="outline" className="mt-1 rounded-xl text-xs">View</Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
+            {!listings?.length && <p className="text-center text-neutral-400 py-8">No active listings. Check back soon.</p>}
           </TabsContent>
 
-          <TabsContent value="requests" className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold text-neutral-900">Purchase Requests</h2>
-              <Link to="/partner/request">
-                <Button size="sm" className="bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl text-xs">
-                  + New Request
-                </Button>
-              </Link>
-            </div>
-            {(purchaseRequests || []).map((req: Record<string,unknown>, i: number) => (
-              <Card key={i} className="border-0 shadow-sm">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-bold text-sm capitalize">{(req.material as string)?.replace(/_/g, " ") || "Material"}</p>
-                      <p className="text-xs text-neutral-500">{Number(req.quantity_kg || 0).toLocaleString()} kg needed</p>
-                    </div>
-                    <Badge className={req.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}>
-                      {(req.status as string) || "pending"}
-                    </Badge>
-                  </div>
-                  {req.delivery_address && <p className="text-xs text-neutral-400 truncate">Delivery: {(req.delivery_address as string)}</p>}
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="batches" className="mt-4 space-y-3">
-            <h2 className="font-bold text-neutral-900">Received Batches</h2>
-            {(incomingBatches || []).slice(0, 10).map((batch: Record<string,unknown>, i: number) => (
+          <TabsContent value="trades" className="mt-4 space-y-3">
+            <h2 className="font-bold">Active Trades</h2>
+            {(trades || []).slice(0, 10).map((t: Record<string,unknown>, i: number) => (
               <Card key={i} className="border-0 shadow-sm">
                 <CardContent className="p-4 flex justify-between items-center">
                   <div>
-                    <p className="font-bold text-sm capitalize">{(batch.material_type as string)?.replace(/_/g, " ") || "Material"}</p>
-                    <p className="text-xs text-neutral-500">{Number(batch.quantity_kg || 0).toLocaleString()} kg • {new Date((batch.created_at as string) || "").toLocaleDateString()}</p>
+                    <p className="font-bold text-sm">{t.trade_reference as string || `Trade #${i + 1}`}</p>
+                    <p className="text-xs text-neutral-500">{formatKg(Number(t.agreed_quantity_kg || 0))} • {formatNgn(Number(t.total_minor || 0) / 100)}</p>
                   </div>
-                  <Badge className={batch.verified ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}>
-                    {batch.verified ? <CheckCircle2 className="w-3 h-3 mr-1 inline" /> : <AlertCircle className="w-3 h-3 mr-1 inline" />}
-                    {batch.verified ? "Verified" : "Pending"}
+                  <Badge className={t.status === "completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>
+                    {(t.status as string) || "pending"}
                   </Badge>
+                </CardContent>
+              </Card>
+            ))}
+            {!trades?.length && <p className="text-center text-neutral-400 py-8">No trades yet.</p>}
+          </TabsContent>
+
+          <TabsContent value="warehouse" className="mt-4 space-y-3">
+            <h2 className="font-bold">Inventory</h2>
+            {warehouses?.map((w: Record<string,unknown>) => (
+              <Card key={w.id as string} className="border-0 shadow-sm">
+                <CardHeader className="pb-1"><CardTitle className="text-sm">{w.name as string}</CardTitle></CardHeader>
+                <CardContent>
+                  <p className="text-xs text-neutral-500">Capacity: {formatKg(Number(w.capacity_kg || 0))}</p>
+                  <Progress value={Math.min(100, (totalInventory / Number(w.capacity_kg || 1)) * 100)} className="h-2 mt-2 rounded-full bg-neutral-200 [&>div]:bg-[#145C25]" />
+                </CardContent>
+              </Card>
+            ))}
+            {!warehouses?.length && <p className="text-center text-neutral-400 py-8">No warehouses configured.</p>}
+          </TabsContent>
+
+          <TabsContent value="requests" className="mt-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <h2 className="font-bold">Purchase Requests</h2>
+              <Link to="/partner/request"><Button size="sm" className="bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl text-xs"><Plus className="w-3 h-3 mr-1" />New</Button></Link>
+            </div>
+            {(requests || []).map((r: Record<string,unknown>, i: number) => (
+              <Card key={i} className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div><p className="font-bold text-sm">{r.title as string}</p><p className="text-xs text-neutral-500">{formatKg(Number(r.required_quantity_kg || 0))} needed</p></div>
+                    <Badge className={(r.status as string) === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}>{(r.status as string)}</Badge>
+                  </div>
+                  {r.remaining_quantity_kg !== undefined && (
+                    <Progress value={Math.round(((Number(r.required_quantity_kg) - Number(r.remaining_quantity_kg)) / Number(r.required_quantity_kg || 1)) * 100)} className="h-1.5 rounded-full bg-neutral-200 [&>div]:bg-blue-500" />
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -216,5 +196,16 @@ const RecyclerDashboard = () => {
     </div>
   );
 };
+
+function KPICard({ label, value, color, bg }: { label: string; value: number; color: string; bg: string }) {
+  return (
+    <Card className={`border-0 shadow-sm ${bg}`}>
+      <CardContent className="p-3 text-center">
+        <p className={`text-2xl font-extrabold ${color}`}>{value}</p>
+        <p className="text-[10px] text-neutral-500">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default RecyclerDashboard;
