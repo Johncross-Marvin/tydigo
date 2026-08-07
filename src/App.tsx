@@ -55,6 +55,7 @@ const AdminOnboardingPage = lazy(() => import("./pages/AdminOnboarding"));
 
 // Collector
 const CollectorDashboardPage = lazy(() => import("./pages/CollectorDashboard"));
+const CollectorJobsPage = lazy(() => import("./pages/CollectorJobs"));
 
 // Business
 const BusinessDashboardPage = lazy(() => import("./pages/BusinessDashboard"));
@@ -160,6 +161,7 @@ const App = () => (
 
                   {/* Collector / Fleet */}
                   <Route path="/collector/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CollectorDashboardPage /></Suspense>, COLLECTOR_ROLES)} />
+                  <Route path="/collector/jobs" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CollectorJobsPage /></Suspense>, COLLECTOR_ROLES)} />
 
                   {/* Business / Estate / Corporate */}
                   <Route path="/business/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><BusinessDashboardPage /></Suspense>, BUSINESS_ROLES)} />
