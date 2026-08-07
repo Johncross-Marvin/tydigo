@@ -2,15 +2,15 @@
  * Tydigo Payment Service
  *
  * Handles payment initialization, verification, and status tracking.
- * Integrates with Paystack when keys are available, falls back to mock.
+ * Integrates with Paystack via Supabase Edge Function (secure).
+ * Falls back to mock when Paystack keys are not configured.
  *
- * SECURITY: Never exposes PAYSTACK_SECRET_KEY in frontend code.
- * Real payment initialization happens server-side via Edge Functions.
+ * SECURITY: PAYSTACK_SECRET_KEY is never exposed to the frontend.
+ * All real payment initialization happens server-side via Edge Functions.
  */
 
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
-import { api as mockApi } from "@/lib/api";
-import { hasPaystack, PAYSTACK_PUBLIC_KEY } from "@/lib/env";
+import { hasPaystack, PAYSTACK_PUBLIC_KEY, SUPABASE_URL } from "@/lib/env";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -19,8 +19,10 @@ export type PaymentResult = {
   amountNgn: number;
   status: "pending" | "paid" | "failed";
   authorizationUrl?: string;
+  accessCode?: string;
   pointsEarned: number;
   alreadyPaid?: boolean;
+  mock?: boolean;
 };
 
 // ─── Initialize Payment ───────────────────────────────────────
@@ -33,74 +35,37 @@ export async function initializePayment(params: {
 }): Promise<PaymentResult> {
   const { userId, pickupId, amountNgn, email } = params;
 
-  if (hasPaystack() && PAYSTACK_PUBLIC_KEY) {
-    return initializePaystackPayment({ userId, pickupId, amountNgn, email });
+  // Try edge function first (handles both real Paystack and mock)
+  if (isSupabaseAvailable() && supabase) {
+    try {
+      const { data, error } = await supabase.functions.invoke("payment", {
+        body: {
+          action: "initialize",
+          pickupId,
+          amountNgn,
+          email,
+        },
+      });
+
+      if (!error && data) {
+        const result = data as Record<string, unknown>;
+        return {
+          reference: result.reference as string,
+          amountNgn,
+          status: result.status as PaymentResult["status"],
+          authorizationUrl: result.authorizationUrl as string | undefined,
+          accessCode: result.accessCode as string | undefined,
+          pointsEarned: Math.max(100, Math.round(amountNgn * 0.1)),
+          mock: result.mock as boolean | undefined,
+        };
+      }
+    } catch (err) {
+      console.warn("[Tydigo Payment] Edge function failed, falling back to mock:", err);
+    }
   }
 
-  // Mock payment
+  // Fallback: fully local mock payment
   return mockPayment({ userId, pickupId, amountNgn });
-}
-
-// ─── Paystack Payment ─────────────────────────────────────────
-
-async function initializePaystackPayment(params: {
-  userId: string;
-  pickupId: string;
-  amountNgn: number;
-  email?: string;
-}): Promise<PaymentResult> {
-  const { userId, pickupId, amountNgn, email } = params;
-  const reference = `TYD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-  const amountInKobo = amountNgn * 100; // Paystack uses kobo
-
-  // Call Paystack inline script to initialize
-  return new Promise((resolve, reject) => {
-    const handler = (window as unknown as Record<string, unknown>).PaystackPop as {
-      setup: (options: Record<string, unknown>) => { openIframe: () => void };
-    };
-
-    if (!handler) {
-      // Paystack script not loaded — fall back to mock
-      resolve(mockPayment({ userId, pickupId, amountNgn }));
-      return;
-    }
-
-    handler.setup({
-      key: PAYSTACK_PUBLIC_KEY,
-      email: email || "customer@tydigo.com",
-      amount: amountInKobo,
-      ref: reference,
-      currency: "NGN",
-      label: "Tydigo Pickup",
-      onSuccess: async () => {
-        // Record payment in DB if Supabase is available
-        if (isSupabaseAvailable() && supabase) {
-          await recordPayment({
-            pickupId,
-            userId,
-            amountNgn,
-            reference,
-            status: "paid",
-          });
-        }
-
-        resolve({
-          reference,
-          amountNgn,
-          status: "paid",
-          pointsEarned: Math.max(100, Math.round(amountNgn * 0.1)),
-        });
-      },
-      onClose: () => {
-        resolve({
-          reference,
-          amountNgn,
-          status: "pending",
-          pointsEarned: 0,
-        });
-      },
-    }).openIframe();
-  });
 }
 
 // ─── Mock Payment ─────────────────────────────────────────────
@@ -110,116 +75,77 @@ async function mockPayment(params: {
   pickupId: string;
   amountNgn: number;
 }): Promise<PaymentResult> {
-  const { pickupId, amountNgn } = params;
+  const { pickupId, amountNgn, userId } = params;
+  const reference = `TYD-MOCK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-  // Try mock API first
-  try {
-    const result = await mockApi.createPayment({
-      pickupId,
-      method: "card",
-    });
+  if (isSupabaseAvailable() && supabase) {
+    const now = new Date().toISOString();
 
-    return {
-      reference: result.payment.reference,
-      amountNgn: result.payment.amountNgn,
-      status: "paid",
-      pointsEarned: result.pointsEarned,
-      alreadyPaid: result.alreadyPaid,
-    };
-  } catch (error) {
-    // If mock API fails, create a fully local mock
-    const reference = `TYD-MOCK-${Date.now()}`;
-
-    if (isSupabaseAvailable() && supabase) {
-      await recordPayment({
-        pickupId,
-        userId: params.userId,
-        amountNgn,
-        reference,
-        status: "paid",
-      });
-    }
-
-    return {
-      reference,
-      amountNgn,
-      status: "paid",
-      pointsEarned: Math.max(100, Math.round(amountNgn * 0.1)),
-    };
-  }
-}
-
-// ─── Record Payment in DB ─────────────────────────────────────
-
-async function recordPayment(params: {
-  pickupId: string;
-  userId: string;
-  amountNgn: number;
-  reference: string;
-  status: string;
-}): Promise<void> {
-  if (!isSupabaseAvailable() || !supabase) return;
-
-  const now = new Date().toISOString();
-
-  await supabase.from("payments").insert({
-    pickup_id: params.pickupId,
-    payer_id: params.userId,
-    amount_ngn: params.amountNgn,
-    currency: "NGN",
-    provider: "paystack",
-    provider_reference: params.reference,
-    status: params.status,
-    paid_at: params.status === "paid" ? now : null,
-    created_at: now,
-  });
-
-  // Update pickup payment status
-  await supabase
-    .from("pickup_requests")
-    .update({
-      payment_status: params.status === "paid" ? "paid" : "pending",
-      updated_at: now,
-    })
-    .eq("id", params.pickupId);
-
-  // Award EcoPoints for this payment
-  if (params.status === "paid") {
-    const points = Math.max(100, Math.round(params.amountNgn * 0.1));
-    const { data: pickup } = await supabase
-      .from("pickup_requests")
-      .select("customer_id")
-      .eq("id", params.pickupId)
+    // Get profile ID
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("auth_user_id", userId)
       .maybeSingle();
 
-    if (pickup) {
-      await supabase.from("ecopoint_transactions").insert({
-        profile_id: pickup.customer_id,
-        pickup_id: params.pickupId,
-        points,
-        reason: "Pickup payment reward",
-        status: "pending",
-        created_at: now,
+    const profileId = profile?.id || userId;
+
+    // Record payment
+    await supabase.from("payments").insert({
+      pickup_id: pickupId,
+      payer_id: profileId,
+      amount_ngn: amountNgn,
+      currency: "NGN",
+      provider: "mock",
+      provider_reference: reference,
+      status: "paid",
+      paid_at: now,
+      created_at: now,
+    });
+
+    // Update pickup status
+    await supabase
+      .from("pickup_requests")
+      .update({
+        payment_status: "paid",
+        status: "requested",
+        updated_at: now,
+      })
+      .eq("id", pickupId);
+
+    // Create status event
+    await supabase.from("pickup_status_events").insert({
+      pickup_id: pickupId,
+      to_status: "requested",
+      notes: "Payment confirmed (mock)",
+      created_at: now,
+    });
+
+    // Award EcoPoints via RPC
+    const points = Math.max(100, Math.round(amountNgn * 0.1));
+    try {
+      await supabase.rpc("award_ecopoints", {
+        p_profile_id: profileId,
+        p_points: points,
+        p_transaction_type: "earn",
+        p_source_type: "payment",
+        p_source_id: pickupId,
+        p_idempotency_key: `payment_${pickupId}_reward`,
+        p_description: `Pickup payment reward — ${points} EcoPoints`,
+        p_status: "confirmed",
       });
-
-      // Update profile EcoPoints balance
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("ecopoints")
-        .eq("id", pickup.customer_id)
-        .maybeSingle();
-
-      if (prof) {
-        await supabase
-          .from("profiles")
-          .update({
-            ecopoints: Number(prof.ecopoints || 0) + points,
-            updated_at: now,
-          })
-          .eq("id", pickup.customer_id);
-      }
+    } catch (err) {
+      console.warn("[Tydigo Payment] EcoPoints award failed:", err);
     }
   }
+
+  return {
+    reference,
+    amountNgn,
+    status: "paid",
+    pointsEarned: Math.max(100, Math.round(amountNgn * 0.1)),
+    mock: true,
+  };
 }
 
 // ─── Verify Payment ───────────────────────────────────────────
@@ -229,16 +155,33 @@ export async function verifyPayment(reference: string): Promise<{
   amountNgn: number;
 }> {
   if (isSupabaseAvailable() && supabase) {
-    const { data } = await supabase
+    // Try edge function first
+    try {
+      const { data, error } = await supabase.functions.invoke("payment", {
+        body: { action: "verify", reference },
+      });
+      if (!error && data) {
+        const result = data as Record<string, unknown>;
+        return {
+          status: result.status as string,
+          amountNgn: result.amount as number || 0,
+        };
+      }
+    } catch {
+      // Fall through to DB check
+    }
+
+    // Check DB
+    const { data: payment } = await supabase
       .from("payments")
       .select("status, amount_ngn")
       .eq("provider_reference", reference)
       .maybeSingle();
 
-    if (data) {
+    if (payment) {
       return {
-        status: data.status as string,
-        amountNgn: data.amount_ngn as number,
+        status: payment.status as string,
+        amountNgn: payment.amount_ngn as number,
       };
     }
   }

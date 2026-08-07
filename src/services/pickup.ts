@@ -44,6 +44,20 @@ export type CreatedPickup = {
   createdAt: string;
 };
 
+// ─── Profile Resolution ───────────────────────────────────────
+
+async function resolveProfileId(authUserId: string): Promise<string> {
+  if (!isSupabaseAvailable() || !supabase) return authUserId;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  return profile?.id || authUserId;
+}
+
 // ─── Create Pickup ────────────────────────────────────────────
 
 export async function createPickup(
@@ -59,19 +73,14 @@ export async function createPickup(
   const pickupCode = generatePickupCode();
 
   if (isSupabaseAvailable() && supabase) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-
-    const profileId = profile?.id || user.id;
+    const profileId = await resolveProfileId(user.id);
     const now = new Date().toISOString();
     const pickupId = generateId("pku");
     const dbWasteType = mapWasteTypeToDb(draft.wasteType);
     const dbStatus = "requested";
     const paymentStatus = draft.paymentMethod === "transfer" ? "pay_on_pickup" : "pending";
 
+    // Create pickup request
     const { error } = await supabase.from("pickup_requests").insert({
       id: pickupId,
       customer_id: profileId,
@@ -104,28 +113,43 @@ export async function createPickup(
       created_at: now,
     });
 
-    // Handle EcoPoints redemption
+    // Handle EcoPoints redemption via RPC
     if (draft.ecopointsToApply > 0 && pricing.ecopointsDiscountNgn > 0) {
-      await supabase.from("ecopoint_transactions").insert({
-        profile_id: profileId,
-        pickup_id: pickupId,
-        points: -pricing.ecopointsApplied,
-        reason: "Pickup discount redemption",
-        status: "pending",
-      });
-
-      const { data: currentProfile } = await supabase
-        .from("profiles")
-        .select("ecopoints")
-        .eq("id", profileId)
-        .maybeSingle();
-
-      if (currentProfile) {
-        const newBalance = Math.max(0, Number(currentProfile.ecopoints || 0) - pricing.ecopointsApplied);
-        await supabase
+      try {
+        await supabase.rpc("redeem_ecopoints", {
+          p_profile_id: profileId,
+          p_points: pricing.ecopointsApplied,
+          p_redemption_type: "pickup_discount",
+          p_related_order_type: "pickup",
+          p_related_order_id: pickupId,
+          p_idempotency_key: `pickup_${pickupId}_ecopoints`,
+          p_description: `EcoPoints discount for pickup ${pickupCode}`,
+        });
+      } catch (err) {
+        console.warn("[Tydigo Pickup] EcoPoints redemption via RPC failed:", err);
+        // Fallback: direct update
+        const { data: currentProfile } = await supabase
           .from("profiles")
-          .update({ ecopoints: newBalance, updated_at: now })
-          .eq("id", profileId);
+          .select("ecopoints")
+          .eq("id", profileId)
+          .maybeSingle();
+
+        if (currentProfile) {
+          const newBalance = Math.max(0, Number(currentProfile.ecopoints || 0) - pricing.ecopointsApplied);
+          await supabase
+            .from("profiles")
+            .update({ ecopoints: newBalance, updated_at: now })
+            .eq("id", profileId);
+
+          await supabase.from("ecopoint_transactions").insert({
+            profile_id: profileId,
+            pickup_id: pickupId,
+            points: -pricing.ecopointsApplied,
+            reason: "Pickup discount redemption",
+            status: "confirmed",
+            created_at: now,
+          });
+        }
       }
     }
 
@@ -143,6 +167,7 @@ export async function createPickup(
     };
   }
 
+  // Mock fallback
   const { pickup } = await mockApi.createPickup({
     wasteType: draft.wasteType,
     weightKg: draft.estimatedWeightKg,
@@ -191,10 +216,11 @@ export async function createPickupWithItems(
 
 export async function getCustomerPickups(userId: string): Promise<Pickup[]> {
   if (isSupabaseAvailable() && supabase) {
+    const profileId = await resolveProfileId(userId);
     const { data, error } = await supabase
       .from("pickup_requests")
       .select("*")
-      .or(`customer_id.eq.${userId}`)
+      .or(`customer_id.eq.${profileId}`)
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -208,11 +234,16 @@ export async function getCustomerPickups(userId: string): Promise<Pickup[]> {
 
 export async function getActivePickup(userId: string): Promise<Pickup | null> {
   if (isSupabaseAvailable() && supabase) {
+    const profileId = await resolveProfileId(userId);
     const { data, error } = await supabase
       .from("pickup_requests")
       .select("*")
-      .or(`customer_id.eq.${userId}`)
-      .in("status", ["requested", "matching_collector", "collector_assigned", "collector_en_route", "collector_arrived", "pickup_verified", "waste_picked", "in_transit_to_destination", "delivered_to_partner"])
+      .or(`customer_id.eq.${profileId}`)
+      .in("status", [
+        "requested", "matching_collector", "collector_assigned",
+        "collector_en_route", "collector_arrived", "pickup_verified",
+        "waste_picked", "in_transit_to_destination", "delivered_to_partner",
+      ])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -253,7 +284,6 @@ export async function updatePickupStatus(
 
   const now = new Date().toISOString();
 
-  // Get current status
   const { data: current } = await supabase
     .from("pickup_requests")
     .select("status")
@@ -262,7 +292,6 @@ export async function updatePickupStatus(
 
   const fromStatus = (current as Record<string, unknown> | null)?.status || null;
 
-  // Update pickup
   const updates: Record<string, unknown> = { status: newStatus, updated_at: now };
 
   if (newStatus === "collector_arrived") updates.collector_arrived_at = now;
@@ -271,7 +300,6 @@ export async function updatePickupStatus(
 
   await supabase.from("pickup_requests").update(updates).eq("id", pickupId);
 
-  // Record status event
   await supabase.from("pickup_status_events").insert({
     pickup_id: pickupId,
     from_status: fromStatus,
@@ -291,13 +319,13 @@ export async function uploadPickupPhoto(
   if (isSupabaseAvailable() && supabase) {
     const fileName = `${userId}/${pickupId}/${Date.now()}-${file.name}`;
     const { data, error } = await supabase.storage
-      .from("pickup-images")
+      .from("waste-photos")
       .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
     if (error) throw new Error(error.message);
 
     const { data: urlData } = supabase.storage
-      .from("pickup-images")
+      .from("waste-photos")
       .getPublicUrl(data.path);
 
     // Record in pickup_images
@@ -347,14 +375,27 @@ function mapDbPickupToPickup(db: Record<string, unknown>): Pickup {
 
 export async function createWasteBatch(pickupId: string) {
   if (!isSupabaseAvailable() || !supabase) return null;
-  const { data: pickup } = await supabase.from("pickup_requests").select("customer_id, waste_type, estimated_weight_kg, actual_weight_kg, pickup_code").eq("id", pickupId).maybeSingle();
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("customer_id, waste_type, estimated_weight_kg, actual_weight_kg, pickup_code")
+    .eq("id", pickupId)
+    .maybeSingle();
   if (!pickup) return null;
   const weight = (pickup.actual_weight_kg || pickup.estimated_weight_kg || 0) as number;
-  const { data } = await supabase.from("waste_batches").insert({
-    id: generateId("wbt"), pickup_id: pickupId, customer_id: pickup.customer_id,
-    material_type: pickup.waste_type, quantity_kg: weight,
-    quality_grade: "standard", verified: false, created_at: new Date().toISOString(),
-  }).select("id").maybeSingle();
+  const { data } = await supabase
+    .from("waste_batches")
+    .insert({
+      id: generateId("wbt"),
+      pickup_id: pickupId,
+      customer_id: pickup.customer_id,
+      material_type: pickup.waste_type,
+      quantity_kg: weight,
+      quality_grade: "standard",
+      verified: false,
+      created_at: new Date().toISOString(),
+    })
+    .select("id")
+    .maybeSingle();
   return data;
 }
 
@@ -362,13 +403,22 @@ export async function createWasteBatch(pickupId: string) {
 
 export async function generatePickupReceipt(pickupId: string) {
   if (!isSupabaseAvailable() || !supabase) return null;
-  const { data: pickup } = await supabase.from("pickup_requests").select("*").eq("id", pickupId).maybeSingle();
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("*")
+    .eq("id", pickupId)
+    .maybeSingle();
   if (!pickup) return null;
   const receiptNumber = `TYD-RCP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const { data } = await supabase.from("digital_receipts").insert({
-    pickup_request_id: pickupId, receipt_number: receiptNumber,
-    issued_at: new Date().toISOString(),
-  }).select("*").maybeSingle();
+  const { data } = await supabase
+    .from("digital_receipts")
+    .insert({
+      pickup_request_id: pickupId,
+      receipt_number: receiptNumber,
+      issued_at: new Date().toISOString(),
+    })
+    .select("*")
+    .maybeSingle();
   return data;
 }
 
