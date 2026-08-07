@@ -58,6 +58,7 @@ const RequestPickupPage = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [draftId] = useState(() => `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const [submissionId] = useState(() => `sub-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [estimatedWeight, setEstimatedWeight] = useState(5);
   const [customWeight, setCustomWeight] = useState("");
@@ -148,8 +149,8 @@ const RequestPickupPage = () => {
     };
 
     try {
-      // Step 1: Create pickup
-      const result = await createPickup(user, draft);
+      // Step 1: Create pickup (idempotent — safe to retry)
+      const result = await createPickup(user, draft, submissionId);
 
       // Step 2: Associate draft photos with the real pickup
       if (photos.length > 0) {

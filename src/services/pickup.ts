@@ -63,6 +63,7 @@ async function resolveProfileId(authUserId: string): Promise<string> {
 export async function createPickup(
   user: AuthUser,
   draft: PickupDraftInput,
+  idempotencyKey?: string,
 ): Promise<CreatedPickup> {
   const pricing = calculatePrice({
     weightKg: draft.estimatedWeightKg,
@@ -70,100 +71,46 @@ export async function createPickup(
     ecopointsToApply: draft.ecopointsToApply,
   });
 
-  const pickupCode = generatePickupCode();
-
   if (isSupabaseAvailable() && supabase) {
     const profileId = await resolveProfileId(user.id);
-    const now = new Date().toISOString();
-    const pickupId = generateId("pku");
     const dbWasteType = mapWasteTypeToDb(draft.wasteType);
-    const dbStatus = "requested";
-    const paymentStatus = draft.paymentMethod === "transfer" ? "pay_on_pickup" : "pending";
+    const key = idempotencyKey || `pickup_${profileId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // Create pickup request
-    const { error } = await supabase.from("pickup_requests").insert({
-      id: pickupId,
-      customer_id: profileId,
-      waste_type: dbWasteType,
-      estimated_weight_kg: draft.estimatedWeightKg,
-      sorting_verified: draft.sortingStatus === "properly_sorted",
-      photos: draft.photoPath ? [draft.photoPath] : [],
-      pickup_address: draft.address,
-      pickup_instructions: draft.pickupInstructions || null,
-      requested_window: draft.scheduleWindow,
-      pickup_code: pickupCode,
-      base_price_ngn: pricing.basePriceNgn,
-      waste_modifier_ngn: pricing.wasteModifierNgn,
-      platform_fee_ngn: pricing.platformFeeNgn,
-      ecopoints_discount_ngn: pricing.ecopointsDiscountNgn,
-      final_total_ngn: pricing.finalTotalNgn,
-      status: dbStatus,
-      payment_status: paymentStatus,
-      created_at: now,
-      updated_at: now,
+    // Use idempotent RPC for atomic creation
+    const { data, error } = await supabase.rpc("create_pickup_idempotent", {
+      p_idempotency_key: key,
+      p_customer_id: profileId,
+      p_waste_type: dbWasteType,
+      p_estimated_weight_kg: draft.estimatedWeightKg,
+      p_pickup_address: draft.address,
+      p_pickup_instructions: draft.pickupInstructions || null,
+      p_requested_window: draft.scheduleWindow,
+      p_sorting_verified: draft.sortingStatus === "properly_sorted",
+      p_base_price_ngn: pricing.basePriceNgn,
+      p_waste_modifier_ngn: pricing.wasteModifierNgn,
+      p_platform_fee_ngn: pricing.platformFeeNgn,
+      p_ecopoints_discount_ngn: pricing.ecopointsDiscountNgn,
+      p_final_total_ngn: pricing.finalTotalNgn,
+      p_payment_method: draft.paymentMethod,
+      p_ecopoints_to_apply: pricing.ecopointsApplied,
     });
 
     if (error) throw new Error(error.message);
 
-    // Create status event
-    await supabase.from("pickup_status_events").insert({
-      pickup_id: pickupId,
-      to_status: "requested",
-      notes: "Pickup request created",
-      created_at: now,
-    });
-
-    // Handle EcoPoints redemption via RPC
-    if (draft.ecopointsToApply > 0 && pricing.ecopointsDiscountNgn > 0) {
-      try {
-        await supabase.rpc("redeem_ecopoints", {
-          p_profile_id: profileId,
-          p_points: pricing.ecopointsApplied,
-          p_redemption_type: "pickup_discount",
-          p_related_order_type: "pickup",
-          p_related_order_id: pickupId,
-          p_idempotency_key: `pickup_${pickupId}_ecopoints`,
-          p_description: `EcoPoints discount for pickup ${pickupCode}`,
-        });
-      } catch (err) {
-        console.warn("[Tydigo Pickup] EcoPoints redemption via RPC failed:", err);
-        // Fallback: direct update
-        const { data: currentProfile } = await supabase
-          .from("profiles")
-          .select("ecopoints")
-          .eq("id", profileId)
-          .maybeSingle();
-
-        if (currentProfile) {
-          const newBalance = Math.max(0, Number(currentProfile.ecopoints || 0) - pricing.ecopointsApplied);
-          await supabase
-            .from("profiles")
-            .update({ ecopoints: newBalance, updated_at: now })
-            .eq("id", profileId);
-
-          await supabase.from("ecopoint_transactions").insert({
-            profile_id: profileId,
-            pickup_id: pickupId,
-            points: -pricing.ecopointsApplied,
-            reason: "Pickup discount redemption",
-            status: "confirmed",
-            created_at: now,
-          });
-        }
-      }
-    }
+    const result = data as Record<string, unknown>;
+    const now = new Date().toISOString();
 
     return {
-      id: pickupId,
-      pickupCode,
+      id: result.id as string,
+      pickupCode: result.pickup_code as string,
       wasteType: draft.wasteType,
       estimatedWeightKg: draft.estimatedWeightKg,
       address: draft.address,
-      status: dbStatus,
-      paymentStatus,
+      status: result.status as string,
+      paymentStatus: result.payment_status as string,
       priceBreakdown: pricing,
       finalTotalNgn: pricing.finalTotalNgn,
-      createdAt: now,
+      createdAt: (result.created_at as string) || now,
     };
   }
 
