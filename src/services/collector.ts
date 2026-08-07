@@ -458,13 +458,41 @@ export async function verifyPickup(
     return { success: false, error: `Cannot transition from ${pickup.status} to verified` };
   }
 
-  // Verify code if provided
-  if (data.verificationCode && pickup.verification_code) {
-    if (data.verificationCode !== pickup.verification_code) {
-      return { success: false, error: "Invalid verification code" };
+  // If verification code is provided, validate it via RPC
+  if (data.verificationCode) {
+    const { data: validationResult, error: validationError } = await supabase.rpc(
+      "validate_pickup_verification_code",
+      {
+        p_pickup_id: pickupId,
+        p_code: data.verificationCode,
+        p_validator_profile_id: profileId,
+      },
+    );
+
+    if (validationError) {
+      return { success: false, error: validationError.message };
     }
+
+    const result = validationResult as Record<string, unknown>;
+    if (!result.valid) {
+      return { success: false, error: result.error as string };
+    }
+
+    // Verification code was valid — pickup already transitioned by RPC
+    // Now update the actual weight
+    const now = new Date().toISOString();
+    await supabase
+      .from("pickup_requests")
+      .update({
+        actual_weight_kg: data.actualWeightKg,
+        updated_at: now,
+      })
+      .eq("id", pickupId);
+
+    return { success: true };
   }
 
+  // No verification code — direct verification (for cases where code isn't required)
   const now = new Date().toISOString();
   await supabase
     .from("pickup_requests")

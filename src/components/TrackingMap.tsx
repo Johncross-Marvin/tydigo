@@ -5,15 +5,8 @@
  * Falls back gracefully to a text-based display when Maps API is unavailable.
  */
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Navigation, MapPin, Truck } from "lucide-react";
-
-// Google Maps types (available when the Maps script is loaded)
-declare global {
-  interface Window {
-    google?: typeof google;
-  }
-}
+import { useEffect, useRef, useState } from "react";
+import { Navigation } from "lucide-react";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 const HAS_MAPS = Boolean(GOOGLE_MAPS_API_KEY);
@@ -42,9 +35,9 @@ export function TrackingMap({
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState(false);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const pickupMarkerRef = useRef<google.maps.Marker | null>(null);
-  const collectorMarkerRef = useRef<google.maps.Marker | null>(null);
+  const mapInstanceRef = useRef<unknown>(null);
+  const pickupMarkerRef = useRef<unknown>(null);
+  const collectorMarkerRef = useRef<unknown>(null);
 
   // Initialize map
   useEffect(() => {
@@ -58,6 +51,13 @@ export function TrackingMap({
         : { lat: 9.0765, lng: 7.3986 }; // Default: Abuja
 
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const google = (window as any).google;
+        if (!google?.maps) {
+          setMapError(true);
+          return;
+        }
+
         const map = new google.maps.Map(mapRef.current, {
           center,
           zoom: 14,
@@ -78,7 +78,8 @@ export function TrackingMap({
     };
 
     // Load Google Maps script dynamically
-    if (!window.google?.maps) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!(window as any).google?.maps) {
       const script = document.createElement("script");
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
       script.async = true;
@@ -94,12 +95,19 @@ export function TrackingMap({
   useEffect(() => {
     if (!mapLoaded || !mapInstanceRef.current || !pickupLat || !pickupLng) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const google = (window as any).google;
+    if (!google?.maps) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = mapInstanceRef.current as any;
+
     if (pickupMarkerRef.current) {
-      pickupMarkerRef.current.setPosition({ lat: pickupLat, lng: pickupLng });
+      (pickupMarkerRef.current as any).setPosition({ lat: pickupLat, lng: pickupLng });
     } else {
       pickupMarkerRef.current = new google.maps.Marker({
         position: { lat: pickupLat, lng: pickupLng },
-        map: mapInstanceRef.current,
+        map,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 8,
@@ -117,17 +125,20 @@ export function TrackingMap({
   useEffect(() => {
     if (!mapLoaded || !mapInstanceRef.current || !collectorLat || !collectorLng) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const google = (window as any).google;
+    if (!google?.maps) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const map = mapInstanceRef.current as any;
     const position = { lat: collectorLat, lng: collectorLng };
 
     if (collectorMarkerRef.current) {
-      collectorMarkerRef.current.setPosition(position);
-      if (collectorHeading != null) {
-        (collectorMarkerRef.current as unknown as { setHeading?: (h: number) => void }).setHeading?.(collectorHeading);
-      }
+      (collectorMarkerRef.current as any).setPosition(position);
     } else {
       collectorMarkerRef.current = new google.maps.Marker({
         position,
-        map: mapInstanceRef.current,
+        map,
         icon: {
           path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
           scale: 5,
@@ -145,7 +156,7 @@ export function TrackingMap({
         const bounds = new google.maps.LatLngBounds();
         bounds.extend(position);
         bounds.extend({ lat: pickupLat, lng: pickupLng });
-        mapInstanceRef.current.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+        map.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
       }
     }
   }, [mapLoaded, collectorLat, collectorLng, collectorHeading, pickupLat, pickupLng]);

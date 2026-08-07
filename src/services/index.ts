@@ -194,10 +194,27 @@ export {
 export type { FeatureGate } from "./unlock";
 
 export {
-  trackOnboardingEvent,
-  getOnboardingStats,
+  trackEvent,
+  trackPickupCreated,
+  trackMatchingStarted,
+  trackMatchingSucceeded,
+  trackMatchingExhausted,
+  trackOfferSent,
+  trackOfferAccepted,
+  trackOfferRejected,
+  trackCollectorEnRoute,
+  trackCollectorArrived,
+  trackPickupVerified,
+  trackWasteCollected,
+  trackPickupCompleted,
+  trackPickupCancelled,
+  trackPaymentInitialized,
+  trackPaymentCompleted,
+  trackEcoPointsEarned,
+  trackEcoPointsRedeemed,
+  trackRatingSubmitted,
 } from "./analytics";
-export type { AnalyticsEvent } from "./analytics";
+export type { AnalyticsEventName } from "./analytics";
 
 export {
   enqueueOfflineAction,
@@ -287,12 +304,17 @@ export {
 export type { SecurityEvent } from "./security-audit";
 
 export {
-  getCollectorProfile,
-  toggleAvailability,
-  updateLocation,
-  getCollectorDashboard,
+  getCollectorOffers,
+  acceptAssignment,
+  rejectAssignment,
+  getCurrentJob,
+  markEnRoute,
+  markArrived,
+  verifyPickup,
+  markWastePicked,
+  completePickup,
 } from "./collector";
-export type { CollectorProfile, CollectorDashboard } from "./collector";
+export type { CollectorOffer, ActiveJob } from "./collector";
 
 export {
   getWallet as getCollectorWallet,

@@ -77,8 +77,77 @@ export async function uploadPickupProof(
   pickupId: string,
   file: File,
 ): Promise<{ url: string; path: string }> {
-  const fileName = `${collectorId}/${pickupId}/${Date.now()}-${file.name}`;
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const sanitizedExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+  const uuid = crypto.randomUUID();
+  const fileName = `${collectorId}/${pickupId}/${uuid}.${sanitizedExt}`;
   return uploadFile(BUCKETS.PICKUP_PROOF, fileName, file);
+}
+
+// ─── Upload Draft Photo ───────────────────────────────────────
+
+export async function uploadDraftPhoto(
+  userId: string,
+  draftId: string,
+  file: File,
+): Promise<{ url: string; path: string }> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const sanitizedExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+  const uuid = crypto.randomUUID();
+  const fileName = `drafts/${userId}/${draftId}/${uuid}.${sanitizedExt}`;
+  return uploadFile(BUCKETS.WASTE_PHOTOS, fileName, file);
+}
+
+// ─── Associate Draft Photos with Pickup ───────────────────────
+
+export async function associateDraftPhotos(
+  userId: string,
+  draftId: string,
+  pickupId: string,
+): Promise<string[]> {
+  if (!isSupabaseAvailable() || !supabase) return [];
+
+  const draftPrefix = `drafts/${userId}/${draftId}/`;
+  const targetPrefix = `${userId}/${pickupId}/`;
+
+  // List all draft files
+  const { data: files } = await supabase.storage
+    .from(BUCKETS.WASTE_PHOTOS)
+    .list(draftPrefix);
+
+  if (!files?.length) return [];
+
+  const newPaths: string[] = [];
+
+  for (const file of files) {
+    const oldPath = `${draftPrefix}${file.name}`;
+    const newPath = `${targetPrefix}${file.name}`;
+
+    // Copy file to canonical path
+    const { error: copyError } = await supabase.storage
+      .from(BUCKETS.WASTE_PHOTOS)
+      .copy(oldPath, newPath);
+
+    if (!copyError) {
+      newPaths.push(newPath);
+
+      // Record in pickup_images
+      await supabase.from("pickup_images").insert({
+        pickup_request_id: pickupId,
+        storage_path: newPath,
+        bucket: BUCKETS.WASTE_PHOTOS,
+        uploaded_by: userId,
+        created_at: new Date().toISOString(),
+      });
+
+      // Delete draft file
+      await supabase.storage
+        .from(BUCKETS.WASTE_PHOTOS)
+        .remove([oldPath]);
+    }
+  }
+
+  return newPaths;
 }
 
 // ─── Upload Avatar ────────────────────────────────────────────

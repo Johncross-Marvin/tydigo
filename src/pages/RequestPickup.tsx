@@ -18,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth-provider";
-import { createPickup, uploadPickupPhoto, type PickupDraftInput } from "@/services/pickup";
+import { createPickup, type PickupDraftInput } from "@/services/pickup";
+import { uploadDraftPhoto, associateDraftPhotos } from "@/services/storage";
 import { calculatePrice, formatNaira, type WasteType } from "@/services/pricing";
 import { getAddresses, type Address } from "@/services/address";
 import { initializePayment } from "@/services/payments";
@@ -56,6 +57,7 @@ const RequestPickupPage = () => {
   // Form state
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [draftId] = useState(() => `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [estimatedWeight, setEstimatedWeight] = useState(5);
   const [customWeight, setCustomWeight] = useState("");
@@ -105,14 +107,13 @@ const RequestPickupPage = () => {
     pricing.subtotalNgn * 0.5 / 0.1
   ); // 50% max discount
 
-  // Photo upload handler
+  // Photo upload handler — uses draft storage (no pickup record needed yet)
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setUploadingPhoto(true);
     try {
-      const tempId = "temp-" + Date.now();
-      const url = await uploadPickupPhoto(user.id, tempId, file);
+      const { url } = await uploadDraftPhoto(user.id, draftId, file);
       setPhotos((prev) => [...prev, url]);
     } catch (err) {
       toast.error("Failed to upload photo. Please try again.");
@@ -120,7 +121,7 @@ const RequestPickupPage = () => {
     setUploadingPhoto(false);
     // Reset input
     if (fileRef.current) fileRef.current.value = "";
-  }, [user]);
+  }, [user, draftId]);
 
   // Submit handler
   const handleSubmit = async () => {
@@ -150,7 +151,17 @@ const RequestPickupPage = () => {
       // Step 1: Create pickup
       const result = await createPickup(user, draft);
 
-      // Step 2: Process payment if card
+      // Step 2: Associate draft photos with the real pickup
+      if (photos.length > 0) {
+        try {
+          await associateDraftPhotos(user.id, draftId, result.id);
+        } catch (photoErr) {
+          console.warn("Failed to associate photos:", photoErr);
+          // Non-blocking — pickup is created, photos can be re-uploaded
+        }
+      }
+
+      // Step 3: Process payment if card
       if (paymentMethod === "card") {
         setPaymentProcessing(true);
         const payment = await initializePayment({
