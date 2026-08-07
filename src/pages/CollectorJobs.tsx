@@ -25,7 +25,8 @@ const CollectorJobsPage = () => {
     queryKey: ["collector-assignments", user?.id],
     queryFn: async () => {
       if (!supabase || !user) return [];
-      const { data } = await supabase.from("collector_assignments").select("*, pickup_requests(*)").eq("collector_profile_id", user.id).order("created_at", { ascending: false }).limit(20);
+      // collector_assignments.collector_id references profiles.id (not collector_profiles.id)
+      const { data } = await supabase.from("collector_assignments").select("*, pickup_requests(*)").eq("collector_id", user.id).order("created_at", { ascending: false }).limit(20);
       return data || [];
     },
     enabled: !!user,
@@ -40,7 +41,13 @@ const CollectorJobsPage = () => {
     queryFn: async () => {
       if (!supabase || !user) return [];
       const { data } = await supabase.from("collector_achievements").select("*").order("sort_order");
-      const { data: earned } = await supabase.from("collector_achievement_awards").select("achievement_id").eq("collector_profile_id", user.id);
+      // collector_achievement_awards.collector_profile_id references collector_profiles.id
+      // Need to resolve collector_profiles.id from profiles.id
+      const { data: cp } = await supabase.from("collector_profiles").select("id").eq("profile_id", user.id).maybeSingle();
+      const cpId = cp?.id;
+      const { data: earned } = cpId
+        ? await supabase.from("collector_achievement_awards").select("achievement_id").eq("collector_profile_id", cpId)
+        : { data: [] };
       const earnedIds = new Set((earned || []).map((e: Record<string,unknown>) => e.achievement_id));
       return (data || []).map((a: Record<string,unknown>) => ({ ...a, earned: earnedIds.has(a.id as string) }));
     },

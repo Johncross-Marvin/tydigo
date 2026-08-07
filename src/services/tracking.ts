@@ -41,7 +41,7 @@ export async function recordTrackingPing(
     battery_level: location.batteryLevel || null,
   });
 
-  // Update collector's current location
+  // Update collector's current location (collectorId is profiles.id, not collector_profiles.id)
   await supabase
     .from("collector_profiles")
     .update({
@@ -49,7 +49,7 @@ export async function recordTrackingPing(
       current_lng: location.longitude,
       last_location_at: new Date().toISOString(),
     })
-    .eq("id", collectorId);
+    .eq("profile_id", collectorId);
 }
 
 /**

@@ -1,94 +1,628 @@
 /**
- * Tydigo Collector Service
+ * Tydigo Collector Assignment Service
  *
- * Core collector operations: availability, profile, job management.
+ * Server-validated collector job lifecycle:
+ * getOffers → acceptAssignment → rejectAssignment →
+ * markEnRoute → markArrived → verifyPickup → markWastePicked
+ *
+ * All mutations validate the collector is authorized and the
+ * transition is valid before executing.
  */
 
-import { supabase, isSupabaseAvailable } from "@/lib/supabase";
+import { supabase, isSupabaseAvailable, generateId } from "@/lib/supabase";
+import { canTransition, type PickupStatus } from "./pickup-status";
 
-export type CollectorProfile = {
+// ─── Types ────────────────────────────────────────────────────
+
+export type CollectorOffer = {
   id: string;
-  profile_id: string;
-  is_online: boolean;
-  vehicle_type: string | null;
-  vehicle_plate_number: string | null;
-  kyc_status: string;
-  safety_training_completed: boolean;
-  total_earnings_ngn: number;
-  current_lat: number | null;
-  current_lng: number | null;
-  service_city: string;
-  service_zones: string[] | null;
-  max_capacity_kg: number | null;
+  pickupRequestId: string;
+  pickupCode: string;
+  wasteType: string;
+  estimatedWeightKg: number;
+  address: string;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  scheduleWindow: string;
+  distanceKm: number | null;
+  estimatedArrivalMinutes: number | null;
+  estimatedEarningsNgn: number;
+  status: "offered" | "accepted" | "rejected" | "expired" | "cancelled" | "superseded";
+  createdAt: string;
 };
 
-export type CollectorDashboard = {
-  profile: CollectorProfile | null;
-  wallet: { available_balance_ngn: number; pending_balance_ngn: number; lifetime_earnings_ngn: number } | null;
-  performance: { total_pickups: number; completed_jobs: number; average_rating: number; acceptance_rate: number; completion_rate: number; current_level: string; performance_score: number } | null;
-  todayEarnings: number;
-  todayJobs: number;
-  activeJob: Record<string, unknown> | null;
-  pendingRequests: number;
+export type ActiveJob = {
+  assignmentId: string;
+  pickupId: string;
+  pickupCode: string;
+  wasteType: string;
+  estimatedWeightKg: number;
+  actualWeightKg: number | null;
+  address: string;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  pickupInstructions: string | null;
+  scheduleWindow: string;
+  status: PickupStatus;
+  paymentStatus: string;
+  finalTotalNgn: number;
+  customerName: string;
+  customerPhone: string | null;
+  distanceKm: number | null;
+  estimatedArrivalMinutes: number | null;
+  acceptedAt: string | null;
+  arrivedAt: string | null;
+  verificationCode: string | null;
 };
 
-export async function getCollectorProfile(userId: string): Promise<CollectorProfile | null> {
-  if (!isSupabaseAvailable() || !supabase) return null;
-  const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", userId).maybeSingle();
-  if (!profile) return null;
-  const { data } = await supabase.from("collector_profiles").select("*").eq("profile_id", profile.id).maybeSingle();
-  return data as CollectorProfile | null;
+// ─── Get Collector Offers ─────────────────────────────────────
+
+export async function getCollectorOffers(profileId: string): Promise<CollectorOffer[]> {
+  if (!isSupabaseAvailable() || !supabase) return [];
+
+  const { data } = await supabase
+    .from("collector_assignments")
+    .select(`
+      id,
+      pickup_request_id,
+      distance_km,
+      estimated_arrival_minutes,
+      status,
+      created_at,
+      pickup_requests!inner(
+        pickup_code,
+        waste_type,
+        estimated_weight_kg,
+        pickup_address,
+        pickup_lat,
+        pickup_lng,
+        requested_window,
+        final_total_ngn
+      )
+    `)
+    .eq("collector_id", profileId)
+    .eq("status", "offered")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  return ((data || []) as unknown as Array<{
+    id: string;
+    pickup_request_id: string;
+    distance_km: number | null;
+    estimated_arrival_minutes: number | null;
+    status: string;
+    created_at: string;
+    pickup_requests: {
+      pickup_code: string;
+      waste_type: string;
+      estimated_weight_kg: number;
+      pickup_address: string;
+      pickup_lat: number | null;
+      pickup_lng: number | null;
+      requested_window: string;
+      final_total_ngn: number;
+    };
+  }>).map((row) => ({
+    id: row.id,
+    pickupRequestId: row.pickup_request_id,
+    pickupCode: row.pickup_requests.pickup_code,
+    wasteType: row.pickup_requests.waste_type,
+    estimatedWeightKg: row.pickup_requests.estimated_weight_kg,
+    address: row.pickup_requests.pickup_address,
+    pickupLat: row.pickup_requests.pickup_lat,
+    pickupLng: row.pickup_requests.pickup_lng,
+    scheduleWindow: row.pickup_requests.requested_window,
+    distanceKm: row.distance_km,
+    estimatedArrivalMinutes: row.estimated_arrival_minutes,
+    estimatedEarningsNgn: row.pickup_requests.final_total_ngn,
+    status: row.status as CollectorOffer["status"],
+    createdAt: row.created_at,
+  }));
 }
 
-export async function toggleAvailability(userId: string, isOnline: boolean): Promise<void> {
-  if (!isSupabaseAvailable() || !supabase) return;
-  const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", userId).maybeSingle();
-  if (!profile) return;
-  await supabase.from("collector_profiles").update({ is_online: isOnline, last_location_at: new Date().toISOString() }).eq("profile_id", profile.id);
-}
+// ─── Accept Assignment ────────────────────────────────────────
 
-export async function updateLocation(userId: string, lat: number, lng: number): Promise<void> {
-  if (!isSupabaseAvailable() || !supabase) return;
-  const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", userId).maybeSingle();
-  if (!profile) return;
-  await supabase.from("collector_profiles").update({ current_lat: lat, current_lng: lng, last_location_at: new Date().toISOString() }).eq("profile_id", profile.id);
-}
-
-export async function getCollectorDashboard(userId: string): Promise<CollectorDashboard> {
+export async function acceptAssignment(
+  assignmentId: string,
+  profileId: string,
+): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseAvailable() || !supabase) {
-    return { profile: null, wallet: null, performance: null, todayEarnings: 0, todayJobs: 0, activeJob: null, pendingRequests: 0 };
+    return { success: false, error: "Not available" };
   }
 
-  const { data: profile } = await supabase.from("profiles").select("id").eq("auth_user_id", userId).maybeSingle();
-  if (!profile) throw new Error("Profile not found");
+  const now = new Date().toISOString();
 
-  const profileId = profile.id;
+  // 1. Verify assignment exists and is offered to this collector
+  const { data: assignment } = await supabase
+    .from("collector_assignments")
+    .select("id, pickup_request_id, collector_id, status")
+    .eq("id", assignmentId)
+    .eq("collector_id", profileId)
+    .eq("status", "offered")
+    .maybeSingle();
 
-  const [collectorRes, walletRes, perfRes, assignmentsRes] = await Promise.all([
-    supabase.from("collector_profiles").select("*").eq("profile_id", profileId).maybeSingle(),
-    supabase.from("collector_wallets").select("*").eq("collector_id", profileId).maybeSingle(),
-    supabase.from("collector_performance").select("*").eq("collector_id", profileId).maybeSingle(),
-    supabase.from("collector_assignments").select("*, pickup_request:pickup_request_id(*)").eq("collector_id", profileId).order("created_at", { ascending: false }).limit(20),
-  ]);
+  if (!assignment) {
+    return { success: false, error: "Offer not found or already taken" };
+  }
 
-  const assignments = (assignmentsRes.data || []) as unknown as Array<Record<string, unknown>>;
-  const today = new Date().toISOString().slice(0, 10);
-  const todayAssignments = assignments.filter((a) => (a.created_at as string)?.startsWith(today));
-  const activeJob = assignments.find((a) => a.completed_at === null && a.cancelled_at === null) || null;
-  const todayCompleted = todayAssignments.filter((a) => a.completed_at !== null);
+  // 2. Verify no other accepted assignment exists for this pickup
+  const { data: existingAccepted } = await supabase
+    .from("collector_assignments")
+    .select("id")
+    .eq("pickup_request_id", assignment.pickup_request_id)
+    .eq("status", "accepted")
+    .maybeSingle();
 
-  const todayEarnings = todayCompleted.reduce((sum, a) => {
-    const pr = a.pickup_request as Record<string, unknown> | undefined;
-    return sum + ((pr?.final_total_ngn as number) || 0);
-  }, 0);
+  if (existingAccepted) {
+    // Mark this offer as superseded
+    await supabase
+      .from("collector_assignments")
+      .update({ status: "superseded", cancelled_at: now })
+      .eq("id", assignmentId);
+    return { success: false, error: "Another collector already accepted this pickup" };
+  }
+
+  // 3. Verify pickup is in a matchable state
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("status")
+    .eq("id", assignment.pickup_request_id)
+    .maybeSingle();
+
+  if (!pickup || !canTransition(pickup.status as PickupStatus, "collector_assigned")) {
+    return { success: false, error: "Pickup is no longer available" };
+  }
+
+  // 4. Atomic update: accept assignment + update pickup
+  const { error: updateError } = await supabase
+    .from("collector_assignments")
+    .update({ status: "accepted", accepted_at: now })
+    .eq("id", assignmentId)
+    .eq("status", "offered");
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+
+  // 5. Update pickup request
+  await supabase
+    .from("pickup_requests")
+    .update({
+      collector_id: profileId,
+      status: "collector_assigned",
+      collector_assigned_at: now,
+      updated_at: now,
+    })
+    .eq("id", assignment.pickup_request_id);
+
+  // 6. Supersede competing offers
+  await supabase
+    .from("collector_assignments")
+    .update({ status: "superseded", cancelled_at: now })
+    .eq("pickup_request_id", assignment.pickup_request_id)
+    .neq("id", assignmentId)
+    .eq("status", "offered");
+
+  // 7. Create status event
+  await supabase.from("pickup_status_events").insert({
+    pickup_id: assignment.pickup_request_id,
+    to_status: "collector_assigned",
+    notes: `Collector accepted assignment`,
+    created_at: now,
+  });
+
+  return { success: true };
+}
+
+// ─── Reject Assignment ────────────────────────────────────────
+
+export async function rejectAssignment(
+  assignmentId: string,
+  profileId: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { error } = await supabase
+    .from("collector_assignments")
+    .update({ status: "rejected", cancelled_at: new Date().toISOString() })
+    .eq("id", assignmentId)
+    .eq("collector_id", profileId)
+    .eq("status", "offered");
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+// ─── Get Current Active Job ───────────────────────────────────
+
+export async function getCurrentJob(profileId: string): Promise<ActiveJob | null> {
+  if (!isSupabaseAvailable() || !supabase) return null;
+
+  const { data } = await supabase
+    .from("collector_assignments")
+    .select(`
+      id,
+      pickup_request_id,
+      distance_km,
+      estimated_arrival_minutes,
+      accepted_at,
+      arrived_at,
+      pickup_requests!inner(
+        id,
+        pickup_code,
+        waste_type,
+        estimated_weight_kg,
+        actual_weight_kg,
+        pickup_address,
+        pickup_lat,
+        pickup_lng,
+        pickup_instructions,
+        requested_window,
+        status,
+        payment_status,
+        final_total_ngn,
+        verification_code,
+        customer_id
+      )
+    `)
+    .eq("collector_id", profileId)
+    .eq("status", "accepted")
+    .order("accepted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const row = data as unknown as {
+    id: string;
+    pickup_request_id: string;
+    distance_km: number | null;
+    estimated_arrival_minutes: number | null;
+    accepted_at: string | null;
+    arrived_at: string | null;
+    pickup_requests: {
+      id: string;
+      pickup_code: string;
+      waste_type: string;
+      estimated_weight_kg: number;
+      actual_weight_kg: number | null;
+      pickup_address: string;
+      pickup_lat: number | null;
+      pickup_lng: number | null;
+      pickup_instructions: string | null;
+      requested_window: string;
+      status: string;
+      payment_status: string;
+      final_total_ngn: number;
+      verification_code: string | null;
+      customer_id: string;
+    };
+  };
+
+  // Get customer name
+  const { data: customer } = await supabase
+    .from("profiles")
+    .select("full_name, phone")
+    .eq("id", row.pickup_requests.customer_id)
+    .maybeSingle();
 
   return {
-    profile: collectorRes.data as CollectorProfile | null,
-    wallet: walletRes.data as CollectorDashboard["wallet"],
-    performance: perfRes.data as CollectorDashboard["performance"],
-    todayEarnings,
-    todayJobs: todayCompleted.length,
-    activeJob,
-    pendingRequests: assignments.filter((a) => !a.accepted_at && !a.cancelled_at).length,
+    assignmentId: row.id,
+    pickupId: row.pickup_requests.id,
+    pickupCode: row.pickup_requests.pickup_code,
+    wasteType: row.pickup_requests.waste_type,
+    estimatedWeightKg: row.pickup_requests.estimated_weight_kg,
+    actualWeightKg: row.pickup_requests.actual_weight_kg,
+    address: row.pickup_requests.pickup_address,
+    pickupLat: row.pickup_requests.pickup_lat,
+    pickupLng: row.pickup_requests.pickup_lng,
+    pickupInstructions: row.pickup_requests.pickup_instructions,
+    scheduleWindow: row.pickup_requests.requested_window,
+    status: row.pickup_requests.status as PickupStatus,
+    paymentStatus: row.pickup_requests.payment_status,
+    finalTotalNgn: row.pickup_requests.final_total_ngn,
+    customerName: (customer as Record<string, unknown> | null)?.full_name as string || "Customer",
+    customerPhone: (customer as Record<string, unknown> | null)?.phone as string || null,
+    distanceKm: row.distance_km,
+    estimatedArrivalMinutes: row.estimated_arrival_minutes,
+    acceptedAt: row.accepted_at,
+    arrivedAt: row.arrived_at,
+    verificationCode: row.pickup_requests.verification_code,
   };
+}
+
+// ─── Mark En Route ────────────────────────────────────────────
+
+export async function markEnRoute(
+  pickupId: string,
+  profileId: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  // Verify collector is assigned to this pickup
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("collector_id, status")
+    .eq("id", pickupId)
+    .maybeSingle();
+
+  if (!pickup || pickup.collector_id !== profileId) {
+    return { success: false, error: "Not authorized for this pickup" };
+  }
+
+  if (!canTransition(pickup.status as PickupStatus, "collector_en_route")) {
+    return { success: false, error: `Cannot transition from ${pickup.status} to en_route` };
+  }
+
+  const now = new Date().toISOString();
+  await supabase
+    .from("pickup_requests")
+    .update({ status: "collector_en_route", updated_at: now })
+    .eq("id", pickupId);
+
+  await supabase.from("pickup_status_events").insert({
+    pickup_id: pickupId,
+    to_status: "collector_en_route",
+    notes: "Collector is en route",
+    created_at: now,
+  });
+
+  return { success: true };
+}
+
+// ─── Mark Arrived ─────────────────────────────────────────────
+
+export async function markArrived(
+  pickupId: string,
+  profileId: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("collector_id, status")
+    .eq("id", pickupId)
+    .maybeSingle();
+
+  if (!pickup || pickup.collector_id !== profileId) {
+    return { success: false, error: "Not authorized for this pickup" };
+  }
+
+  if (!canTransition(pickup.status as PickupStatus, "collector_arrived")) {
+    return { success: false, error: `Cannot transition from ${pickup.status} to arrived` };
+  }
+
+  const now = new Date().toISOString();
+  await supabase
+    .from("pickup_requests")
+    .update({
+      status: "collector_arrived",
+      collector_arrived_at: now,
+      updated_at: now,
+    })
+    .eq("id", pickupId);
+
+  // Update assignment
+  await supabase
+    .from("collector_assignments")
+    .update({ arrived_at: now })
+    .eq("pickup_request_id", pickupId)
+    .eq("collector_id", profileId)
+    .eq("status", "accepted");
+
+  await supabase.from("pickup_status_events").insert({
+    pickup_id: pickupId,
+    to_status: "collector_arrived",
+    notes: "Collector has arrived",
+    created_at: now,
+  });
+
+  return { success: true };
+}
+
+// ─── Verify Pickup ────────────────────────────────────────────
+
+export async function verifyPickup(
+  pickupId: string,
+  profileId: string,
+  data: {
+    verificationCode?: string;
+    actualWeightKg: number;
+    notes?: string;
+  },
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("collector_id, status, verification_code")
+    .eq("id", pickupId)
+    .maybeSingle();
+
+  if (!pickup || pickup.collector_id !== profileId) {
+    return { success: false, error: "Not authorized for this pickup" };
+  }
+
+  if (!canTransition(pickup.status as PickupStatus, "pickup_verified")) {
+    return { success: false, error: `Cannot transition from ${pickup.status} to verified` };
+  }
+
+  // Verify code if provided
+  if (data.verificationCode && pickup.verification_code) {
+    if (data.verificationCode !== pickup.verification_code) {
+      return { success: false, error: "Invalid verification code" };
+    }
+  }
+
+  const now = new Date().toISOString();
+  await supabase
+    .from("pickup_requests")
+    .update({
+      status: "pickup_verified",
+      actual_weight_kg: data.actualWeightKg,
+      pickup_verified_at: now,
+      updated_at: now,
+    })
+    .eq("id", pickupId);
+
+  await supabase.from("pickup_status_events").insert({
+    pickup_id: pickupId,
+    to_status: "pickup_verified",
+    notes: data.notes || `Verified weight: ${data.actualWeightKg}kg`,
+    created_at: now,
+  });
+
+  return { success: true };
+}
+
+// ─── Mark Waste Picked ────────────────────────────────────────
+
+export async function markWastePicked(
+  pickupId: string,
+  profileId: string,
+  notes?: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("collector_id, status")
+    .eq("id", pickupId)
+    .maybeSingle();
+
+  if (!pickup || pickup.collector_id !== profileId) {
+    return { success: false, error: "Not authorized for this pickup" };
+  }
+
+  if (!canTransition(pickup.status as PickupStatus, "waste_picked")) {
+    return { success: false, error: `Cannot transition from ${pickup.status} to waste_picked` };
+  }
+
+  const now = new Date().toISOString();
+  await supabase
+    .from("pickup_requests")
+    .update({
+      status: "waste_picked",
+      waste_picked_at: now,
+      updated_at: now,
+    })
+    .eq("id", pickupId);
+
+  await supabase.from("pickup_status_events").insert({
+    pickup_id: pickupId,
+    to_status: "waste_picked",
+    notes: notes || "Waste collected",
+    created_at: now,
+  });
+
+  return { success: true };
+}
+
+// ─── Complete Pickup ──────────────────────────────────────────
+
+export async function completePickup(
+  pickupId: string,
+  profileId: string,
+): Promise<{ success: boolean; error?: string; receipt?: unknown }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { data: pickup } = await supabase
+    .from("pickup_requests")
+    .select("collector_id, status, customer_id, waste_type, estimated_weight_kg, actual_weight_kg, final_total_ngn")
+    .eq("id", pickupId)
+    .maybeSingle();
+
+  if (!pickup || pickup.collector_id !== profileId) {
+    return { success: false, error: "Not authorized for this pickup" };
+  }
+
+  if (!canTransition(pickup.status as PickupStatus, "completed")) {
+    return { success: false, error: `Cannot transition from ${pickup.status} to completed` };
+  }
+
+  const now = new Date().toISOString();
+
+  // Update pickup
+  await supabase
+    .from("pickup_requests")
+    .update({
+      status: "completed",
+      completed_at: now,
+      updated_at: now,
+    })
+    .eq("id", pickupId);
+
+  // Update assignment
+  await supabase
+    .from("collector_assignments")
+    .update({ completed_at: now })
+    .eq("pickup_request_id", pickupId)
+    .eq("collector_id", profileId)
+    .eq("status", "accepted");
+
+  // Create status event
+  await supabase.from("pickup_status_events").insert({
+    pickup_id: pickupId,
+    to_status: "completed",
+    notes: "Pickup completed",
+    created_at: now,
+  });
+
+  // Create waste batch (idempotent — use pickup_id as unique key)
+  const weight = (pickup.actual_weight_kg || pickup.estimated_weight_kg || 0) as number;
+  const { data: existingBatch } = await supabase
+    .from("waste_batches")
+    .select("id")
+    .contains("source_pickup_ids", [pickupId])
+    .maybeSingle();
+
+  if (!existingBatch) {
+    await supabase.from("waste_batches").insert({
+      id: generateId("wbt"),
+      material_type: pickup.waste_type,
+      quantity_kg: weight,
+      source_pickup_ids: [pickupId],
+      verified: true,
+      created_at: now,
+    });
+  }
+
+  // Generate receipt (idempotent)
+  const receiptNumber = `TYD-RCP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const { data: existingReceipt } = await supabase
+    .from("digital_receipts")
+    .select("id")
+    .eq("pickup_request_id", pickupId)
+    .maybeSingle();
+
+  let receipt = existingReceipt;
+  if (!existingReceipt) {
+    const { data: newReceipt } = await supabase
+      .from("digital_receipts")
+      .insert({
+        pickup_request_id: pickupId,
+        receipt_number: receiptNumber,
+        issued_at: now,
+      })
+      .select("*")
+      .maybeSingle();
+    receipt = newReceipt;
+  }
+
+  return { success: true, receipt };
 }

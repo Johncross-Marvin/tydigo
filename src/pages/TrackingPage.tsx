@@ -1,7 +1,7 @@
 /**
  * Tydigo Live Tracking Page
  *
- * Real-time collector tracking with map, ETA, status updates,
+ * Real-time collector tracking with Google Maps, ETA, status updates,
  * and pickup verification.
  */
 
@@ -21,6 +21,7 @@ import { getLatestTrackingPoint, subscribeToTracking, subscribeToPickupStatus, t
 import { getPickupContactPhone } from "@/services/auth";
 import { getStatusLabel, getStatusColor, isActivePickup, type PickupStatus } from "@/services/pickup-status";
 import { formatNaira } from "@/services/pricing";
+import { TrackingMap } from "@/components/TrackingMap";
 
 const STATUS_STEPS: PickupStatus[] = [
   "requested", "matching_collector", "collector_assigned",
@@ -118,6 +119,11 @@ const TrackingPage = () => {
   const isActive = isActivePickup(status as PickupStatus);
   const assignment = pickup.assignment as Record<string, unknown> | null;
   const etaMinutes = (assignment?.estimated_arrival_minutes as number) || null;
+  const collectorData = pickup.collector as Record<string, unknown> | null;
+
+  // Determine map state
+  const showMap = isActive && statusIdx >= STATUS_STEPS.indexOf("collector_assigned");
+  const isSearching = status === "requested" || status === "matching_collector";
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
@@ -130,30 +136,49 @@ const TrackingPage = () => {
       </header>
 
       <main className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full space-y-4">
-        {/* Map Placeholder */}
+        {/* Map */}
         <Card className="border-0 shadow-brand-lg rounded-3xl overflow-hidden">
-          <div className="bg-neutral-200 h-64 flex items-center justify-center relative">
-            <div className="text-center">
-              <Navigation className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
-              <p className="text-neutral-500 font-semibold text-sm">Live Map</p>
-              {trackingPoint && (
-                <p className="text-xs text-neutral-400 mt-1">
-                  Collector at {trackingPoint.latitude.toFixed(4)}, {trackingPoint.longitude.toFixed(4)}
-                </p>
-              )}
-            </div>
-            {isActive && (
-              <div className="absolute bottom-3 left-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm font-bold text-neutral-900">Live</span>
-                  </div>
-                  {etaMinutes && <span className="text-sm font-bold text-[#145C25]">ETA: {etaMinutes} min</span>}
+          {isSearching ? (
+            <div className="bg-neutral-200 h-64 flex items-center justify-center">
+              <div className="text-center px-4">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3 animate-pulse">
+                  <Navigation className="w-8 h-8 text-[#145C25]" />
                 </div>
+                <p className="text-neutral-700 font-bold text-lg">Finding a collector near you</p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {status === "matching_collector"
+                    ? "Matching you with the best available collector..."
+                    : "Your pickup request is being processed..."}
+                </p>
+                <p className="text-xs text-neutral-400 mt-2 font-mono">
+                  Ref: {pickup.pickup_code as string}
+                </p>
               </div>
-            )}
-          </div>
+            </div>
+          ) : showMap ? (
+            <TrackingMap
+              pickupLat={pickup.pickup_lat as number || null}
+              pickupLng={pickup.pickup_lng as number || null}
+              collectorLat={trackingPoint?.latitude || null}
+              collectorLng={trackingPoint?.longitude || null}
+              collectorHeading={trackingPoint?.heading || null}
+              isLive={status === "collector_en_route"}
+              etaMinutes={etaMinutes}
+              lastUpdatedAt={trackingPoint?.timestamp || null}
+            />
+          ) : (
+            <div className="bg-neutral-200 h-64 flex items-center justify-center">
+              <div className="text-center">
+                <Navigation className="w-12 h-12 text-neutral-400 mx-auto mb-2" />
+                <p className="text-neutral-500 font-semibold text-sm">Live Map</p>
+                {trackingPoint && (
+                  <p className="text-xs text-neutral-400 mt-1">
+                    Collector at {trackingPoint.latitude.toFixed(4)}, {trackingPoint.longitude.toFixed(4)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Status Timeline */}
@@ -172,7 +197,7 @@ const TrackingPage = () => {
                       </div>
                       {i < STATUS_STEPS.length - 1 && <div className={`w-0.5 h-6 ${done ? "bg-[#145C25]" : "bg-neutral-200"}`} />}
                     </div>
-                    <div className={`pb-4 ${current ? "" : ""}`}>
+                    <div className="pb-4">
                       <p className={`text-sm font-semibold ${done ? "text-neutral-900" : "text-neutral-400"}`}>{getStatusLabel(s)}</p>
                     </div>
                   </div>
@@ -203,9 +228,12 @@ const TrackingPage = () => {
                   <Truck className="w-6 h-6 text-[#145C25]" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-neutral-900">{(pickup.collector as Record<string, unknown>)?.full_name as string || "Assigned Collector"}</p>
+                  <p className="font-bold text-neutral-900">{collectorData?.full_name as string || "Assigned Collector"}</p>
                   <div className="flex items-center gap-1 text-amber-500 text-sm">
-                    <Star className="w-3 h-3 fill-current" /> 4.8
+                    <Star className="w-3 h-3 fill-current" />
+                    {collectorData?.rating != null
+                      ? (collectorData.rating as number).toFixed(1)
+                      : "New"}
                   </div>
                 </div>
                 <div className="flex gap-2">

@@ -15,6 +15,9 @@ import { ActiveJobWorkflow } from "@/components/collector/ActiveJobWorkflow";
 import { CollectorWalletCard, type WalletData } from "@/components/collector/CollectorWalletCard";
 import { CollectorPerformancePanel, type PerformanceData } from "@/components/collector/CollectorPerformancePanel";
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
+import { getCollectorOffers, getCurrentJob, acceptAssignment, rejectAssignment, markEnRoute, markArrived, verifyPickup, markWastePicked, completePickup, type CollectorOffer, type ActiveJob } from "@/services/collector";
+import { toast } from "sonner";
+import type { CollectorJob } from "@/lib/api";
 
 const CollectorDashboardPage = () => {
   const { user, logout } = useAuth();
@@ -30,6 +33,28 @@ const CollectorDashboardPage = () => {
       return data;
     },
     enabled: !!user,
+  });
+
+  // Fetch offers
+  const { data: offers, refetch: refetchOffers } = useQuery({
+    queryKey: ["collector-offers", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      return getCollectorOffers(user.id);
+    },
+    enabled: !!user,
+    refetchInterval: 30000, // Poll every 30s
+  });
+
+  // Fetch current active job
+  const { data: activeJob, refetch: refetchActiveJob } = useQuery({
+    queryKey: ["collector-active-job", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      return getCurrentJob(user.id);
+    },
+    enabled: !!user,
+    refetchInterval: 15000,
   });
 
   // Fetch wallet
@@ -74,10 +99,7 @@ const CollectorDashboardPage = () => {
         totalDistanceKm: data?.total_distance_km || 0,
         totalEcoPoints: data?.total_ecopoints || 0,
         currentLevel: { name: "Bronze", badge: "🥉", pointsToNextLevel: 100, progressPercent: 15 },
-        recentAchievements: [
-          { name: "First Pickup", icon: "🎯", earnedAt: new Date().toISOString() },
-          { name: "10 Jobs", icon: "⭐", earnedAt: new Date().toISOString() },
-        ],
+        recentAchievements: [],
       };
     },
     enabled: !!user,
@@ -87,7 +109,86 @@ const CollectorDashboardPage = () => {
     const next = !isOnline;
     setIsOnline(next);
     if (isSupabaseAvailable() && supabase && user) {
-      await supabase.from("collector_profiles").update({ is_online: next, updated_at: new Date().toISOString() }).eq("profile_id", user.id);
+      await supabase.from("collector_profiles").update({ is_online: next }).eq("profile_id", user.id);
+    }
+  };
+
+  // Map offers to CollectorJob format for AvailableJobsFeed
+  const mappedJobs: CollectorJob[] = (offers || []).map((o) => ({
+    id: o.id,
+    pickup_code: o.pickupCode,
+    waste_type: o.wasteType,
+    weight_kg: o.estimatedWeightKg,
+    address: o.address,
+    schedule_window: o.scheduleWindow,
+    price_ngn: o.estimatedEarningsNgn,
+    payment_status: "pending",
+    status: "requested",
+    customer_name: "Customer",
+    distance_km: o.distanceKm || undefined,
+    created_at: o.createdAt,
+  }));
+
+  // Map active job for ActiveJobWorkflow
+  const mappedActiveJob: CollectorJob | null = activeJob ? {
+    id: activeJob.pickupId,
+    pickup_code: activeJob.pickupCode,
+    waste_type: activeJob.wasteType,
+    weight_kg: activeJob.estimatedWeightKg,
+    address: activeJob.address,
+    schedule_window: activeJob.scheduleWindow,
+    price_ngn: activeJob.finalTotalNgn,
+    payment_status: activeJob.paymentStatus,
+    status: activeJob.status,
+    customer_name: activeJob.customerName,
+    distance_km: activeJob.distanceKm || undefined,
+    created_at: activeJob.acceptedAt || "",
+  } : null;
+
+  const handleAcceptJob = async (offerId: string) => {
+    if (!user) return;
+    const result = await acceptAssignment(offerId, user.id);
+    if (result.success) {
+      toast.success("Job accepted! Head to the pickup location.");
+      refetchOffers();
+      refetchActiveJob();
+    } else {
+      toast.error(result.error || "Failed to accept job");
+    }
+  };
+
+  const handleUpdateStatus = async (jobId: string, status: string) => {
+    if (!user) return;
+    let result: { success: boolean; error?: string };
+
+    switch (status) {
+      case "collector_en_route":
+        result = await markEnRoute(jobId, user.id);
+        break;
+      case "collector_arrived":
+        result = await markArrived(jobId, user.id);
+        break;
+      case "pickup_verified":
+        result = await verifyPickup(jobId, user.id, {
+          actualWeightKg: activeJob?.estimatedWeightKg || 0,
+          notes: "Verified by collector",
+        });
+        break;
+      case "waste_picked":
+        result = await markWastePicked(jobId, user.id);
+        break;
+      case "completed":
+        result = await completePickup(jobId, user.id);
+        break;
+      default:
+        return;
+    }
+
+    if (result.success) {
+      toast.success(`Status updated to ${status.replace(/_/g, " ")}`);
+      refetchActiveJob();
+    } else {
+      toast.error(result.error || "Failed to update status");
     }
   };
 
@@ -115,7 +216,7 @@ const CollectorDashboardPage = () => {
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-3">
           <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center">
-            <p className="text-xs text-neutral-500">Today</p>
+            <p className="text-xs text-neutral-500">Balance</p>
             <p className="text-lg font-extrabold text-[#145C25]">₦{(wallet?.availableBalanceNgn || 0).toLocaleString()}</p>
           </CardContent></Card>
           <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center">
@@ -140,16 +241,29 @@ const CollectorDashboardPage = () => {
           </TabsList>
 
           <TabsContent value="jobs" className="mt-4">
-            <AvailableJobsFeed jobs={[]} loading={false} onAccept={(id) => console.log("Accept", id)} onNavigate={(job) => window.open(`https://maps.google.com/?q=${encodeURIComponent(job.address)}`, "_blank")} />
+            <AvailableJobsFeed
+              jobs={mappedJobs}
+              loading={false}
+              onAccept={handleAcceptJob}
+              onNavigate={(job) => window.open(`https://maps.google.com/?q=${encodeURIComponent(job.address)}`, "_blank")}
+            />
           </TabsContent>
           <TabsContent value="active" className="mt-4">
-            <ActiveJobWorkflow job={null} onUpdateStatus={(id, status) => console.log("Update", id, status)} />
+            {mappedActiveJob ? (
+              <ActiveJobWorkflow job={mappedActiveJob} onUpdateStatus={handleUpdateStatus} />
+            ) : (
+              <Card className="border-0 shadow-sm rounded-2xl">
+                <CardContent className="p-6 text-center text-neutral-400">
+                  <Truck className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="font-semibold">No active job</p>
+                  <p className="text-sm">Accept a job from the Jobs tab to get started</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           <TabsContent value="wallet" className="mt-4">
             {wallet && <CollectorWalletCard wallet={wallet} onWithdraw={() => {
-              if (isSupabaseAvailable() && supabase && user) {
-                supabase.functions.invoke("generate-receipt", { body: { collectorId: user.id } }).catch(console.error);
-              }
+              toast.info("Withdrawal coming soon");
             }} />}
           </TabsContent>
           <TabsContent value="stats" className="mt-4">
