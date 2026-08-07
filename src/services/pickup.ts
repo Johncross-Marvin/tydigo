@@ -5,7 +5,7 @@
  * multi-item support, image uploads, and tracking.
  */
 
-import { supabase, isSupabaseAvailable, generatePickupCode } from "@/lib/supabase";
+import { supabase, isSupabaseAvailable, generatePickupCode, generateId } from "@/lib/supabase";
 import { api as mockApi, type Pickup } from "@/lib/api";
 import { calculatePrice, type WasteType, type PriceBreakdown } from "./pricing";
 import type { AuthUser } from "./auth";
@@ -67,12 +67,13 @@ export async function createPickup(
 
     const profileId = profile?.id || user.id;
     const now = new Date().toISOString();
-
+    const pickupId = generateId("pku");
     const dbWasteType = mapWasteTypeToDb(draft.wasteType);
     const dbStatus = "requested";
     const paymentStatus = draft.paymentMethod === "transfer" ? "pay_on_pickup" : "pending";
 
-    const { data: createdPickup, error } = await supabase.from("pickup_requests").insert({
+    const { error } = await supabase.from("pickup_requests").insert({
+      id: pickupId,
       customer_id: profileId,
       waste_type: dbWasteType,
       estimated_weight_kg: draft.estimatedWeightKg,
@@ -91,16 +92,13 @@ export async function createPickup(
       payment_status: paymentStatus,
       created_at: now,
       updated_at: now,
-    }).select("id").maybeSingle();
+    });
 
     if (error) throw new Error(error.message);
-    if (!createdPickup) throw new Error("Failed to create pickup request");
-
-    const dbPickupId = createdPickup.id;
 
     // Create status event
     await supabase.from("pickup_status_events").insert({
-      pickup_id: dbPickupId,
+      pickup_id: pickupId,
       to_status: "requested",
       notes: "Pickup request created",
       created_at: now,
@@ -110,7 +108,7 @@ export async function createPickup(
     if (draft.ecopointsToApply > 0 && pricing.ecopointsDiscountNgn > 0) {
       await supabase.from("ecopoint_transactions").insert({
         profile_id: profileId,
-        pickup_id: dbPickupId,
+        pickup_id: pickupId,
         points: -pricing.ecopointsApplied,
         reason: "Pickup discount redemption",
         status: "pending",
@@ -132,7 +130,7 @@ export async function createPickup(
     }
 
     return {
-      id: dbPickupId,
+      id: pickupId,
       pickupCode,
       wasteType: draft.wasteType,
       estimatedWeightKg: draft.estimatedWeightKg,
@@ -343,4 +341,44 @@ function mapDbPickupToPickup(db: Record<string, unknown>): Pickup {
     created_at: db.created_at as string,
     updated_at: db.updated_at as string,
   };
+}
+
+// ─── Waste Batch Creation ─────────────────────────────────────
+
+export async function createWasteBatch(pickupId: string) {
+  if (!isSupabaseAvailable() || !supabase) return null;
+  const { data: pickup } = await supabase.from("pickup_requests").select("customer_id, waste_type, estimated_weight_kg, actual_weight_kg, pickup_code").eq("id", pickupId).maybeSingle();
+  if (!pickup) return null;
+  const weight = (pickup.actual_weight_kg || pickup.estimated_weight_kg || 0) as number;
+  const { data } = await supabase.from("waste_batches").insert({
+    id: generateId("wbt"), pickup_id: pickupId, customer_id: pickup.customer_id,
+    material_type: pickup.waste_type, quantity_kg: weight,
+    quality_grade: "standard", verified: false, created_at: new Date().toISOString(),
+  }).select("id").maybeSingle();
+  return data;
+}
+
+// ─── Receipt Generation ───────────────────────────────────────
+
+export async function generatePickupReceipt(pickupId: string) {
+  if (!isSupabaseAvailable() || !supabase) return null;
+  const { data: pickup } = await supabase.from("pickup_requests").select("*").eq("id", pickupId).maybeSingle();
+  if (!pickup) return null;
+  const receiptNumber = `TYD-RCP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const { data } = await supabase.from("digital_receipts").insert({
+    pickup_request_id: pickupId, receipt_number: receiptNumber,
+    issued_at: new Date().toISOString(),
+  }).select("*").maybeSingle();
+  return data;
+}
+
+// ─── Complete Pickup (atomic) ─────────────────────────────────
+
+export async function completePickup(pickupId: string) {
+  if (!isSupabaseAvailable() || !supabase) throw new Error("Not available");
+  const now = new Date().toISOString();
+  await updatePickupStatus(pickupId, "completed", "Pickup completed");
+  await createWasteBatch(pickupId);
+  const receipt = await generatePickupReceipt(pickupId);
+  return { receipt, completedAt: now };
 }
