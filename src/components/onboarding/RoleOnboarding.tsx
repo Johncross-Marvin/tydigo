@@ -97,9 +97,9 @@ export function RoleOnboarding({ role, onComplete, onDismiss }: RoleOnboardingPr
   const [step, setStep] = useState(0);
 
   const steps: OnboardingStep[] =
-    role === "collector" || role === "fleet"
+    role === "collector" || role === "fleet_owner"
       ? collectorSteps
-      : role === "business" || role === "estate" || role === "corporate"
+      : role === "business" || role === "estate" || role === "corporate_partner"
         ? businessSteps
         : householdSteps;
 

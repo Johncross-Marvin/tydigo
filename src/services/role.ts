@@ -14,8 +14,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   collector: "Collector",
   recycler: "Recycler",
   organic_partner: "Organic Partner",
-  fleet: "Fleet Operator",
-  corporate: "Corporate Partner",
+  fleet_owner: "Fleet Operator",
+  corporate_partner: "Corporate Partner",
   government: "Government Agency",
   partner: "Partner",
   admin: "Administrator",
@@ -29,8 +29,8 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   collector: "Accept pickup jobs and earn money",
   recycler: "Source recyclable materials",
   organic_partner: "BSF farms, compost, and livestock feed",
-  fleet: "Manage collection vehicles and drivers",
-  corporate: "Sustainability partnerships and ESG reporting",
+  fleet_owner: "Manage collection vehicles and drivers",
+  corporate_partner: "Sustainability partnerships and ESG reporting",
   government: "Agency oversight and regulatory compliance",
   partner: "Recycling and waste processing partner",
   admin: "Platform administration and management",
@@ -44,8 +44,8 @@ export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
   collector: "/collector/dashboard",
   recycler: "/partner/dashboard",
   organic_partner: "/partner/dashboard",
-  fleet: "/collector/dashboard",
-  corporate: "/business/dashboard",
+  fleet_owner: "/collector/dashboard",
+  corporate_partner: "/business/dashboard",
   government: "/government/dashboard",
   partner: "/partner/dashboard",
   admin: "/admin/dashboard",
@@ -64,11 +64,11 @@ export function isAdminRole(role: UserRole): boolean {
 }
 
 export function isCollectorRole(role: UserRole): boolean {
-  return role === "collector" || role === "fleet";
+  return role === "collector" || role === "fleet_owner";
 }
 
 export function isBusinessRole(role: UserRole): boolean {
-  return role === "business" || role === "estate" || role === "corporate";
+  return role === "business" || role === "estate" || role === "corporate_partner";
 }
 
 export function isPartnerRole(role: UserRole): boolean {

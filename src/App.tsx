@@ -92,8 +92,8 @@ const protectedPage = (page: ReactNode, roles?: UserRole[]) => (
 
 // Role groups for access control
 const HOUSEHOLD_ROLES: UserRole[] = ["customer", "household"];
-const BUSINESS_ROLES: UserRole[] = ["business", "estate", "corporate"];
-const COLLECTOR_ROLES: UserRole[] = ["collector", "fleet"];
+const BUSINESS_ROLES: UserRole[] = ["business", "estate", "corporate_partner"];
+const COLLECTOR_ROLES: UserRole[] = ["collector", "fleet_owner"];
 const PARTNER_ROLES: UserRole[] = ["partner", "recycler", "organic_partner"];
 const ADMIN_ROLES: UserRole[] = ["admin", "government"];
 
