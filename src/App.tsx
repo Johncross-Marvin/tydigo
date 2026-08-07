@@ -23,6 +23,8 @@ const RoleSelectionPage = lazy(() => import("./pages/RoleSelection"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
+const CheckEmailPage = lazy(() => import("./pages/CheckEmail"));
+const AuthCallbackPage = lazy(() => import("./pages/AuthCallback"));
 
 // Household
 const HouseholdDashboardPage = lazy(() => import("./pages/HouseholdDashboard"));
@@ -131,6 +133,8 @@ const App = () => (
                   <Route path="/onboarding" element={protectedPage(<Suspense fallback={<LoadingFallback />}><OnboardingPage /></Suspense>)} />
                   <Route path="/help" element={<Suspense fallback={<LoadingFallback />}><HelpCenterPage /></Suspense>} />
                   <Route path="/status" element={<Suspense fallback={<LoadingFallback />}><StatusPage /></Suspense>} />
+                  <Route path="/check-email" element={<Suspense fallback={<LoadingFallback />}><CheckEmailPage /></Suspense>} />
+                  <Route path="/auth/callback" element={<Suspense fallback={<LoadingFallback />}><AuthCallbackPage /></Suspense>} />
 
                   {/* Household / Customer */}
                   <Route path="/household/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><HouseholdDashboardPage /></Suspense>, HOUSEHOLD_ROLES)} />

@@ -287,6 +287,12 @@ export {
 export type { DigitalReceipt } from "./receipt";
 
 export {
+  logSecurityEvent,
+  getSecurityEvents,
+} from "./security-audit";
+export type { SecurityEvent, SecurityEventType } from "./security-audit";
+
+export {
   getCollectorProfile,
   toggleAvailability,
   updateLocation,

@@ -5,11 +5,11 @@
  * and pickup verification.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, MapPin, Clock, Truck, Phone, MessageCircle,
-  CheckCircle2, Navigation, Star,
+  CheckCircle2, Navigation, Star, X, PhoneCall, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/components/auth-provider";
 import { getPickupById, updatePickupStatus } from "@/services/pickup";
 import { getLatestTrackingPoint, subscribeToTracking, subscribeToPickupStatus, type TrackingPoint } from "@/services/tracking";
+import { getPickupContactPhone } from "@/services/auth";
 import { getStatusLabel, getStatusColor, isActivePickup, type PickupStatus } from "@/services/pickup-status";
 import { formatNaira } from "@/services/pricing";
 
@@ -34,6 +35,37 @@ const TrackingPage = () => {
   const [pickup, setPickup] = useState<Record<string, unknown> | null>(null);
   const [trackingPoint, setTrackingPoint] = useState<TrackingPoint | null>(null);
   const [loading, setLoading] = useState(true);
+  const [contactModal, setContactModal] = useState<"call" | "message" | null>(null);
+  const [contactPhone, setContactPhone] = useState<string | null>(null);
+  const [loadingContact, setLoadingContact] = useState(false);
+
+  const openContactModal = useCallback(async (mode: "call" | "message") => {
+    if (!pickupId) return;
+    setContactModal(mode);
+    setLoadingContact(true);
+    try {
+      const phone = await getPickupContactPhone(pickupId);
+      setContactPhone(phone);
+    } catch {
+      setContactPhone(null);
+    } finally {
+      setLoadingContact(false);
+    }
+  }, [pickupId]);
+
+  const handleCall = useCallback(() => {
+    if (contactPhone) {
+      window.open(`tel:${contactPhone}`, "_self");
+    }
+    setContactModal(null);
+  }, [contactPhone]);
+
+  const handleSms = useCallback(() => {
+    if (contactPhone) {
+      window.open(`sms:${contactPhone}`, "_self");
+    }
+    setContactModal(null);
+  }, [contactPhone]);
 
   useEffect(() => {
     if (!pickupId || !user) return;
@@ -177,10 +209,10 @@ const TrackingPage = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <button onClick={() => openContactModal("call")} className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors">
                     <Phone className="w-5 h-5 text-[#145C25]" />
                   </button>
-                  <button className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <button onClick={() => openContactModal("message")} className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors">
                     <MessageCircle className="w-5 h-5 text-[#145C25]" />
                   </button>
                 </div>
@@ -189,6 +221,77 @@ const TrackingPage = () => {
           </Card>
         )}
       </main>
+
+      {/* Contact Modal */}
+      {contactModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setContactModal(null)} />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-6 animate-slide-up">
+            <button onClick={() => setContactModal(null)} className="absolute top-4 right-4 p-1 rounded-lg hover:bg-neutral-100">
+              <X className="w-5 h-5 text-neutral-500" />
+            </button>
+
+            <h3 className="text-lg font-bold text-neutral-900 mb-4">
+              {contactModal === "call" ? "Call Collector" : "Message Collector"}
+            </h3>
+
+            {loadingContact ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 rounded-full border-2 border-green-100 border-t-[#145C25] animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Option 1: In-app (Coming Soon) */}
+                <button
+                  disabled
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-neutral-200 bg-neutral-50 opacity-60 cursor-not-allowed text-left"
+                >
+                  {contactModal === "call" ? (
+                    <PhoneCall className="w-6 h-6 text-neutral-400" />
+                  ) : (
+                    <MessageSquare className="w-6 h-6 text-neutral-400" />
+                  )}
+                  <div>
+                    <p className="font-bold text-neutral-500">
+                      {contactModal === "call" ? "Call in Tydigo" : "Message in Tydigo"}
+                    </p>
+                    <p className="text-xs text-neutral-400">COMING SOON</p>
+                  </div>
+                </button>
+
+                {/* Option 2: Native */}
+                <button
+                  onClick={contactModal === "call" ? handleCall : handleSms}
+                  disabled={!contactPhone}
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-[#145C25] bg-green-50 hover:bg-green-100 transition-colors text-left"
+                >
+                  {contactModal === "call" ? (
+                    <Phone className="w-6 h-6 text-[#145C25]" />
+                  ) : (
+                    <MessageCircle className="w-6 h-6 text-[#145C25]" />
+                  )}
+                  <div>
+                    <p className="font-bold text-neutral-900">
+                      {contactModal === "call" ? "Call using Phone" : "Send SMS"}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {contactModal === "call"
+                        ? "Use your device's phone service"
+                        : "Use your device's messaging app"}
+                    </p>
+                  </div>
+                </button>
+
+                {!contactPhone && (
+                  <p className="text-xs text-red-500 text-center">
+                    Contact number unavailable. The pickup may not be in an active state.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
