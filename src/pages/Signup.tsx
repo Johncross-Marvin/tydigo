@@ -153,14 +153,13 @@ const SignupPage = () => {
 
   const step1Valid = useMemo(() => {
     if (!fullName.trim() || fullName.trim().length < 2) return false;
-    if (!email.trim() && !phone.trim()) return false;
-    if (email.trim() && !isEmail(email)) return false;
+    if (!email.trim() || !isEmail(email)) return false;
     if (phone.trim() && !isPhone(phone)) return false;
     if (!cityName) return false;
     if (!username || !isValidUsername(username) || usernameAvailable === false) return false;
-    if (email.trim() && (!password || password.length < 8)) return false;
+    if (!password || password.length < 8) return false;
     if (password && confirmPassword && password !== confirmPassword) return false;
-    if (email.trim() && !agreedToTerms) return false;
+    if (!agreedToTerms) return false;
     return true;
   }, [fullName, email, phone, cityName, username, usernameAvailable, password, confirmPassword, agreedToTerms]);
 
@@ -181,14 +180,13 @@ const SignupPage = () => {
     setError("");
     if (step === 0 && !step1Valid) {
       if (!fullName.trim()) setError("Please enter your full name.");
-      else if (!email.trim() && !phone.trim()) setError("Please provide an email or phone number.");
-      else if (email.trim() && !isEmail(email)) setError("Please enter a valid email address.");
+      else if (!email.trim() || !isEmail(email)) setError("Please enter a valid email address.");
       else if (!cityName) setError("Please select your city.");
       else if (!username || !isValidUsername(username)) setError("Username must be 3-30 lowercase letters/numbers.");
       else if (usernameAvailable === false) setError("This username is already taken.");
-      else if (email.trim() && (!password || password.length < 8)) setError("Password must be at least 8 characters.");
+      else if (!password || password.length < 8) setError("Password must be at least 8 characters.");
       else if (password && confirmPassword && password !== confirmPassword) setError("Passwords do not match.");
-      else if (email.trim() && !agreedToTerms) setError("Please agree to the Terms of Service.");
+      else if (!agreedToTerms) setError("Please agree to the Terms of Service.");
       return;
     }
     if (step < TOTAL_STEPS - 1) {
@@ -278,9 +276,9 @@ const SignupPage = () => {
                   />
                 </div>
 
-                {/* Email */}
+                {/* Email — REQUIRED */}
                 <div>
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Email</label>
+                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Email *</label>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2">
                       <Mail className="w-5 h-5 text-neutral-400" />
@@ -291,11 +289,13 @@ const SignupPage = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="amina@email.com"
                       className="pl-12 h-14 rounded-2xl"
+                      required
                     />
                   </div>
+                  <p className="text-xs text-neutral-400 mt-1">Required for account verification.</p>
                 </div>
 
-                {/* Phone */}
+                {/* Phone — contact information only */}
                 <div>
                   <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Phone Number</label>
                   <div className="relative">
@@ -310,7 +310,7 @@ const SignupPage = () => {
                       className="pl-12 h-14 rounded-2xl"
                     />
                   </div>
-                  <p className="text-xs text-neutral-400 mt-1">At least one of email or phone is required.</p>
+                  <p className="text-xs text-neutral-400 mt-1">Contact information (not used for login).</p>
                 </div>
 
                 {/* City */}
@@ -394,97 +394,93 @@ const SignupPage = () => {
                   )}
                 </div>
 
-                {/* Password (for email signups) */}
-                {email.trim() && isEmail(email) && (
-                  <>
-                    <div>
-                      <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Password *</label>
-                      <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                          <KeyRound className="w-5 h-5 text-neutral-400" />
-                        </div>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Min. 8 characters"
-                          className="pl-12 pr-12 h-14 rounded-2xl"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                      {/* Password strength */}
-                      {password && (
-                        <div className="mt-2">
-                          <div className="flex gap-1 mb-1">
-                            {[1, 2, 3, 4].map((i) => (
-                              <div
-                                key={i}
-                                className={`h-1 flex-1 rounded-full transition-colors ${
-                                  passwordStrength.pct >= i * 25 ? passwordStrength.color : "bg-neutral-200"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <p className="text-xs text-neutral-500">
-                            Strength: <span className="font-semibold">{passwordStrength.label}</span>
-                            {password.length < 8 && " — at least 8 characters needed"}
-                          </p>
-                        </div>
-                      )}
+                {/* Password */}
+                <div>
+                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Password *</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                      <KeyRound className="w-5 h-5 text-neutral-400" />
                     </div>
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Min. 8 characters"
+                      className="pl-12 pr-12 h-14 rounded-2xl"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {/* Password strength */}
+                  {password && (
+                    <div className="mt-2">
+                      <div className="flex gap-1 mb-1">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div
+                            key={i}
+                            className={`h-1 flex-1 rounded-full transition-colors ${
+                              passwordStrength.pct >= i * 25 ? passwordStrength.color : "bg-neutral-200"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-neutral-500">
+                        Strength: <span className="font-semibold">{passwordStrength.label}</span>
+                        {password.length < 8 && " — at least 8 characters needed"}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-                    {/* Confirm Password */}
-                    <div>
-                      <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Confirm Password</label>
-                      <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                          <KeyRound className="w-5 h-5 text-neutral-400" />
-                        </div>
-                        <Input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="Re-enter your password"
-                          className="pl-12 h-14 rounded-2xl"
-                        />
-                        {confirmPassword && (
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            {passwordsMatch ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <AlertCircle className="w-4 h-4 text-red-500" />
-                            )}
-                          </div>
+                {/* Confirm Password */}
+                <div>
+                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Confirm Password</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                      <KeyRound className="w-5 h-5 text-neutral-400" />
+                    </div>
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter your password"
+                      className="pl-12 h-14 rounded-2xl"
+                    />
+                    {confirmPassword && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        {passwordsMatch ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-red-500" />
                         )}
                       </div>
-                      {confirmPassword && !passwordsMatch && (
-                        <p className="text-xs text-red-500 mt-1">Passwords do not match.</p>
-                      )}
-                    </div>
+                    )}
+                  </div>
+                  {confirmPassword && !passwordsMatch && (
+                    <p className="text-xs text-red-500 mt-1">Passwords do not match.</p>
+                  )}
+                </div>
 
-                    {/* Terms */}
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={agreedToTerms}
-                        onChange={(e) => setAgreedToTerms(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-neutral-300 text-[#145C25] focus:ring-[#145C25]"
-                      />
-                      <span className="text-sm text-neutral-600">
-                        I agree to the{" "}
-                        <Link to="/terms" className="text-[#145C25] font-semibold hover:underline">Terms of Service</Link>
-                        {" "}and{" "}
-                        <Link to="/privacy" className="text-[#145C25] font-semibold hover:underline">Privacy Policy</Link>
-                      </span>
-                    </label>
-                  </>
-                )}
+                {/* Terms */}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-neutral-300 text-[#145C25] focus:ring-[#145C25]"
+                  />
+                  <span className="text-sm text-neutral-600">
+                    I agree to the{" "}
+                    <Link to="/terms" className="text-[#145C25] font-semibold hover:underline">Terms of Service</Link>
+                    {" "}and{" "}
+                    <Link to="/privacy" className="text-[#145C25] font-semibold hover:underline">Privacy Policy</Link>
+                  </span>
+                </label>
               </div>
             )}
 
@@ -563,9 +559,7 @@ const SignupPage = () => {
 
                 <div className="p-3 bg-blue-50 rounded-xl text-sm text-blue-700 flex items-center gap-2">
                   <Shield className="w-4 h-4 flex-shrink-0" />
-                  {phone && !email
-                    ? "We'll send a verification code to your phone."
-                    : "We'll send a verification email to confirm your account."}
+                  We'll send a verification email to confirm your account.
                 </div>
               </div>
             )}
