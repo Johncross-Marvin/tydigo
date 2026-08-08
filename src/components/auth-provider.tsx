@@ -9,7 +9,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   refreshUser: () => Promise<void>;
-  updateRole?: (role: UserRole) => Promise<{ role: UserRole }>;
+  updateRole: (role: UserRole) => Promise<{ role: UserRole }>;
   logout: () => Promise<void>;
   // Legacy stubs
   deviceSessions?: DeviceSession[];
@@ -80,6 +80,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshUser]);
 
+  const updateRole = useCallback(async (role: UserRole): Promise<{ role: UserRole }> => {
+    if (!isSupabaseAvailable() || !supabase || !user) {
+      throw new Error("Cannot update role: not authenticated");
+    }
+
+    // Update role in profiles table
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role, updated_at: new Date().toISOString() })
+      .eq("id", user.id);
+
+    if (error) throw new Error(error.message);
+
+    // Refresh the user to get updated role
+    await refreshUser();
+
+    return { role };
+  }, [user, refreshUser]);
+
   const logout = useCallback(async () => {
     await signOut();
     clearSessionToken();
@@ -87,8 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
-    user, loading, refreshUser, logout,
-  }), [user, loading, refreshUser, logout]);
+    user, loading, refreshUser, updateRole, logout,
+  }), [user, loading, refreshUser, updateRole, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

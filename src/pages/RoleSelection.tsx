@@ -61,7 +61,7 @@ const roles = [
     hoverColor: "hover:border-lime-500 hover:bg-lime-50",
   },
   {
-    id: "fleet" as UserRole,
+    id: "fleet_owner" as UserRole,
     icon: Truck,
     title: "Fleet Operator",
     desc: "Manage collection vehicles, routes, and driver assignments.",
@@ -69,7 +69,7 @@ const roles = [
     hoverColor: "hover:border-indigo-500 hover:bg-indigo-50",
   },
   {
-    id: "corporate" as UserRole,
+    id: "corporate_partner" as UserRole,
     icon: Globe,
     title: "Corporate Partner",
     desc: "Sustainability partnerships, ESG reporting, and large-scale impact.",

@@ -170,9 +170,9 @@ export async function createRoleProfile(profileId: string, role: UserRole): Prom
     estate: "business_profiles",
     recycler: "recycler_profiles",
     organic_partner: "organic_partner_profiles",
-    fleet: "fleet_profiles",
+    fleet_owner: "fleet_profiles",
     government: "government_profiles",
-    corporate: "corporate_profiles",
+    corporate_partner: "corporate_profiles",
     partner: "partner_profiles",
   };
 
@@ -196,7 +196,7 @@ export async function createRoleProfile(profileId: string, role: UserRole): Prom
 
 export function mapProfileToUser(profile: Profile): AuthUser {
   return {
-    id: profile.auth_user_id || profile.id,
+    id: profile.id,
     phone: profile.phone || "",
     name: profile.full_name || "Tydigo User",
     role: profile.role || "customer",

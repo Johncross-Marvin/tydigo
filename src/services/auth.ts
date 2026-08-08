@@ -220,7 +220,7 @@ function mapProfile(p: Record<string, unknown>): AuthUser {
   return {
     // id = profiles.id (UUID) for database queries
     // authUserId = auth.users.id for auth operations
-    id: (p.id as string) || (p.auth_user_id as string) || "",
+    id: (p.id as string) || "",
     phone: (p.phone as string) || "",
     name: (p.full_name as string) || "Tydigo User",
     role: (p.role as UserRole) || "customer",
