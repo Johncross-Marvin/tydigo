@@ -10,7 +10,7 @@
 import { supabase, isSupabaseAvailable, generateId, normalizePhone } from "@/lib/supabase";
 import { normalizeNigerianPhone, maskPhone } from "@/utils/phone";
 import { setSessionToken, clearSessionToken } from "@/lib/api";
-import { hasSupabase, APP_ENV } from "@/lib/env";
+import { hasSupabase, APP_ENV, SUPABASE_ANON_KEY } from "@/lib/env";
 import type { UserRole, AuthUser } from "@/lib/api";
 
 export type { AuthUser, UserRole };
@@ -51,18 +51,24 @@ export type SignUpParams = {
 };
 
 export async function signUp(params: SignUpParams) {
-  const client = requireClient();
   const phoneE164 = normalizeNigerianPhone(params.phone);
   const normalizedEmail = params.email.toLowerCase().trim();
 
   // Map frontend role to canonical DB role
   const canonicalRole = mapToCanonicalRole(params.role);
 
-  const { data, error } = await client.auth.signUp({
-    email: normalizedEmail,
-    password: params.password,
-    options: {
-      data: {
+  // Use edge function to create user via admin API (bypasses SMTP email issues)
+  const response = await fetch(
+    "https://gwsywtptelowvbcwplsj.supabase.co/functions/v1/admin-signup",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        password: params.password,
         full_name: params.fullName.trim(),
         username: params.username.toLowerCase().trim(),
         phone: params.phone.trim(),
@@ -70,13 +76,34 @@ export async function signUp(params: SignUpParams) {
         role: canonicalRole,
         city: params.city,
         state: params.state || "FCT",
-      },
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
-    },
+      }),
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new AuthError(result.error || "Unable to create account. Please try again.");
+  }
+
+  // Now sign in the user to get a session
+  const client = requireClient();
+  const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+    email: normalizedEmail,
+    password: params.password,
   });
 
-  if (error) throw new AuthError(friendlyMessage(error));
-  return { user: data.user, needsVerification: !data.user?.email_confirmed_at };
+  if (signInError) {
+    // User was created but sign-in failed — still return success
+    console.error("[Tydigo Auth] Sign-in after signup failed:", signInError);
+    return { user: result.user, needsVerification: false };
+  }
+
+  if (signInData.session?.access_token) {
+    setSessionToken(signInData.session.access_token);
+  }
+
+  return { user: signInData.user, needsVerification: false };
 }
 
 /** Map any role alias to the canonical DB role value. */

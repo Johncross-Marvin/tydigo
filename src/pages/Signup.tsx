@@ -204,7 +204,7 @@ const SignupPage = () => {
     setSubmitting(true);
 
     try {
-      await signUp({
+      const result = await signUp({
         fullName: fullName.trim(),
         username,
         email: email.trim(),
@@ -214,7 +214,13 @@ const SignupPage = () => {
         state: getStateForCity(cityName, cities),
         role,
       });
-      navigate("/check-email", { state: { email: email.trim() } });
+
+      // If email is already confirmed (admin API), go straight to dashboard
+      if (!result.needsVerification) {
+        navigate(roleHomePath[role], { replace: true });
+      } else {
+        navigate("/check-email", { state: { email: email.trim() } });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create account. Please try again.");
     } finally {
@@ -557,9 +563,9 @@ const SignupPage = () => {
                   </div>
                 </div>
 
-                <div className="p-3 bg-blue-50 rounded-xl text-sm text-blue-700 flex items-center gap-2">
+                <div className="p-3 bg-green-50 rounded-xl text-sm text-green-700 flex items-center gap-2">
                   <Shield className="w-4 h-4 flex-shrink-0" />
-                  We'll send a verification email to confirm your account.
+                  Your account will be created instantly. You'll be redirected to your dashboard.
                 </div>
               </div>
             )}
