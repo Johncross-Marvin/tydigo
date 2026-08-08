@@ -6,6 +6,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Canonical role values that must match the user_role enum
+const VALID_ROLES = [
+  "household", "estate", "business", "collector", "recycler",
+  "organic_partner", "fleet_owner", "corporate_partner", "government",
+  "admin", "partner", "customer"
+];
+
+function normalizeRole(role: string): string {
+  const r = (role || "household").toLowerCase().trim();
+  const aliases: Record<string, string> = {
+    fleet: "fleet_owner",
+    corporate: "corporate_partner",
+    customer: "household",
+  };
+  const canonical = aliases[r] || r;
+  if (!VALID_ROLES.includes(canonical)) {
+    console.log("[admin-signup] Unknown role, defaulting to household:", canonical);
+    return "household";
+  }
+  return canonical;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,6 +44,8 @@ serve(async (req) => {
       );
     }
 
+    const canonicalRole = normalizeRole(role);
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -33,20 +57,9 @@ serve(async (req) => {
       }
     );
 
-    // Check if user already exists
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existing = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
+    console.log("[admin-signup] Creating user:", { email: email.toLowerCase().trim(), role: canonicalRole });
 
-    if (existing) {
-      return new Response(
-        JSON.stringify({ error: "An account with this email already exists." }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Create user via admin API — auto-confirms email, bypasses SMTP
+    // Create user via admin API
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: email.toLowerCase().trim(),
       password,
@@ -56,21 +69,25 @@ serve(async (req) => {
         username: username || "",
         phone: phone || "",
         phone_e164: phone_e164 || "",
-        role: role || "household",
+        role: canonicalRole,
         city: city || "Abuja",
         state: state || "FCT",
       },
     });
 
     if (error) {
-      console.error("[admin-signup] Error creating user:", error);
+      console.error("[admin-signup] Error:", JSON.stringify(error));
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ 
+          error: error.message,
+          code: (error as any).code,
+          status: (error as any).status,
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[admin-signup] User created successfully:", data.user?.id);
+    console.log("[admin-signup] Success:", data.user?.id);
 
     return new Response(
       JSON.stringify({
