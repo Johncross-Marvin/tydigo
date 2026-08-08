@@ -23,7 +23,6 @@ import {
   ChevronRight,
   Award,
   Globe,
-  Sparkles,
 } from "lucide-react";
 import { IMAGE_IDS, gdUrl } from "@/lib/images";
 import { useSeo, seoConfig } from "@/lib/seo";
@@ -181,10 +180,6 @@ const Index = () => {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             {/* Left content */}
             <div className="space-y-8">
-              <Badge className="bg-green-500/20 text-green-200 border-green-400/30 px-4 py-1.5 text-sm rounded-full">
-                <Sparkles className="w-3.5 h-3.5 mr-2" />
-                On-demand waste pickup, recycling, and rewards
-              </Badge>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] tracking-tight">
                 Cleaner homes.
