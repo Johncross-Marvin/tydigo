@@ -39,13 +39,13 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
 export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
   customer: "/household/dashboard",
   household: "/household/dashboard",
-  estate: "/business/dashboard",
+  estate: "/estate/dashboard",
   business: "/business/dashboard",
   collector: "/collector/dashboard",
-  recycler: "/partner/dashboard",
-  organic_partner: "/partner/dashboard",
-  fleet_owner: "/collector/dashboard",
-  corporate_partner: "/business/dashboard",
+  recycler: "/recycler/dashboard",
+  organic_partner: "/organic/dashboard",
+  fleet_owner: "/fleet/dashboard",
+  corporate_partner: "/corporate/dashboard",
   government: "/government/dashboard",
   partner: "/partner/dashboard",
   admin: "/admin/dashboard",
@@ -60,7 +60,7 @@ export function getRoleDashboardPath(role: UserRole): string {
 }
 
 export function isAdminRole(role: UserRole): boolean {
-  return role === "admin" || role === "government";
+  return role === "admin";
 }
 
 export function isCollectorRole(role: UserRole): boolean {

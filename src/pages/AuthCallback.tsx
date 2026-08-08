@@ -3,6 +3,10 @@
  *
  * Handles email verification, password reset, and other
  * Supabase auth redirects. Establishes session and redirects.
+ *
+ * IMPORTANT: Supabase auth.users.email_confirmed_at is the canonical
+ * email-verification truth. We do NOT independently set
+ * profiles.email_verified from the client.
  */
 
 import { useEffect, useState } from "react";
@@ -11,7 +15,7 @@ import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { roleHomePath, type UserRole } from "@/lib/api";
 
-type CallbackState = "processing" | "success" | "error" | "already_verified";
+type CallbackState = "processing" | "success" | "error";
 
 const AuthCallbackPage = () => {
   const navigate = useNavigate();
@@ -39,12 +43,6 @@ const AuthCallbackPage = () => {
           if (userData.user) {
             setState("success");
             setMessage("Email verified successfully!");
-
-            // Update profile email_verified
-            await supabase
-              .from("profiles")
-              .update({ email_verified: true, status: "active", updated_at: new Date().toISOString() })
-              .eq("auth_user_id", userData.user.id);
 
             // Log security event
             const { data: profile } = await supabase
@@ -74,12 +72,6 @@ const AuthCallbackPage = () => {
 
         setState("success");
         setMessage("Email verified successfully!");
-
-        // Update profile
-        await supabase
-          .from("profiles")
-          .update({ email_verified: true, status: "active", updated_at: new Date().toISOString() })
-          .eq("auth_user_id", user.id);
 
         // Log security event
         const { data: profile } = await supabase

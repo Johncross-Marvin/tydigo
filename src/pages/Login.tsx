@@ -40,7 +40,8 @@ const LoginPage = () => {
         navigate(roleHomePath[nextUser.role], { replace: true });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      // Generic error — never reveal whether the account exists
+      setError("Invalid login details.");
     } finally {
       setSubmitting(false);
     }
@@ -86,7 +87,7 @@ const LoginPage = () => {
             <CardHeader className="space-y-1 pb-2">
               <div className="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center mb-3"><Lock className="w-6 h-6 text-[#145C25]" /></div>
               <CardTitle className="text-2xl font-extrabold">{resetMode ? "Reset Password" : "Sign in to Tydigo"}</CardTitle>
-              <CardDescription>{resetMode ? "Enter your email to receive a reset link." : "Use your email, username or phone number."}</CardDescription>
+              <CardDescription>{resetMode ? "Enter your account email to receive a reset link." : "Use your email, username or phone number."}</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-5 pt-4">
@@ -99,7 +100,7 @@ const LoginPage = () => {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">
-                    {resetMode ? "Email Address" : "Email, Username or Phone Number"}
+                    {resetMode ? "Account Email" : "Email, Username or Phone Number"}
                   </label>
                   <Input
                     value={identifier}

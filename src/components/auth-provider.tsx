@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { setSessionToken, clearSessionToken, roleHomePath, type AuthUser, type UserRole } from "@/lib/api";
 import { getCurrentUser, signOut } from "@/services/auth";
+import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 
 export { roleHomePath };
 
@@ -29,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const u = await getCurrentUser();
       setUser(u);
@@ -37,14 +38,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearSessionToken();
       setUser(null);
     }
-  };
+  }, []);
 
-  useEffect(() => { refreshUser().finally(() => setLoading(false)); }, []);
+  // Initial load
+  useEffect(() => {
+    refreshUser().finally(() => setLoading(false));
+  }, [refreshUser]);
+
+  // Subscribe to Supabase auth state changes
+  useEffect(() => {
+    if (!isSupabaseAvailable() || !supabase) return;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        switch (event) {
+          case "SIGNED_IN":
+          case "TOKEN_REFRESHED":
+          case "USER_UPDATED":
+            // Refresh the user profile when auth state changes
+            if (session?.access_token) {
+              setSessionToken(session.access_token);
+            }
+            await refreshUser();
+            break;
+          case "SIGNED_OUT":
+            clearSessionToken();
+            setUser(null);
+            break;
+          case "PASSWORD_RECOVERY":
+            // Password recovery event — no action needed here
+            break;
+          case "INITIAL_SESSION":
+            // Already handled by the initial load
+            break;
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [refreshUser]);
+
+  const logout = useCallback(async () => {
+    await signOut();
+    clearSessionToken();
+    setUser(null);
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
-    user, loading, refreshUser,
-    logout: async () => { await signOut(); clearSessionToken(); setUser(null); },
-  }), [user, loading]);
+    user, loading, refreshUser, logout,
+  }), [user, loading, refreshUser, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
