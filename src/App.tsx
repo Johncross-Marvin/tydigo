@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { InstallPromptBanner, OfflineBanner, UpdateAvailableBanner } from "@/components/pwa-banner";
+import { LegacyRedirect } from "@/components/legacy-redirect";
 import type { UserRole } from "@/lib/api";
 
 // ─── Eagerly loaded (critical path) ──────────────────────────
@@ -75,6 +76,12 @@ const AdminImpactPage = lazy(() => import("./pages/AdminImpact"));
 
 // Government
 const GovernmentDashboardPage = lazy(() => import("./pages/GovernmentDashboard"));
+
+// Dedicated role dashboards
+const EstateDashboardPage = lazy(() => import("./pages/EstateDashboard"));
+const FleetDashboardPage = lazy(() => import("./pages/FleetDashboard"));
+const OrganicDashboardPage = lazy(() => import("./pages/OrganicDashboard"));
+const CorporateDashboardPage = lazy(() => import("./pages/CorporateDashboard"));
 
 // ─── Setup ────────────────────────────────────────────────────
 const queryClient = new QueryClient({
@@ -165,6 +172,10 @@ const App = () => (
 
                   {/* Business / Estate / Corporate */}
                   <Route path="/business/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><BusinessDashboardPage /></Suspense>, BUSINESS_ROLES)} />
+                  <Route path="/estate/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><EstateDashboardPage /></Suspense>, ["estate"])} />
+                  <Route path="/fleet/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><FleetDashboardPage /></Suspense>, ["fleet_owner"])} />
+                  <Route path="/organic/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><OrganicDashboardPage /></Suspense>, ["organic_partner"])} />
+                  <Route path="/corporate/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><CorporateDashboardPage /></Suspense>, ["corporate_partner"])} />
 
                   {/* Partner / Recycler / Organic Partner */}
                   <Route path="/partner/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PartnerDashboardPage /></Suspense>, PARTNER_ROLES)} />
@@ -180,6 +191,9 @@ const App = () => (
                   <Route path="/admin/impact" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminImpactPage /></Suspense>, ADMIN_ROLES)} />
                   <Route path="/admin/onboarding" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminOnboardingPage /></Suspense>, ["admin"])} />
                   <Route path="/government/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><GovernmentDashboardPage /></Suspense>, ["government"])} />
+
+                  {/* Legacy route redirects — backward compatibility */}
+                  <Route path="/customer/dashboard" element={<LegacyRedirect to="/household/dashboard" />} />
 
                   {/* 404 */}
                   <Route path="*" element={<NotFound />} />
