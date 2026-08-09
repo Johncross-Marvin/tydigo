@@ -81,8 +81,14 @@ export async function updateProfile(
 export async function uploadAvatar(profileId: string, file: File): Promise<string | null> {
   if (!isSupabaseAvailable() || !supabase) return null;
 
+  // Get the current auth user ID for the storage folder path
+  const { data: { user } } = await supabase.auth.getUser();
+  const authUserId = user?.id;
+  if (!authUserId) throw new Error("Not authenticated");
+
   const ext = file.name.split(".").pop() || "jpg";
-  const fileName = `${profileId}/avatar-${Date.now()}.${ext}`;
+  // Use auth user ID as folder (matches RLS policy), not profile ID
+  const fileName = `${authUserId}/avatar-${Date.now()}.${ext}`;
 
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from("avatars")
@@ -103,10 +109,16 @@ export async function uploadAvatar(profileId: string, file: File): Promise<strin
 
 export async function deleteAvatar(profileId: string): Promise<void> {
   if (!isSupabaseAvailable() || !supabase) return;
-  // List and delete existing avatars
-  const { data: files } = await supabase.storage.from("avatars").list(profileId);
+
+  // Get the current auth user ID for the storage folder path
+  const { data: { user } } = await supabase.auth.getUser();
+  const authUserId = user?.id;
+  if (!authUserId) return;
+
+  // List and delete existing avatars in the user's folder
+  const { data: files } = await supabase.storage.from("avatars").list(authUserId);
   if (files?.length) {
-    await supabase.storage.from("avatars").remove(files.map((f) => `${profileId}/${f.name}`));
+    await supabase.storage.from("avatars").remove(files.map((f) => `${authUserId}/${f.name}`));
   }
   await supabase
     .from("profiles")
