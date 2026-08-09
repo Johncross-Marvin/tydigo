@@ -15,6 +15,7 @@ import {
   CreditCard,
   BarChart3,
   Users,
+  Building2,
   ArrowRight,
   CheckCircle2,
   Menu,
@@ -501,37 +502,61 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               {
                 icon: Users,
-                title: "Homes & Estates",
-                desc: "Schedule pickups and earn rewards",
+                title: "Household",
+                desc: "Schedule home waste pickups and earn EcoPoints",
                 color: "bg-green-100 text-[#145C25]",
               },
               {
-                icon: Truck,
-                title: "Collector",
-                desc: "Accept jobs & grow earnings",
-                color: "bg-blue-100 text-blue-600",
+                icon: Building2,
+                title: "Estate",
+                desc: "Manage waste collection for your residential estate",
+                color: "bg-teal-100 text-teal-600",
               },
               {
                 icon: BarChart3,
                 title: "Business",
-                desc: "Bulk waste management solutions",
+                desc: "Bulk waste management, invoices, and sustainability reports",
                 color: "bg-purple-100 text-purple-600",
+              },
+              {
+                icon: Truck,
+                title: "Collector",
+                desc: "Accept pickup jobs, navigate routes, and grow your earnings",
+                color: "bg-blue-100 text-blue-600",
               },
               {
                 icon: Recycle,
                 title: "Recycler",
-                desc: "Source recyclable materials",
+                desc: "Source recyclable materials and manage warehouse inventory",
                 color: "bg-amber-100 text-amber-600",
               },
               {
+                icon: Leaf,
+                title: "Organic Partner",
+                desc: "BSF farms, compost operators, and livestock feed producers",
+                color: "bg-lime-100 text-lime-600",
+              },
+              {
+                icon: Truck,
+                title: "Fleet Operator",
+                desc: "Manage vehicles, drivers, routes, and dispatch operations",
+                color: "bg-indigo-100 text-indigo-600",
+              },
+              {
+                icon: Globe,
+                title: "Corporate Partner",
+                desc: "CSR/ESG programmes, sustainability targets, and impact reports",
+                color: "bg-rose-100 text-rose-600",
+              },
+              {
                 icon: Shield,
-                title: "Admin",
-                desc: "Manage platform operations",
-                color: "bg-red-100 text-red-600",
+                title: "Government",
+                desc: "Jurisdiction-level waste and sustainability reporting",
+                color: "bg-slate-100 text-slate-600",
               },
             ].map((role, i) => (
               <Link to="/login" key={i}>
