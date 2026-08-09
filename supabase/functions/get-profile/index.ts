@@ -16,6 +16,46 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Only return these fields to the client — never expose internal/sensitive columns
+const PROFILE_COLUMNS = [
+  "id",
+  "auth_user_id",
+  "full_name",
+  "username",
+  "email",
+  "phone",
+  "phone_e164",
+  "role",
+  "avatar_url",
+  "default_city",
+  "default_state",
+  "default_lat",
+  "default_lng",
+  "ecopoints",
+  "rating",
+  "total_pickups",
+  "total_kg_recycled",
+  "kyc_status",
+  "account_type",
+  "country",
+  "language",
+  "timezone",
+  "last_login",
+  "city_id",
+  "state_id",
+  "country_id",
+  "bio",
+  "email_verified",
+  "phone_verified",
+  "date_of_birth",
+  "gender",
+  "profile_completion",
+  "status",
+  "onboarding_status",
+  "created_at",
+  "updated_at",
+].join(",");
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -58,10 +98,11 @@ serve(async (req) => {
       );
     }
 
-    // Read profile using service_role (bypasses RLS entirely)
+    // Read profile using service_role (bypasses RLS entirely).
+    // Only select allowed columns — never expose internal fields.
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("*")
+      .select(PROFILE_COLUMNS)
       .eq("auth_user_id", user.id)
       .maybeSingle();
 
@@ -78,59 +119,18 @@ serve(async (req) => {
     }
 
     if (!profile) {
-      // Profile missing — try to create one
-      console.log(`[get-profile] Profile missing for user ${user.id}, attempting repair...`);
-
-      const role = (user.user_metadata?.role as string) || "household";
-      const fullName = (user.user_metadata?.full_name as string) || "Tydigo User";
-      const email = user.email || "";
-      const username = (user.user_metadata?.username as string) || "";
-      const phone = (user.user_metadata?.phone as string) || "";
-      const phoneE164 = (user.user_metadata?.phone_e164 as string) || "";
-      const city = (user.user_metadata?.city as string) || "Abuja";
-      const state = (user.user_metadata?.state as string) || "FCT";
-
-      // Map legacy roles
-      let canonicalRole = role;
-      if (canonicalRole === "fleet") canonicalRole = "fleet_owner";
-      if (canonicalRole === "corporate") canonicalRole = "corporate_partner";
-      if (canonicalRole === "customer") canonicalRole = "household";
-
-      const { data: newProfile, error: insertError } = await supabaseAdmin
-        .from("profiles")
-        .upsert({
-          id: crypto.randomUUID(),
-          auth_user_id: user.id,
-          full_name: fullName,
-          username: username,
-          email: email,
-          phone: phone,
-          phone_e164: phoneE164,
-          role: canonicalRole,
-          default_city: city,
-          default_state: state,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "auth_user_id" })
-        .select("*")
-        .single();
-
-      if (insertError) {
-        console.error("[get-profile] Profile repair failed:", insertError);
-        return new Response(
-          JSON.stringify({ error: "Account setup incomplete.", details: insertError.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
+      // Profile missing — do NOT auto-create.
+      // Profile creation is handled exclusively by the handle_new_user DB trigger
+      // and the admin-signup edge function.
+      console.log(`[get-profile] Profile missing for user ${user.id}`);
       return new Response(
-        JSON.stringify({ profile: newProfile, repaired: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Profile not found." }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
-      JSON.stringify({ profile, repaired: false }),
+      JSON.stringify({ profile }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
