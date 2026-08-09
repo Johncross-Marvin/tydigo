@@ -123,132 +123,33 @@ serve(async (req) => {
 
     console.log(`[admin-signup:${requestId}] Auth user created:`, { userId: authUserId });
 
-    // ── Step 2: Create profile explicitly (trigger is disabled) ────
-    const profileId = crypto.randomUUID();
-    const now = new Date().toISOString();
-    const profileFullName = (full_name || "Tydigo User").trim();
-    const profileUsername = (username || "").toLowerCase().trim() ||
-      profileFullName.toLowerCase().replace(/[^a-z0-9]/g, "") + Math.floor(Math.random() * 90000 + 10000);
+    // ── Step 2: Create profile via RPC (handles user_role cast properly) ──
+    console.log(`[admin-signup:${requestId}] Creating profile via RPC...`);
 
-    console.log(`[admin-signup:${requestId}] Creating profile:`, { profileId, authUserId });
+    const { data: profileId, error: rpcError } = await supabaseAdmin.rpc(
+      "create_profile_for_user",
+      {
+        p_auth_user_id: authUserId,
+        p_full_name: (full_name || "Tydigo User").trim(),
+        p_username: (username || "").toLowerCase().trim(),
+        p_email: normalizedEmail,
+        p_phone: (phone || "").trim(),
+        p_phone_e164: (phone_e164 || phone || "").trim(),
+        p_role: canonicalRole,
+        p_city: (city || "Abuja").trim(),
+        p_state: (state || "FCT").trim(),
+      }
+    );
 
-    const { error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .insert({
-        id: profileId,
-        auth_user_id: authUserId,
-        full_name: profileFullName,
-        username: profileUsername,
-        email: normalizedEmail,
-        phone: (phone || "").trim(),
-        phone_e164: (phone_e164 || phone || "").trim(),
-        role: canonicalRole,
-        default_city: (city || "Abuja").trim(),
-        default_state: (state || "FCT").trim(),
-        status: canonicalRole === "collector" ? "pending" : "active",
-        kyc_status: ["collector", "recycler", "organic_partner", "fleet_owner"].includes(canonicalRole) ? "pending" : "not_required",
-        onboarding_status: "pending",
-        profile_completion: 20,
-        created_at: now,
-        updated_at: now,
-      });
-
-    if (profileError) {
-      console.error(`[admin-signup:${requestId}] Profile creation failed:`, profileError);
-      // Clean up the auth user since profile creation failed
+    if (rpcError) {
+      console.error(`[admin-signup:${requestId}] RPC profile creation failed:`, rpcError);
+      // Clean up the auth user
       await supabaseAdmin.auth.admin.deleteUser(authUserId).catch(() => {});
       return new Response(
         JSON.stringify({ error: "Failed to create profile. Please try again.", code: "profile_creation_failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[admin-signup:${requestId}] Profile created:`, { profileId });
-
-    // ── Step 3: Create sub-profiles (best-effort) ──────────────────
-    const subProfilePromises: Promise<void>[] = [];
-
-    // Collector profile (for collector and fleet_owner)
-    if (["collector", "fleet_owner"].includes(canonicalRole)) {
-      subProfilePromises.push(
-        supabaseAdmin.from("collector_profiles").insert({
-          profile_id: profileId,
-          is_online: false,
-        }).then(({ error: e }) => {
-          if (e) console.warn(`[admin-signup:${requestId}] collector_profiles insert warning:`, e.message);
-        })
-      );
-    }
-
-    // Recycler profile
-    if (["recycler", "organic_partner"].includes(canonicalRole)) {
-      subProfilePromises.push(
-        supabaseAdmin.from("recycler_profiles").insert({
-          profile_id: profileId,
-          organization_name: profileFullName,
-        }).then(({ error: e }) => {
-          if (e) console.warn(`[admin-signup:${requestId}] recycler_profiles insert warning:`, e.message);
-        })
-      );
-    }
-
-    // Business profile
-    if (["business", "estate", "corporate_partner"].includes(canonicalRole)) {
-      subProfilePromises.push(
-        supabaseAdmin.from("business_profiles").insert({
-          profile_id: profileId,
-          business_name: profileFullName,
-        }).then(({ error: e }) => {
-          if (e) console.warn(`[admin-signup:${requestId}] business_profiles insert warning:`, e.message);
-        })
-      );
-    }
-
-    // EcoPoints wallet
-    subProfilePromises.push(
-      supabaseAdmin.from("eco_points_wallets").insert({
-        profile_id: profileId,
-        balance: 0,
-        lifetime_earned: 0,
-        created_at: now,
-        updated_at: now,
-      }).then(({ error: e }) => {
-        if (e) console.warn(`[admin-signup:${requestId}] eco_points_wallets insert warning:`, e.message);
-      })
-    );
-
-    // Collector wallet
-    if (["collector", "fleet_owner"].includes(canonicalRole)) {
-      subProfilePromises.push(
-        supabaseAdmin.from("collector_wallets").insert({
-          collector_id: profileId,
-          available_balance_ngn: 0,
-          pending_balance_ngn: 0,
-          lifetime_earnings_ngn: 0,
-          created_at: now,
-          updated_at: now,
-        }).then(({ error: e }) => {
-          if (e) console.warn(`[admin-signup:${requestId}] collector_wallets insert warning:`, e.message);
-        })
-      );
-    }
-
-    // Notification preferences
-    subProfilePromises.push(
-      supabaseAdmin.from("notification_preferences").insert({
-        profile_id: profileId,
-        push_enabled: true,
-        email_enabled: true,
-        sms_enabled: true,
-        created_at: now,
-        updated_at: now,
-      }).then(({ error: e }) => {
-        if (e) console.warn(`[admin-signup:${requestId}] notification_preferences insert warning:`, e.message);
-      })
-    );
-
-    // Wait for all sub-profiles (don't fail if any fail)
-    await Promise.allSettled(subProfilePromises);
 
     const elapsed = Date.now() - startTime;
     console.log(`[admin-signup:${requestId}] Success (${elapsed}ms):`, {
