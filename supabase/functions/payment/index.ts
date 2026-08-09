@@ -12,6 +12,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createHmac } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,29 +28,35 @@ serve(async (req) => {
   }
 
   try {
+    // Use service role key for unrestricted DB access (payment writes, webhook updates)
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      },
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const { action, ...body } = await req.json();
 
     switch (action) {
-      case "initialize":
+      case "initialize": {
+        // Still authenticate the user for initialize — extract user from the auth header
+        const authHeader = req.headers.get("Authorization");
+        if (!authHeader) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
+          authHeader.replace("Bearer ", ""),
+        );
+        if (userError || !user) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return await initializePayment(supabaseClient, user.id, body);
+      }
       case "verify":
         return await verifyPayment(body);
       case "webhook":
@@ -215,8 +222,21 @@ async function handleWebhook(
   body: Record<string, unknown>,
 ) {
   // Verify webhook signature
-  const hash = req.headers.get("x-paystack-signature") || "";
-  // In production, verify the hash using crypto
+  if (PAYSTACK_SECRET_KEY) {
+    const signature = req.headers.get("x-paystack-signature") || "";
+    const rawBody = JSON.stringify(body);
+    const computedHash = createHmac("sha512", PAYSTACK_SECRET_KEY)
+      .update(rawBody)
+      .digest("hex");
+
+    if (signature !== computedHash) {
+      console.error("[payment] Invalid webhook signature");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
 
   const event = body.event as string;
   const data = body.data as Record<string, unknown> | undefined;
