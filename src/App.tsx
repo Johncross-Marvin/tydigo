@@ -99,11 +99,13 @@ const protectedPage = (page: ReactNode, roles?: UserRole[]) => (
 );
 
 // Role groups for access control
+// CRITICAL: Government is NOT admin. Admin is admin only.
 const HOUSEHOLD_ROLES: UserRole[] = ["customer", "household"];
 const BUSINESS_ROLES: UserRole[] = ["business", "estate", "corporate_partner"];
 const COLLECTOR_ROLES: UserRole[] = ["collector", "fleet_owner"];
 const PARTNER_ROLES: UserRole[] = ["partner", "recycler", "organic_partner"];
 const ADMIN_ROLES: UserRole[] = ["admin"];
+const GOVERNMENT_ROLES: UserRole[] = ["government"];
 
 const LoadingFallback = () => (
   <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -180,7 +182,7 @@ const App = () => (
                   {/* Partner / Recycler / Organic Partner */}
                   <Route path="/partner/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PartnerDashboardPage /></Suspense>, PARTNER_ROLES)} />
                   <Route path="/partner/request" element={protectedPage(<Suspense fallback={<LoadingFallback />}><PartnerRequestPage /></Suspense>, PARTNER_ROLES)} />
-                  <Route path="/recycler/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RecyclerDashboardPage /></Suspense>, PARTNER_ROLES)} />
+                  <Route path="/recycler/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><RecyclerDashboardPage /></Suspense>, ["recycler"])} />
 
                   {/* Admin / Government */}
                   <Route path="/admin/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminDashboardPage /></Suspense>, ADMIN_ROLES)} />
@@ -190,7 +192,7 @@ const App = () => (
                   <Route path="/admin/batches" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminBatchesPage /></Suspense>, ADMIN_ROLES)} />
                   <Route path="/admin/impact" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminImpactPage /></Suspense>, ADMIN_ROLES)} />
                   <Route path="/admin/onboarding" element={protectedPage(<Suspense fallback={<LoadingFallback />}><AdminOnboardingPage /></Suspense>, ["admin"])} />
-                  <Route path="/government/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><GovernmentDashboardPage /></Suspense>, ["government"])} />
+                  <Route path="/government/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><GovernmentDashboardPage /></Suspense>, GOVERNMENT_ROLES)} />
 
                   {/* Legacy route redirects — backward compatibility */}
                   <Route path="/customer/dashboard" element={<LegacyRedirect to="/household/dashboard" />} />

@@ -494,7 +494,7 @@ const SignupPage = () => {
             {step === 1 && (
               <div className="space-y-4">
                 <h2 className="text-lg font-bold text-neutral-900">Select Account Type</h2>
-                <p className="text-sm text-neutral-500">Choose how you'll use Tydigo. You can change this later.</p>
+                <p className="text-sm text-neutral-500">Choose how you'll use Tydigo. Changing account type later requires review by Tydigo Support.</p>
 
                 <div className="grid gap-3">
                   {ROLE_OPTIONS.map((opt) => (
@@ -563,8 +563,16 @@ const SignupPage = () => {
                   </div>
                 </div>
 
+                <div className="p-3 bg-amber-50 rounded-xl text-sm text-amber-700 flex items-start gap-2">
+                  <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">You are creating a <strong>{ROLE_OPTIONS.find((r) => r.value === role)?.label}</strong> account.</p>
+                    <p className="mt-1">This account type determines your Tydigo workspace. Changing to another account type later requires review by Tydigo Support.</p>
+                  </div>
+                </div>
+
                 <div className="p-3 bg-green-50 rounded-xl text-sm text-green-700 flex items-center gap-2">
-                  <Shield className="w-4 h-4 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                   Your account will be created instantly. You'll be redirected to your dashboard.
                 </div>
               </div>

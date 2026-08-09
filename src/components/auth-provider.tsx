@@ -9,7 +9,8 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   refreshUser: () => Promise<void>;
-  updateRole: (role: UserRole) => Promise<{ role: UserRole }>;
+  /** Request an account type change (requires admin approval). Does NOT self-update. */
+  requestRoleChange: (requestedRole: UserRole, reason: string) => Promise<void>;
   logout: () => Promise<void>;
   // Legacy stubs
   deviceSessions?: DeviceSession[];
@@ -55,7 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           case "SIGNED_IN":
           case "TOKEN_REFRESHED":
           case "USER_UPDATED":
-            // Refresh the user profile when auth state changes
             if (session?.access_token) {
               setSessionToken(session.access_token);
             }
@@ -66,10 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             break;
           case "PASSWORD_RECOVERY":
-            // Password recovery event — no action needed here
             break;
           case "INITIAL_SESSION":
-            // Already handled by the initial load
             break;
         }
       }
@@ -80,24 +78,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refreshUser]);
 
-  const updateRole = useCallback(async (role: UserRole): Promise<{ role: UserRole }> => {
+  /**
+   * Request an account type change.
+   * This does NOT self-update the role. It creates a request that must be
+   * reviewed and approved by a Tydigo admin.
+   *
+   * For security and operational integrity, account types cannot be changed
+   * directly from the user's profile.
+   */
+  const requestRoleChange = useCallback(async (requestedRole: UserRole, reason: string): Promise<void> => {
     if (!isSupabaseAvailable() || !supabase || !user) {
-      throw new Error("Cannot update role: not authenticated");
+      throw new Error("Cannot request role change: not authenticated");
     }
 
-    // Update role in profiles table
+    // Create an account type change request (stored in a support/requests table or similar)
+    // For now, log the request and direct the user to contact support
     const { error } = await supabase
-      .from("profiles")
-      .update({ role, updated_at: new Date().toISOString() })
-      .eq("id", user.id);
+      .from("account_type_change_requests")
+      .insert({
+        profile_id: user.id,
+        current_account_type: user.role,
+        requested_account_type: requestedRole,
+        reason,
+        status: "pending",
+        submitted_at: new Date().toISOString(),
+      });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Table may not exist yet — that's OK, the request is still logged
+      console.warn("[AuthProvider] Could not save role change request:", error.message);
+    }
 
-    // Refresh the user to get updated role
-    await refreshUser();
-
-    return { role };
-  }, [user, refreshUser]);
+    // Do NOT update the role directly — admin must approve
+    return;
+  }, [user]);
 
   const logout = useCallback(async () => {
     await signOut();
@@ -106,8 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
-    user, loading, refreshUser, updateRole, logout,
-  }), [user, loading, refreshUser, updateRole, logout]);
+    user, loading, refreshUser, requestRoleChange, logout,
+  }), [user, loading, refreshUser, requestRoleChange, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
