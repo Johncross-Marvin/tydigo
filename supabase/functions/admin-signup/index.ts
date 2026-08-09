@@ -37,7 +37,10 @@ serve(async (req) => {
     const body = await req.json();
     const { email, password, full_name, username, phone, phone_e164, role, city, state } = body;
 
+    console.log("[admin-signup] Request received:", { email: email?.toLowerCase()?.trim(), role });
+
     if (!email || !password) {
+      console.log("[admin-signup] Missing email or password");
       return new Response(
         JSON.stringify({ error: "Email and password are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -45,6 +48,9 @@ serve(async (req) => {
     }
 
     const canonicalRole = normalizeRole(role);
+    const normalizedEmail = email.toLowerCase().trim();
+
+    console.log("[admin-signup] Normalized:", { email: normalizedEmail, role: canonicalRole });
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -57,11 +63,11 @@ serve(async (req) => {
       }
     );
 
-    console.log("[admin-signup] Creating user:", { email: email.toLowerCase().trim(), role: canonicalRole });
+    console.log("[admin-signup] Creating user with admin API...");
 
     // Create user via admin API
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password,
       email_confirm: true,
       user_metadata: {
@@ -76,9 +82,26 @@ serve(async (req) => {
     });
 
     if (error) {
-      console.error("[admin-signup] Error:", JSON.stringify(error));
+      console.error("[admin-signup] Admin API error:", {
+        message: error.message,
+        status: (error as any).status,
+        code: (error as any).code,
+        name: error.name,
+      });
+
+      // Check if it's an existing user error
+      if ((error as any).status === 422 || (error as any).code === "user_already_exists") {
+        return new Response(
+          JSON.stringify({
+            error: "An account with this email already exists. Please sign in or reset your password.",
+            code: "user_already_exists",
+          }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: error.message,
           code: (error as any).code,
           status: (error as any).status,
@@ -87,7 +110,11 @@ serve(async (req) => {
       );
     }
 
-    console.log("[admin-signup] Success:", data.user?.id);
+    console.log("[admin-signup] User created successfully:", {
+      id: data.user?.id,
+      email: data.user?.email,
+      email_confirmed: data.user?.email_confirmed_at,
+    });
 
     return new Response(
       JSON.stringify({
@@ -101,7 +128,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("[admin-signup] Unexpected error:", err);
+    console.error("[admin-signup] Unexpected error:", err instanceof Error ? err.message : String(err));
     return new Response(
       JSON.stringify({ error: "Internal server error. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
