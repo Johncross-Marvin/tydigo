@@ -58,22 +58,24 @@ serve(async (req: Request) => {
 
     if (error) throw error;
 
-    // Award EcoPoints for completed pickup
+    // Award EcoPoints for completed pickup using the atomic RPC.
+    // This ensures wallet tracking, idempotency, and balance reconciliation.
     const pointsToAward = Math.max(100, Math.round((pickup.final_total_ngn || pickup.total_amount || 0) * 0.10));
-    await supabase.from("ecopoint_transactions").insert({
-      profile_id: pickup.customer_id,
-      pickup_id: pickupRequestId,
-      points: pointsToAward,
-      reason: "Pickup completed reward",
-      status: "confirmed",
-      created_at: new Date().toISOString(),
+    const idempotencyKey = `receipt_${pickupRequestId}_reward`;
+    const { error: awardError } = await supabase.rpc("award_ecopoints", {
+      p_profile_id: pickup.customer_id,
+      p_points: pointsToAward,
+      p_transaction_type: "earn",
+      p_source_type: "pickup",
+      p_source_id: pickupRequestId,
+      p_idempotency_key: idempotencyKey,
+      p_description: "Pickup completed reward",
+      p_status: "confirmed",
     });
 
-    // Update profile EcoPoints balance
-    await supabase.rpc("award_ecopoints_on_payment", {
-      profile_id_param: pickup.customer_id,
-      points_to_add: pointsToAward,
-    });
+    if (awardError) {
+      console.error("[generate-receipt] award_ecopoints error:", awardError);
+    }
 
     // Send receipt notification
     await supabase.from("notifications").insert({

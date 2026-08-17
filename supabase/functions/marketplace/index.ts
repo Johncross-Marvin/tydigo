@@ -3,6 +3,10 @@
  *
  * Server-side marketplace operations: create pickup, assign collector,
  * recalculate weight, generate receipt, award EcoPoints.
+ *
+ * Security: uses the service role key for all sensitive financial and
+ * operational mutations, and verifies the caller is authorized for each
+ * action before performing it.
  */
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
@@ -13,50 +17,85 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type SupabaseClient = ReturnType<typeof createClient>;
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
+    // Use the service role key for all sensitive operations. The caller's
+    // identity is still verified below via the user-scoped client.
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    // Verify the caller is authenticated using their own JWT.
+    const userClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Unauthorized" }, 401);
     }
 
     const { action, ...body } = await req.json();
 
     switch (action) {
-      case "assign-collector": return await assignCollector(supabaseClient, body);
-      case "recalculate-weight": return await recalculateWeight(supabaseClient, body);
-      case "generate-receipt": return await generateReceipt(supabaseClient, body);
-      case "award-ecopoints": return await awardEcoPoints(supabaseClient, body);
-      case "complete-pickup": return await completePickup(supabaseClient, body);
+      case "assign-collector": return await assignCollector(serviceClient, user.id, body);
+      case "recalculate-weight": return await recalculateWeight(serviceClient, user.id, body);
+      case "generate-receipt": return await generateReceipt(serviceClient, user.id, body);
+      case "award-ecopoints": return await awardEcoPoints(serviceClient, user.id, body);
+      case "complete-pickup": return await completePickup(serviceClient, user.id, body);
       default:
-        return new Response(JSON.stringify({ error: "Invalid action" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "Invalid action" }, 400);
     }
   } catch (err) {
     console.error("[marketplace] Error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Internal server error" }, 500);
   }
 });
 
+/**
+ * Resolve the caller's profile id and role from their auth user id.
+ */
+async function getCallerProfile(
+  client: SupabaseClient,
+  authUserId: string,
+): Promise<{ id: string; role: string } | null> {
+  const { data } = await client
+    .from("profiles")
+    .select("id, role")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+  return data as { id: string; role: string } | null;
+}
+
 async function assignCollector(
-  client: ReturnType<typeof createClient>,
+  client: SupabaseClient,
+  authUserId: string,
   body: { pickupId: string; collectorId: string; distanceKm: number; etaMinutes: number },
 ) {
+  const caller = await getCallerProfile(client, authUserId);
+  if (!caller) return json({ error: "Profile not found" }, 404);
+
+  // Only admins may assign a collector to a pickup.
+  if (caller.role !== "admin") {
+    return json({ error: "Forbidden: only admins can assign collectors" }, 403);
+  }
+
   const now = new Date().toISOString();
 
   await client.from("collector_assignments").insert({
@@ -81,26 +120,32 @@ async function assignCollector(
     created_at: now,
   });
 
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return json({ ok: true });
 }
 
 async function recalculateWeight(
-  client: ReturnType<typeof createClient>,
+  client: SupabaseClient,
+  authUserId: string,
   body: { pickupId: string; verifiedWeightKg: number },
 ) {
+  const caller = await getCallerProfile(client, authUserId);
+  if (!caller) return json({ error: "Profile not found" }, 404);
+
+  // Only the assigned collector (or an admin) may verify the weight.
   const { data: pickup } = await client.from("pickup_requests")
-    .select("estimated_weight_kg, base_price_ngn, waste_modifier_ngn, platform_fee_ngn, ecopoints_discount_ngn")
+    .select("collector_id, estimated_weight_kg, base_price_ngn, waste_modifier_ngn, platform_fee_ngn, ecopoints_discount_ngn")
     .eq("id", body.pickupId).maybeSingle();
 
   if (!pickup) {
-    return new Response(JSON.stringify({ error: "Pickup not found" }), {
-      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Pickup not found" }, 404);
   }
 
   const p = pickup as Record<string, unknown>;
+  const isAssignedCollector = p.collector_id === caller.id;
+  if (!isAssignedCollector && caller.role !== "admin") {
+    return json({ error: "Forbidden: only the assigned collector can verify weight" }, 403);
+  }
+
   const oldWeight = (p.estimated_weight_kg as number) || 0;
   const ratio = oldWeight > 0 ? body.verifiedWeightKg / oldWeight : 1;
 
@@ -126,17 +171,33 @@ async function recalculateWeight(
     created_at: now,
   });
 
-  return new Response(JSON.stringify({
+  return json({
     ok: true,
     newTotal: Math.max(newTotal, 500),
     verifiedWeight: body.verifiedWeightKg,
-  }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  });
 }
 
 async function generateReceipt(
-  client: ReturnType<typeof createClient>,
+  client: SupabaseClient,
+  authUserId: string,
   body: { pickupId: string },
 ) {
+  const caller = await getCallerProfile(client, authUserId);
+  if (!caller) return json({ error: "Profile not found" }, 404);
+
+  // Only the customer who owns the pickup (or an admin) may generate a receipt.
+  const { data: pickup } = await client.from("pickup_requests")
+    .select("customer_id")
+    .eq("id", body.pickupId).maybeSingle();
+
+  if (!pickup) return json({ error: "Pickup not found" }, 404);
+
+  const isOwner = (pickup as { customer_id: string }).customer_id === caller.id;
+  if (!isOwner && caller.role !== "admin") {
+    return json({ error: "Forbidden: only the pickup owner can generate a receipt" }, 403);
+  }
+
   const receiptNumber = `TYD-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(1000 + Math.random() * 9000)}`;
   const now = new Date().toISOString();
 
@@ -149,51 +210,67 @@ async function generateReceipt(
   if (error) {
     const { data: existing } = await client.from("digital_receipts")
       .select("*").eq("pickup_request_id", body.pickupId).maybeSingle();
-    return new Response(JSON.stringify({ receipt: existing }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ receipt: existing });
   }
 
-  return new Response(JSON.stringify({ receipt: data }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return json({ receipt: data });
 }
 
 async function awardEcoPoints(
-  client: ReturnType<typeof createClient>,
+  client: SupabaseClient,
+  authUserId: string,
   body: { pickupId: string; profileId: string; points: number; reason: string },
 ) {
-  const now = new Date().toISOString();
+  const caller = await getCallerProfile(client, authUserId);
+  if (!caller) return json({ error: "Profile not found" }, 404);
 
-  await client.from("ecopoint_transactions").insert({
-    profile_id: body.profileId,
-    pickup_id: body.pickupId,
-    points: body.points,
-    reason: body.reason,
-    status: "confirmed",
-    created_at: now,
-  });
-
-  const { data: profile } = await client.from("profiles")
-    .select("ecopoints").eq("id", body.profileId).maybeSingle();
-
-  if (profile) {
-    const p = profile as Record<string, unknown>;
-    await client.from("profiles").update({
-      ecopoints: ((p.ecopoints as number) || 0) + body.points,
-      updated_at: now,
-    }).eq("id", body.profileId);
+  // Only admins may award EcoPoints on behalf of another profile.
+  if (caller.role !== "admin") {
+    return json({ error: "Forbidden: only admins can award EcoPoints" }, 403);
   }
 
-  return new Response(JSON.stringify({ ok: true, pointsAwarded: body.points }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  // Use the atomic award_ecopoints RPC for wallet tracking, idempotency,
+  // and balance reconciliation. Never insert directly into ecopoint_transactions.
+  const idempotencyKey = `marketplace_${body.pickupId}_${body.profileId}`;
+  const { data: txnId, error } = await client.rpc("award_ecopoints", {
+    p_profile_id: body.profileId,
+    p_points: body.points,
+    p_transaction_type: "earn",
+    p_source_type: "pickup",
+    p_source_id: body.pickupId,
+    p_idempotency_key: idempotencyKey,
+    p_description: body.reason,
+    p_status: "confirmed",
   });
+
+  if (error) {
+    console.error("[marketplace] award_ecopoints RPC error:", error);
+    return json({ error: "Failed to award EcoPoints" }, 500);
+  }
+
+  return json({ ok: true, pointsAwarded: body.points, transactionId: txnId });
 }
 
 async function completePickup(
-  client: ReturnType<typeof createClient>,
+  client: SupabaseClient,
+  authUserId: string,
   body: { pickupId: string },
 ) {
+  const caller = await getCallerProfile(client, authUserId);
+  if (!caller) return json({ error: "Profile not found" }, 404);
+
+  // Only the assigned collector (or an admin) may complete a pickup.
+  const { data: pickup } = await client.from("pickup_requests")
+    .select("collector_id")
+    .eq("id", body.pickupId).maybeSingle();
+
+  if (!pickup) return json({ error: "Pickup not found" }, 404);
+
+  const isAssignedCollector = (pickup as { collector_id: string }).collector_id === caller.id;
+  if (!isAssignedCollector && caller.role !== "admin") {
+    return json({ error: "Forbidden: only the assigned collector can complete the pickup" }, 403);
+  }
+
   const now = new Date().toISOString();
 
   await client.from("pickup_requests").update({
@@ -217,7 +294,5 @@ async function completePickup(
     issued_at: now,
   });
 
-  return new Response(JSON.stringify({ ok: true, receiptNumber }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return json({ ok: true, receiptNumber });
 }

@@ -12,7 +12,14 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // Use the service role key for sensitive mutations. The caller's identity
+    // is still verified below via the user-scoped client.
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    const userClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
@@ -20,7 +27,7 @@ serve(async (req) => {
       }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -31,7 +38,7 @@ serve(async (req) => {
     const { fullName, role, city, state, username, email, phone } = await req.json();
 
     // Check if profile already exists
-    const { data: existing } = await supabaseClient
+    const { data: existing } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("auth_user_id", user.id)
@@ -46,7 +53,7 @@ serve(async (req) => {
     const now = new Date().toISOString();
 
     // Create profile
-    const { data: profile, error: profileError } = await supabaseClient
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .insert({
         auth_user_id: user.id,
@@ -82,7 +89,7 @@ serve(async (req) => {
     }
 
     // Create wallet
-    const { error: walletError } = await supabaseClient
+    const { error: walletError } = await serviceClient
       .from("wallets")
       .insert({
         profile_id: profile.id,
@@ -97,7 +104,7 @@ serve(async (req) => {
     }
 
     // Create EcoPoints wallet
-    const { error: ecoError } = await supabaseClient
+    const { error: ecoError } = await serviceClient
       .from("eco_points_wallets")
       .insert({
         profile_id: profile.id,
@@ -113,7 +120,7 @@ serve(async (req) => {
     }
 
     // Create notification preferences
-    const { error: notifError } = await supabaseClient
+    const { error: notifError } = await serviceClient
       .from("notification_preferences")
       .insert({
         profile_id: profile.id,
@@ -134,10 +141,10 @@ serve(async (req) => {
     }
 
     // Create role-specific profile
-    await createRoleProfile(supabaseClient, profile.id, role, now);
+    await createRoleProfile(serviceClient, profile.id, role, now);
 
     // Log security event
-    await supabaseClient.from("security_logs").insert({
+    await serviceClient.from("security_logs").insert({
       profile_id: profile.id,
       auth_user_id: user.id,
       event_type: "signup",
@@ -147,14 +154,21 @@ serve(async (req) => {
       created_at: now,
     });
 
-    // Award signup EcoPoints
-    await supabaseClient.from("ecopoint_transactions").insert({
-      profile_id: profile.id,
-      points: 500,
-      reason: "Signup bonus",
-      status: "pending",
-      created_at: now,
+    // Award signup EcoPoints using the atomic RPC for wallet tracking,
+    // idempotency, and balance reconciliation.
+    const { error: awardError } = await serviceClient.rpc("award_ecopoints", {
+      p_profile_id: profile.id,
+      p_points: 500,
+      p_transaction_type: "earn",
+      p_source_type: "signup",
+      p_idempotency_key: `signup_${profile.id}_bonus`,
+      p_description: "Signup bonus",
+      p_status: "confirmed",
     });
+
+    if (awardError) {
+      console.error("[profile-creation] award_ecopoints error:", awardError);
+    }
 
     return new Response(JSON.stringify({ profile, created: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

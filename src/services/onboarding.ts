@@ -245,25 +245,17 @@ export async function grantOnboardingReward(
 ): Promise<void> {
   if (!isSupabaseAvailable() || !supabase) return;
 
-  const now = new Date().toISOString();
-
-  await supabase.from("ecopoint_transactions").insert({
-    profile_id: profileId,
-    points,
-    reason,
-    status: "confirmed",
-    created_at: now,
+  // Use the atomic award_ecopoints RPC for wallet tracking, idempotency,
+  // and balance reconciliation. Never insert directly into ecopoint_transactions.
+  await supabase.rpc("award_ecopoints", {
+    p_profile_id: profileId,
+    p_points: points,
+    p_transaction_type: "earn",
+    p_source_type: "onboarding",
+    p_idempotency_key: `onboarding_${profileId}_${reason}`,
+    p_description: reason,
+    p_status: "confirmed",
   });
-
-  // Update profile
-  const { data: profile } = await supabase.from("profiles")
-    .select("ecopoints").eq("id", profileId).maybeSingle();
-
-  if (profile) {
-    await supabase.from("profiles")
-      .update({ ecopoints: (profile.ecopoints || 0) + points, updated_at: now })
-      .eq("id", profileId);
-  }
 }
 
 // ─── Profile Completion ───────────────────────────────────

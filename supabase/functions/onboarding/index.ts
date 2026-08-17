@@ -12,13 +12,20 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // Use the service role key for sensitive mutations. The caller's identity
+    // is still verified below via the user-scoped client.
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    const userClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: req.headers.get("Authorization")! } } },
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -29,10 +36,10 @@ serve(async (req) => {
     const action = url.searchParams.get("action") || (await req.json()).action;
 
     switch (action) {
-      case "init": return await initOnboarding(supabaseClient, user, await req.json());
-      case "complete-step": return await completeStep(supabaseClient, user, await req.json());
-      case "grant-reward": return await grantReward(supabaseClient, user, await req.json());
-      case "get-progress": return await getProgress(supabaseClient, user);
+      case "init": return await initOnboarding(serviceClient, user, await req.json());
+      case "complete-step": return await completeStep(serviceClient, user, await req.json());
+      case "grant-reward": return await grantReward(serviceClient, user, await req.json());
+      case "get-progress": return await getProgress(serviceClient, user);
       default:
         return new Response(JSON.stringify({ error: "Invalid action" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -160,7 +167,7 @@ async function grantReward(
   body: { points: number; reason: string },
 ) {
   const { data: profile } = await client.from("profiles")
-    .select("id, ecopoints").eq("auth_user_id", user.id).maybeSingle();
+    .select("id").eq("auth_user_id", user.id).maybeSingle();
 
   if (!profile) {
     return new Response(JSON.stringify({ error: "Profile not found" }), {
@@ -168,32 +175,27 @@ async function grantReward(
     });
   }
 
-  const now = new Date().toISOString();
-
-  // Add ecopoint transaction
-  await client.from("ecopoint_transactions").insert({
-    profile_id: profile.id,
-    points: body.points,
-    reason: body.reason,
-    status: "confirmed",
-    created_at: now,
+  // Use the atomic award_ecopoints RPC for wallet tracking, idempotency,
+  // and balance reconciliation. Never insert directly into ecopoint_transactions.
+  const idempotencyKey = `onboarding_${profile.id}_${body.reason}`;
+  const { data: txnId, error } = await client.rpc("award_ecopoints", {
+    p_profile_id: profile.id,
+    p_points: body.points,
+    p_transaction_type: "earn",
+    p_source_type: "onboarding",
+    p_idempotency_key: idempotencyKey,
+    p_description: body.reason,
+    p_status: "confirmed",
   });
 
-  // Update profile ecopoints
-  await client.from("profiles")
-    .update({ ecopoints: (profile.ecopoints || 0) + body.points, updated_at: now })
-    .eq("id", profile.id);
+  if (error) {
+    console.error("[onboarding] award_ecopoints RPC error:", error);
+    return new Response(JSON.stringify({ error: "Failed to award EcoPoints" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-  // Update ecopoints wallet
-  await client.from("eco_points_wallets")
-    .update({
-      balance: (profile.ecopoints || 0) + body.points,
-      lifetime_earned: (profile.ecopoints || 0) + body.points,
-      updated_at: now,
-    })
-    .eq("profile_id", profile.id);
-
-  return new Response(JSON.stringify({ ok: true, pointsAwarded: body.points }), {
+  return new Response(JSON.stringify({ ok: true, pointsAwarded: body.points, transactionId: txnId }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
