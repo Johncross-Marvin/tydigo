@@ -1,9 +1,9 @@
 /**
  * Tydigo Account-Type Signup Registry
  *
- * Single source of truth for each account type's dedicated registration flow.
- * Mirrors Bolt's "one product = one registration flow" model: every account
- * type has its own landing copy, hero, and role-specific fields.
+ * Single source of truth for each account type's dedicated landing page and
+ * registration flow. Mirrors Bolt's "one product = one landing page + one
+ * registration flow + one dashboard" model.
  */
 
 import type { UserRole } from "@/lib/api";
@@ -18,6 +18,17 @@ export type SignupField = {
   hint?: string;
 };
 
+export type ValueProp = {
+  icon: string;
+  title: string;
+  description: string;
+};
+
+export type Faq = {
+  question: string;
+  answer: string;
+};
+
 export type AccountTypeConfig = {
   role: UserRole;
   /** Short product name (e.g. "Household", "Collector") */
@@ -26,7 +37,7 @@ export type AccountTypeConfig = {
   tagline: string;
   /** Longer description shown on the landing card */
   description: string;
-  /** Hero headline on the dedicated signup page */
+  /** Hero headline on the dedicated landing page */
   heroTitle: string;
   /** Hero subtitle */
   heroSubtitle: string;
@@ -42,6 +53,12 @@ export type AccountTypeConfig = {
   requiresVerification: boolean;
   /** Steps shown in the "how it works" section */
   steps: string[];
+  /** Value propositions (why join) */
+  valueProps: ValueProp[];
+  /** Requirements / what you need to get started */
+  requirements: string[];
+  /** Frequently asked questions */
+  faqs: Faq[];
 };
 
 export const ACCOUNT_TYPES: AccountTypeConfig[] = [
@@ -58,6 +75,22 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     fields: [],
     requiresVerification: false,
     steps: ["Create your account", "Schedule a pickup", "Track your collector", "Earn EcoPoints"],
+    valueProps: [
+      { icon: "MapPin", title: "On-demand pickup", description: "Request a pickup in seconds and get matched with a verified collector nearby." },
+      { icon: "Truck", title: "Real-time tracking", description: "Watch your collector approach on a live map and know exactly when they'll arrive." },
+      { icon: "Award", title: "Earn EcoPoints", description: "Earn rewards for every pickup and redeem for cash, airtime, or household items." },
+      { icon: "Shield", title: "Verified collectors", description: "All collectors are KYC-verified. Rate your experience after every pickup." },
+    ],
+    requirements: [
+      "A valid phone number or email address",
+      "Your home address for pickup scheduling",
+      "A payment method (card, bank transfer, or EcoPoints)",
+    ],
+    faqs: [
+      { question: "How do I schedule a pickup?", answer: "Create an account, enter your address, choose your waste type, and pick a time window. A verified collector will be assigned to you." },
+      { question: "How much does a pickup cost?", answer: "Pricing is based on waste type and weight. You'll see the exact price before confirming your pickup." },
+      { question: "How do I earn EcoPoints?", answer: "You earn EcoPoints for every completed pickup. Redeem them for cash, airtime, or household items in the rewards store." },
+    ],
   },
   {
     role: "estate",
@@ -75,6 +108,21 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: false,
     steps: ["Register your estate", "Add your community", "Schedule bulk pickups", "Track & report"],
+    valueProps: [
+      { icon: "Building2", title: "Bulk scheduling", description: "Schedule pickups for your entire estate in one go, not unit by unit." },
+      { icon: "BarChart3", title: "Community reports", description: "Track waste diverted, recycling rates, and environmental impact for your community." },
+      { icon: "Users", title: "Resident management", description: "Manage residents and coordinate collection across your community." },
+      { icon: "Shield", title: "Dedicated support", description: "Get priority support for your estate's waste management needs." },
+    ],
+    requirements: [
+      "Your estate or community name",
+      "The number of residential units",
+      "A contact person for coordination",
+    ],
+    faqs: [
+      { question: "Can I schedule pickups for multiple units?", answer: "Yes. Estate accounts support bulk scheduling so you can arrange collection for your entire community at once." },
+      { question: "Do residents need their own accounts?", answer: "No. You can manage collection centrally for your estate, though residents can also create individual household accounts." },
+    ],
   },
   {
     role: "business",
@@ -93,6 +141,21 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: false,
     steps: ["Register your business", "Add locations", "Schedule bulk pickups", "Get impact reports"],
+    valueProps: [
+      { icon: "MapPin", title: "Multi-location", description: "Manage waste collection across all your business locations from one dashboard." },
+      { icon: "BarChart3", title: "Impact reports", description: "Download sustainability and ESG reports to track your environmental footprint." },
+      { icon: "Calendar", title: "Scheduled pickups", description: "Set recurring pickups on a daily, weekly, or monthly schedule." },
+      { icon: "Shield", title: "Dedicated support", description: "Get a dedicated account manager for your business waste needs." },
+    ],
+    requirements: [
+      "Your business name",
+      "Your business type and RC number (optional)",
+      "A contact person for coordination",
+    ],
+    faqs: [
+      { question: "Can I schedule recurring pickups?", answer: "Yes. Business accounts support daily, weekly, and monthly recurring pickup schedules." },
+      { question: "Do you provide sustainability reports?", answer: "Yes. Business accounts get downloadable impact reports showing waste diverted, recycling rates, and carbon offset." },
+    ],
   },
   {
     role: "collector",
@@ -111,6 +174,23 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: true,
     steps: ["Register online", "Upload your documents", "Get verified", "Start earning"],
+    valueProps: [
+      { icon: "Clock", title: "Flexible schedule", description: "Go online whenever you want. No minimum hours, no boss, no monthly fees." },
+      { icon: "DollarSign", title: "Weekly payouts", description: "Get your earnings at the end of each week, with transparent pricing on every job." },
+      { icon: "MapPin", title: "Smart routing", description: "See available jobs near you and navigate to pickup locations with ease." },
+      { icon: "Award", title: "Earn rewards", description: "Earn bonuses and rewards for consistent, high-quality service." },
+    ],
+    requirements: [
+      "A valid government-issued ID",
+      "A smartphone (Android 9.0+ or iOS 12+)",
+      "A vehicle (tricycle, motorcycle, van, or truck)",
+      "A bank account for payouts",
+    ],
+    faqs: [
+      { question: "How do I start collecting?", answer: "Register online, upload your documents, and get verified. Once approved, you can go online and accept jobs." },
+      { question: "How much can I earn?", answer: "Earnings depend on the number of jobs you complete. You'll see the price for each job before accepting it." },
+      { question: "When do I get paid?", answer: "Payouts are processed weekly. You can track your earnings in real time in the collector app." },
+    ],
   },
   {
     role: "recycler",
@@ -128,6 +208,21 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: true,
     steps: ["Register your facility", "List materials", "Get verified", "Source materials"],
+    valueProps: [
+      { icon: "Recycle", title: "Material sourcing", description: "Source recyclable materials from verified waste suppliers across your city." },
+      { icon: "Package", title: "Batch tracking", description: "Track material batches from pickup to delivery with full traceability." },
+      { icon: "BarChart3", title: "Revenue view", description: "Monitor your material sourcing and revenue in one dashboard." },
+      { icon: "Shield", title: "Verified network", description: "Connect with verified collectors and suppliers for reliable sourcing." },
+    ],
+    requirements: [
+      "Your organization name",
+      "The types of materials you accept",
+      "A facility address for deliveries",
+    ],
+    faqs: [
+      { question: "What materials can I source?", answer: "You can source recyclable materials like plastic, paper, metal, glass, and more, depending on your facility's needs." },
+      { question: "How do I get verified?", answer: "After registering, submit your facility details. Our team will review and approve your account." },
+    ],
   },
   {
     role: "organic_partner",
@@ -145,6 +240,21 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: true,
     steps: ["Register your facility", "Describe your operation", "Get verified", "Source organic waste"],
+    valueProps: [
+      { icon: "Leaf", title: "Organic sourcing", description: "Source organic waste for BSF farms, compost, and livestock feed production." },
+      { icon: "Package", title: "Batch tracking", description: "Track organic waste batches from source to your facility." },
+      { icon: "BarChart3", title: "Supply insights", description: "Monitor your organic waste supply and plan your production." },
+      { icon: "Shield", title: "Verified suppliers", description: "Connect with verified waste suppliers for consistent organic feedstock." },
+    ],
+    requirements: [
+      "Your organization name",
+      "Your facility type (BSF farm, compost, livestock feed, etc.)",
+      "A facility address for deliveries",
+    ],
+    faqs: [
+      { question: "What types of organic waste can I source?", answer: "You can source food waste, agricultural residue, and other organic materials suitable for your operation." },
+      { question: "How do I get verified?", answer: "Register your facility, describe your operation, and our team will review and approve your account." },
+    ],
   },
   {
     role: "fleet_owner",
@@ -162,6 +272,21 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: true,
     steps: ["Register your fleet", "Add vehicles & drivers", "Get approved", "Start earning"],
+    valueProps: [
+      { icon: "Truck", title: "Fleet management", description: "Manage vehicles, drivers, and routes from one easy-to-use dashboard." },
+      { icon: "Users", title: "Driver management", description: "Recruit, assign, and track drivers with real-time performance metrics." },
+      { icon: "BarChart3", title: "Real-time analytics", description: "Access earnings data and team performance insights 24/7." },
+      { icon: "Shield", title: "Compliance reports", description: "Generate auto-generated reports for your compliance needs." },
+    ],
+    requirements: [
+      "Your fleet or company name",
+      "The number of vehicles in your fleet",
+      "Vehicle and driver documentation",
+    ],
+    faqs: [
+      { question: "How do I add my fleet?", answer: "Register a fleet company account, add your vehicles and drivers, and our team will activate your account." },
+      { question: "How long does approval take?", answer: "It takes just a few minutes to register. Once your fleet details are verified, your vehicles are ready to start earning." },
+    ],
   },
   {
     role: "corporate_partner",
@@ -179,6 +304,21 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: true,
     steps: ["Register your company", "Define your goals", "Get approved", "Track impact"],
+    valueProps: [
+      { icon: "Globe", title: "ESG reporting", description: "Get measurable sustainability and ESG reports for your stakeholders." },
+      { icon: "BarChart3", title: "Impact tracking", description: "Track your environmental impact across all your sustainability programmes." },
+      { icon: "Users", title: "Employee engagement", description: "Engage your employees in sustainability initiatives and track participation." },
+      { icon: "Shield", title: "Dedicated partnership", description: "Get a dedicated partnership manager for your sustainability goals." },
+    ],
+    requirements: [
+      "Your company name",
+      "Your industry",
+      "A contact person for partnership coordination",
+    ],
+    faqs: [
+      { question: "What kind of partnerships do you offer?", answer: "We offer sustainability partnerships, ESG reporting, and large-scale impact programmes tailored to your organisation." },
+      { question: "How do I get started?", answer: "Register your company, define your sustainability goals, and our team will contact you to set up your partnership." },
+    ],
   },
   {
     role: "government",
@@ -196,6 +336,21 @@ export const ACCOUNT_TYPES: AccountTypeConfig[] = [
     ],
     requiresVerification: true,
     steps: ["Register your agency", "Verify credentials", "Get approved", "Access analytics"],
+    valueProps: [
+      { icon: "MapPin", title: "Regional analytics", description: "Monitor waste collection and recycling rates across your jurisdiction." },
+      { icon: "Shield", title: "Compliance monitoring", description: "Track registered collectors, licensed operators, and compliance rates." },
+      { icon: "Globe", title: "Environmental impact", description: "Measure waste diverted, recycling rates, and carbon offset across your region." },
+      { icon: "FileText", title: "Public reports", description: "Generate public reports on waste management and environmental impact." },
+    ],
+    requirements: [
+      "Your agency name",
+      "Your jurisdiction (city or region)",
+      "Official credentials for verification",
+    ],
+    faqs: [
+      { question: "What data can I access?", answer: "Government accounts get access to regional waste analytics, compliance data, and environmental impact reports." },
+      { question: "How do I get verified?", answer: "Register your agency, submit your credentials, and our team will verify and approve your account." },
+    ],
   },
 ];
 

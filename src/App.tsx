@@ -19,7 +19,7 @@ import NotFound from "./pages/NotFound";
 
 // ─── Lazy-loaded pages (code-split by role) ──────────────────
 const SignupPage = lazy(() => import("./pages/Signup"));
-const RoleSignupPage = lazy(() => import("./pages/RoleSignup"));
+const RoleLandingPage = lazy(() => import("./pages/RoleLanding"));
 const OtpPage = lazy(() => import("./pages/OtpPage"));
 const RoleSelectionPage = lazy(() => import("./pages/RoleSelection"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
@@ -136,7 +136,7 @@ const App = () => (
 
                   {/* Public — lazy loaded */}
                   <Route path="/signup" element={<Suspense fallback={<LoadingFallback />}><SignupPage /></Suspense>} />
-                  <Route path="/signup/:role" element={<Suspense fallback={<LoadingFallback />}><RoleSignupPage /></Suspense>} />
+                  <Route path="/signup/:role" element={<Suspense fallback={<LoadingFallback />}><RoleLandingPage /></Suspense>} />
                   <Route path="/otp" element={<Suspense fallback={<LoadingFallback />}><OtpPage /></Suspense>} />
                   <Route path="/forgot-password" element={<Suspense fallback={<LoadingFallback />}><ForgotPasswordPage /></Suspense>} />
                   <Route path="/reset-password" element={<Suspense fallback={<LoadingFallback />}><ResetPasswordPage /></Suspense>} />
