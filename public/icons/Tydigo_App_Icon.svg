@@ -4,7 +4,7 @@
         <path d="M0,0 L0,6 L7,3 z" fill="#FFFFFF"/>
       </marker>
     </defs>
-    
+    <rect width="256" height="256" rx="52" fill="#F8FAF7"/>
     <path d="M128 18 C72 18 34 60 34 112 C34 176 128 238 128 238 C128 238 222 176 222 112 C222 60 184 18 128 18 Z" fill="#0B5D3B"/>
     <circle cx="128" cy="108" r="49" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-dasharray="245 64" transform="rotate(-52 128 108)" marker-end="url(#arrow)"/>
     <path d="M126 117 C128 83 153 67 181 70 C177 98 155 118 126 117 Z" fill="#A3E635"/>

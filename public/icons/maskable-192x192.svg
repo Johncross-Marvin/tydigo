@@ -1,7 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" fill="#145C25"/>
-  <rect x="29" y="29" width="134" height="134" rx="29" fill="#1A7A30"/>
-  <text x="96" y="110" text-anchor="middle"
-    font-family="system-ui,-apple-system,sans-serif" font-size="92"
-    font-weight="800" fill="white" letter-spacing="-3">T</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 256 256">
+    <defs>
+      <marker id="arrow" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L7,3 z" fill="#FFFFFF"/>
+      </marker>
+    </defs>
+    
+    <path d="M128 18 C72 18 34 60 34 112 C34 176 128 238 128 238 C128 238 222 176 222 112 C222 60 184 18 128 18 Z" fill="#0B5D3B"/>
+    <circle cx="128" cy="108" r="49" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-dasharray="245 64" transform="rotate(-52 128 108)" marker-end="url(#arrow)"/>
+    <path d="M126 117 C128 83 153 67 181 70 C177 98 155 118 126 117 Z" fill="#A3E635"/>
+    <path d="M126 117 C140 101 153 89 172 78" fill="none" stroke="#0B5D3B" stroke-width="4" stroke-linecap="round" opacity="0.65"/>
+    <circle cx="128" cy="108" r="9" fill="#FFFFFF" opacity="0.95"/>
+    </svg>
