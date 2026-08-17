@@ -64,7 +64,7 @@ export function isAdminRole(role: UserRole): boolean {
 }
 
 export function isCollectorRole(role: UserRole): boolean {
-  return role === "collector" || role === "fleet_owner";
+  return role === "collector";
 }
 
 export function isBusinessRole(role: UserRole): boolean {

@@ -172,7 +172,7 @@ serve(async (req) => {
         .eq("auth_user_id", user.id)
         .maybeSingle();
 
-      if (!profile || (profile.role !== "admin" && profile.role !== "fleet")) {
+      if (!profile || (profile.role !== "admin" && profile.role !== "fleet_owner")) {
         return new Response(JSON.stringify({ error: "Not authorized" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

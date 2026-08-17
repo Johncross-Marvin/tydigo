@@ -102,7 +102,7 @@ const protectedPage = (page: ReactNode, roles?: UserRole[]) => (
 // CRITICAL: Government is NOT admin. Admin is admin only.
 const HOUSEHOLD_ROLES: UserRole[] = ["customer", "household"];
 const BUSINESS_ROLES: UserRole[] = ["business", "estate", "corporate_partner"];
-const COLLECTOR_ROLES: UserRole[] = ["collector", "fleet_owner"];
+const COLLECTOR_ROLES: UserRole[] = ["collector"];
 const PARTNER_ROLES: UserRole[] = ["partner", "recycler", "organic_partner"];
 const ADMIN_ROLES: UserRole[] = ["admin"];
 const GOVERNMENT_ROLES: UserRole[] = ["government"];
