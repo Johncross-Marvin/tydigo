@@ -44,6 +44,19 @@ serve(async (req) => {
     if (canonicalRole === "customer") canonicalRole = "household";
     if (canonicalRole === "admin") canonicalRole = "household";
 
+    // Determine status/kyc consistently with create_profile_for_user RPC.
+    const status =
+      canonicalRole === "government" || canonicalRole === "collector"
+        ? "pending"
+        : "active";
+    const kycStatus =
+      canonicalRole === "collector" ||
+      canonicalRole === "recycler" ||
+      canonicalRole === "organic_partner" ||
+      canonicalRole === "fleet_owner"
+        ? "pending"
+        : "not_required";
+
     // Check if profile already exists
     const { data: existing } = await serviceClient
       .from("profiles")
@@ -78,7 +91,11 @@ serve(async (req) => {
         rating: 5.0,
         total_pickups: 0,
         total_kg_recycled: 0,
-        kyc_status: "pending",
+        kyc_status: kycStatus,
+        status,
+        account_type: canonicalRole,
+        onboarding_status: "pending",
+        profile_completion: 20,
         email_verified: user.email_confirmed_at ? true : false,
         phone_verified: user.phone_confirmed_at ? true : false,
         created_at: now,

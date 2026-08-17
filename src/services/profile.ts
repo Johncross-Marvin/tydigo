@@ -211,11 +211,24 @@ export function mapProfileToUser(profile: Profile): AuthUser {
     id: profile.id,
     phone: profile.phone || "",
     name: profile.full_name || "Tydigo User",
-    role: profile.role || "customer",
+    role: canonicalizeRole(profile.role || "household"),
     address: profile.default_city || "",
     city: profile.default_city || "Abuja",
     state: profile.default_state || "FCT",
     ecopoints: profile.ecopoints || 0,
     rating: profile.rating || 5.0,
   };
+}
+
+/**
+ * Canonicalize a role value into a valid UserRole, mapping the legacy
+ * `customer` alias (the DB enum default) to `household`.
+ */
+function canonicalizeRole(role: string): UserRole {
+  const mapping: Record<string, UserRole> = {
+    customer: "household",
+    fleet: "fleet_owner",
+    corporate: "corporate_partner",
+  };
+  return mapping[role] || (role as UserRole) || "household";
 }

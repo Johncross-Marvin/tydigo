@@ -90,7 +90,9 @@ const AuthCallbackPage = () => {
 
         // Redirect to appropriate dashboard
         setTimeout(() => {
-          const role = (profile?.role as UserRole) || "customer";
+          const rawRole = (profile?.role as UserRole) || "household";
+          // Canonicalize legacy `customer` alias to `household`.
+          const role: UserRole = rawRole === "customer" ? "household" : rawRole;
           navigate(roleHomePath[role], { replace: true });
         }, 2000);
       } catch (err) {

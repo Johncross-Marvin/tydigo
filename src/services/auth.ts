@@ -177,7 +177,7 @@ function mapToCanonicalRole(role: string): string {
     government: "government",
     partner: "partner",
     admin: "admin",
-    customer: "customer",
+    customer: "household",
   };
   return mapping[role] || role;
 }
@@ -438,13 +438,32 @@ function mapProfile(p: Record<string, unknown>): AuthUser {
     id: (p.id as string) || "",
     phone: (p.phone as string) || "",
     name: (p.full_name as string) || "Tydigo User",
-    role: (p.role as UserRole) || "household",
+    role: canonicalizeRole((p.role as string) || "household"),
     address: (p.default_city as string) || "",
     city: (p.default_city as string) || "Abuja",
     state: (p.default_state as string) || "FCT",
     ecopoints: (p.ecopoints as number) || 0,
     rating: (p.rating as number) || 5.0,
   };
+}
+
+/**
+ * Canonicalize a role value coming from the database into a valid UserRole.
+ *
+ * The `profiles.role` column is a `user_role` enum that historically includes
+ * the legacy alias `customer` (its default value). Every dashboard, route, and
+ * RLS policy treats `household` as the canonical public role, so we normalize
+ * `customer` → `household` here to keep a single source of truth.
+ */
+function canonicalizeRole(role: string): UserRole {
+  const mapping: Record<string, UserRole> = {
+    customer: "household",
+    fleet: "fleet_owner",
+    corporate: "corporate_partner",
+  };
+  const canonical = mapping[role];
+  if (canonical) return canonical;
+  return (role as UserRole) || "household";
 }
 
 // Legacy exports for backward compatibility

@@ -57,7 +57,7 @@ serve(async (req) => {
 
       if (profile.role === "customer" || profile.role === "household") {
         query = query.eq("customer_id", profile.id);
-      } else if (profile.role === "collector" || profile.role === "fleet") {
+      } else if (profile.role === "collector" || profile.role === "fleet_owner") {
         query = query.eq("collector_id", profile.id);
       }
 
@@ -108,7 +108,7 @@ serve(async (req) => {
         });
       }
 
-      const isCollector = profile.role === "collector" || profile.role === "fleet";
+      const isCollector = profile.role === "collector" || profile.role === "fleet_owner";
       const isAdmin = profile.role === "admin";
       const isOwner = pickup.customer_id === profile.id;
       const isAssigned = pickup.collector_id === profile.id;
