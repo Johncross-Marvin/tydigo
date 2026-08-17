@@ -18,7 +18,8 @@ import {
   type RoleExperience,
 } from "@/lib/site-config";
 import { resolveIcon } from "@/lib/icon-resolver";
-import { useAuthDialog } from "@/components/auth-dialog";
+import { AuthModal } from "@/components/public/AuthModal";
+import type { UserRole } from "@/lib/api";
 
 type PublicHeaderProps = {
   /** Whether the header starts transparent over a dark hero. */
@@ -28,9 +29,10 @@ type PublicHeaderProps = {
 export function PublicHeader({ transparent = false }: PublicHeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(MENU_CATEGORIES[0].key);
-  const { openAuthDialog } = useAuthDialog();
+  const [authRole, setAuthRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -63,21 +65,13 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
 
   const handleRegister = useCallback(() => {
     setMenuOpen(false);
-    openAuthDialog({ mode: "signup", source: "navbar-register" });
-  }, [openAuthDialog]);
+    setRegisterOpen(true);
+  }, []);
 
-  const handleSignIn = useCallback(() => {
-    setMenuOpen(false);
-    openAuthDialog({ mode: "signin", source: "navbar-signin" });
-  }, [openAuthDialog]);
-
-  const handleSelectRole = useCallback(
-    (role: RoleExperience) => {
-      setMenuOpen(false);
-      openAuthDialog({ mode: "signup", accountType: role.accountType, source: "mega-menu-role" });
-    },
-    [openAuthDialog],
-  );
+  const handleSelectRole = useCallback((role: RoleExperience) => {
+    setRegisterOpen(false);
+    setAuthRole(role.accountType);
+  }, []);
 
   const solid = scrolled || menuOpen || !transparent;
 
@@ -340,15 +334,92 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
                 >
                   Register
                 </Button>
-                <Button variant="outline" onClick={handleSignIn} className="w-full h-12 rounded-xl">
-                  Sign in
-                </Button>
+                <Link to="/login" onClick={() => setMenuOpen(false)}>
+                  <Button variant="outline" className="w-full h-12 rounded-xl">
+                    Sign in
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── Register role dialog ── */}
+      {registerOpen && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/40 flex items-end sm:items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose your account type"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setRegisterOpen(false);
+          }}
+        >
+          <div className="bg-white w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto pb-safe">
+            <div className="sticky top-0 bg-white/95 backdrop-blur px-6 py-4 flex items-center justify-between border-b border-neutral-100">
+              <h2 className="text-lg font-bold text-neutral-900">How will you use Tydigo?</h2>
+              <button
+                onClick={() => setRegisterOpen(false)}
+                className="flex items-center justify-center h-10 w-10 rounded-xl hover:bg-neutral-100"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-neutral-700" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="space-y-6">
+                {ACCOUNT_GROUPS.map((group) => (
+                  <div key={group.key}>
+                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-2">
+                      {group.label}
+                    </p>
+                    <div className="grid sm:grid-cols-3 gap-2">
+                      {getRolesByGroup(group.key).map((role) => {
+                        const Icon = resolveIcon(role.icon);
+                        return (
+                          <button
+                            key={role.accountType}
+                            onClick={() => handleSelectRole(role)}
+                            className="flex flex-col items-start gap-2 p-4 rounded-2xl border border-neutral-100 hover:border-[#145C25]/30 hover:bg-green-50/40 transition-colors text-left"
+                          >
+                            <div className={`w-10 h-10 rounded-xl ${role.iconBg} flex items-center justify-center`}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-neutral-900 text-sm">{role.label}</p>
+                              <p className="text-xs text-neutral-500 mt-0.5">{role.summary}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-center text-sm text-neutral-500 mt-6">
+                Already have an account?{" "}
+                <Link
+                  to="/login"
+                  onClick={() => setRegisterOpen(false)}
+                  className="text-[#145C25] font-semibold hover:underline"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Auth modal (sign up / sign in) ── */}
+      <AuthModal
+        open={authRole !== null}
+        onClose={() => setAuthRole(null)}
+        role={authRole ?? "household"}
+      />
     </>
   );
 }

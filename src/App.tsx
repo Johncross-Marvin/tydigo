@@ -10,7 +10,6 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { InstallPromptBanner, OfflineBanner, UpdateAvailableBanner } from "@/components/pwa-banner";
 import { LegacyRedirect } from "@/components/legacy-redirect";
-import { AuthDialogProvider, AuthDialog } from "@/components/auth-dialog";
 import type { UserRole } from "@/lib/api";
 
 // ─── Eagerly loaded (critical path) ──────────────────────────
@@ -129,12 +128,11 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AuthDialogProvider>
-              <OfflineBanner />
-              <UpdateAvailableBanner />
-              <ErrorBoundary>
-                <Suspense fallback={<LoadingFallback />}>
-                  <Routes>
+            <OfflineBanner />
+            <UpdateAvailableBanner />
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
                   {/* Public — eagerly loaded */}
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<LoginPage />} />
@@ -154,16 +152,16 @@ const App = () => (
                   <Route path="/auth/callback" element={<Suspense fallback={<LoadingFallback />}><AuthCallbackPage /></Suspense>} />
 
                   {/* Public marketing / content routes */}
-                  <Route path="/services/households" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Household pickup" description="On-demand waste collection for your home." cta={{ label: "Get started", accountType: "household" }} /></Suspense>} />
-                  <Route path="/services/estates" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Estate operations" description="Community-wide waste management for residential estates." cta={{ label: "Get started", accountType: "estate" }} /></Suspense>} />
-                  <Route path="/services/businesses" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Business waste" description="Bulk and recurring waste management for businesses." cta={{ label: "Get started", accountType: "business" }} /></Suspense>} />
-                  <Route path="/services/recycling" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Recycling & recovery" description="Material recovery network for recyclers." cta={{ label: "Partner as a recycler", accountType: "recycler" }} /></Suspense>} />
-                  <Route path="/services/organic-recovery" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Organic recovery" description="Compost and BSF feedstock from organic waste." cta={{ label: "Become a partner", accountType: "organic_partner" }} /></Suspense>} />
-                  <Route path="/earn" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Earn with Tydigo" description="Turn waste into income as a collector, recycler, organic partner, or fleet operator." cta={{ label: "Become a collector", accountType: "collector" }} /></Suspense>} />
-                  <Route path="/earn/collector" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Become a Collector" description="Accept pickup jobs and grow your earnings." cta={{ label: "Start application", accountType: "collector" }} /></Suspense>} />
-                  <Route path="/earn/recycler" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Partner as a Recycler" description="Source recyclable materials and manage intake." cta={{ label: "Start application", accountType: "recycler" }} /></Suspense>} />
-                  <Route path="/earn/organic-partner" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Organic Recovery Partner" description="Process organic waste for compost and BSF feedstock." cta={{ label: "Start application", accountType: "organic_partner" }} /></Suspense>} />
-                  <Route path="/earn/fleet-operator" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Operate a Fleet" description="Manage vehicles, drivers, and dispatch operations." cta={{ label: "Start application", accountType: "fleet_owner" }} /></Suspense>} />
+                  <Route path="/services/households" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Household pickup" description="On-demand waste collection for your home." cta={{ label: "Get started", href: "/signup/household" }} /></Suspense>} />
+                  <Route path="/services/estates" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Estate operations" description="Community-wide waste management for residential estates." cta={{ label: "Get started", href: "/signup/estate" }} /></Suspense>} />
+                  <Route path="/services/businesses" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Business waste" description="Bulk and recurring waste management for businesses." cta={{ label: "Get started", href: "/signup/business" }} /></Suspense>} />
+                  <Route path="/services/recycling" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Recycling & recovery" description="Material recovery network for recyclers." cta={{ label: "Partner as a recycler", href: "/signup/recycler" }} /></Suspense>} />
+                  <Route path="/services/organic-recovery" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Organic recovery" description="Compost and BSF feedstock from organic waste." cta={{ label: "Become a partner", href: "/signup/organic_partner" }} /></Suspense>} />
+                  <Route path="/earn" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Earn with Tydigo" description="Turn waste into income as a collector, recycler, organic partner, or fleet operator." cta={{ label: "Become a collector", href: "/signup/collector" }} /></Suspense>} />
+                  <Route path="/earn/collector" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Become a Collector" description="Accept pickup jobs and grow your earnings." cta={{ label: "Start application", href: "/signup/collector" }} /></Suspense>} />
+                  <Route path="/earn/recycler" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Partner as a Recycler" description="Source recyclable materials and manage intake." cta={{ label: "Start application", href: "/signup/recycler" }} /></Suspense>} />
+                  <Route path="/earn/organic-partner" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Organic Recovery Partner" description="Process organic waste for compost and BSF feedstock." cta={{ label: "Start application", href: "/signup/organic_partner" }} /></Suspense>} />
+                  <Route path="/earn/fleet-operator" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Operate a Fleet" description="Manage vehicles, drivers, and dispatch operations." cta={{ label: "Start application", href: "/signup/fleet_owner" }} /></Suspense>} />
                   <Route path="/company/about" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="About Tydigo" description="Our mission to build cleaner Nigerian cities." /></Suspense>} />
                   <Route path="/company/impact" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Impact" description="Environmental outcomes from waste collection and recovery." /></Suspense>} />
                   <Route path="/company/careers" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Careers" description="Join the Tydigo team." /></Suspense>} />
@@ -237,8 +235,6 @@ const App = () => (
               </Suspense>
             </ErrorBoundary>
             <InstallPromptBanner />
-            <AuthDialog />
-            </AuthDialogProvider>
           </BrowserRouter>
         </ToastProvider>
       </TooltipProvider>

@@ -1,9 +1,8 @@
 /**
  * Tydigo Signup — Account Type Selection
  *
- * Fallback/deep-link page. Each account type card opens the shared global
- * auth dialog with the correct canonical account type, rather than navigating
- * to a separate inline form page.
+ * Bolt-style "choose your product" landing page. Each account type is a
+ * distinct product with its own dedicated registration flow at /signup/:role.
  */
 
 import { Link } from "react-router-dom";
@@ -11,11 +10,11 @@ import {
   ArrowLeft, ArrowRight, Home, Building2, BarChart3, Truck,
   Recycle, Leaf, Globe, Shield, CheckCircle2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ACCOUNT_TYPES } from "@/lib/signup-config";
 import { useSeo } from "@/lib/seo";
-import { AuthTrigger, type PublicAccountType } from "@/components/auth-dialog";
 
 const ICONS: Record<string, typeof Home> = {
   Home,
@@ -60,13 +59,7 @@ const SignupPage = () => {
           {ACCOUNT_TYPES.map((type) => {
             const Icon = ICONS[type.icon] || Home;
             return (
-              <AuthTrigger
-                key={type.role}
-                mode="signup"
-                accountType={type.role as PublicAccountType}
-                source={`signup-page-${type.role}`}
-                className="group text-left"
-              >
+              <Link key={type.role} to={`/signup/${type.role}`} className="group">
                 <Card className="border-0 shadow-md shadow-neutral-200/40 hover:shadow-brand-lg transition-all duration-300 rounded-2xl h-full hover:-translate-y-1 cursor-pointer">
                   <CardContent className="p-6 flex flex-col h-full">
                     <div className={`w-14 h-14 rounded-2xl ${type.iconBg} flex items-center justify-center mb-4`}>
@@ -84,7 +77,7 @@ const SignupPage = () => {
                     </div>
                   </CardContent>
                 </Card>
-              </AuthTrigger>
+              </Link>
             );
           })}
         </div>
@@ -101,13 +94,9 @@ const SignupPage = () => {
 
         <p className="text-center text-sm text-neutral-500">
           Already have an account?{" "}
-          <AuthTrigger
-            mode="signin"
-            source="signup-page-signin"
-            className="text-[#145C25] font-semibold hover:underline"
-          >
+          <Link to="/login" className="text-[#145C25] font-semibold hover:underline">
             Sign in
-          </AuthTrigger>
+          </Link>
         </p>
       </div>
     </div>
