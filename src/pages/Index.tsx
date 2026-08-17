@@ -25,6 +25,7 @@ import { RolePathways } from "@/components/public/RolePathways";
 import { EarnFeature } from "@/components/public/EarnFeature";
 import { CoveragePreview } from "@/components/public/CoveragePreview";
 import { FaqAccordion } from "@/components/public/FaqAccordion";
+import { AuthTrigger } from "@/components/auth-dialog";
 
 const Index = () => {
   useSeo(seoConfig.home);
@@ -133,12 +134,14 @@ const Index = () => {
               recyclers to make waste collection simpler and cities cleaner.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link to="/signup">
-                <Button className="w-full sm:w-auto h-12 px-7 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#0A2F14] font-bold text-base">
-                  Get started
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
+              <AuthTrigger
+                mode="signup"
+                source="home-hero"
+                className="w-full sm:w-auto h-12 px-7 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#0A2F14] font-bold text-base inline-flex items-center justify-center"
+              >
+                Get started
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </AuthTrigger>
               <Link to="/earn/collector">
                 <Button
                   variant="outline"

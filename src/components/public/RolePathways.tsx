@@ -1,12 +1,10 @@
-import { useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { ACCOUNT_GROUPS, getRolesByGroup, type RoleExperience } from "@/lib/site-config";
+import { ACCOUNT_GROUPS, getRolesByGroup } from "@/lib/site-config";
 import { resolveIcon } from "@/lib/icon-resolver";
-import { AuthModal } from "@/components/public/AuthModal";
-import type { UserRole } from "@/lib/api";
+import { useAuthDialog, type PublicAccountType } from "@/components/auth-dialog";
 
 export function RolePathways() {
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const { openAuthDialog } = useAuthDialog();
 
   return (
     <div className="space-y-10">
@@ -24,7 +22,13 @@ export function RolePathways() {
                 return (
                   <button
                     key={role.accountType}
-                    onClick={() => setSelectedRole(role.accountType)}
+                    onClick={() =>
+                      openAuthDialog({
+                        mode: "signup",
+                        accountType: role.accountType as PublicAccountType,
+                        source: "role-pathways",
+                      })
+                    }
                     className="group flex items-start gap-3 p-4 rounded-2xl border border-neutral-100 hover:border-[#145C25]/30 hover:bg-green-50/40 transition-colors text-left w-full"
                   >
                     <div className={`w-11 h-11 rounded-xl ${role.iconBg} flex items-center justify-center shrink-0`}>
@@ -47,12 +51,6 @@ export function RolePathways() {
           </div>
         );
       })}
-
-      <AuthModal
-        open={selectedRole !== null}
-        onClose={() => setSelectedRole(null)}
-        role={selectedRole ?? "household"}
-      />
     </div>
   );
 }
