@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Recycle,
@@ -18,6 +18,8 @@ import {
   type RoleExperience,
 } from "@/lib/site-config";
 import { resolveIcon } from "@/lib/icon-resolver";
+import { AuthModal } from "@/components/public/AuthModal";
+import type { UserRole } from "@/lib/api";
 
 type PublicHeaderProps = {
   /** Whether the header starts transparent over a dark hero. */
@@ -30,7 +32,7 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(MENU_CATEGORIES[0].key);
-  const navigate = useNavigate();
+  const [authRole, setAuthRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -66,13 +68,10 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
     setRegisterOpen(true);
   }, []);
 
-  const handleSelectRole = useCallback(
-    (role: RoleExperience) => {
-      setRegisterOpen(false);
-      navigate(role.signupRoute);
-    },
-    [navigate],
-  );
+  const handleSelectRole = useCallback((role: RoleExperience) => {
+    setRegisterOpen(false);
+    setAuthRole(role.accountType);
+  }, []);
 
   const solid = scrolled || menuOpen || !transparent;
 
@@ -414,6 +413,13 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
           </div>
         </div>
       )}
+
+      {/* ── Auth modal (sign up / sign in) ── */}
+      <AuthModal
+        open={authRole !== null}
+        onClose={() => setAuthRole(null)}
+        role={authRole ?? "household"}
+      />
     </>
   );
 }

@@ -1,9 +1,13 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { ACCOUNT_GROUPS, getRolesByGroup } from "@/lib/site-config";
+import { ACCOUNT_GROUPS, getRolesByGroup, type RoleExperience } from "@/lib/site-config";
 import { resolveIcon } from "@/lib/icon-resolver";
+import { AuthModal } from "@/components/public/AuthModal";
+import type { UserRole } from "@/lib/api";
 
 export function RolePathways() {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+
   return (
     <div className="space-y-10">
       {ACCOUNT_GROUPS.map((group) => {
@@ -18,10 +22,10 @@ export function RolePathways() {
               {roles.map((role) => {
                 const Icon = resolveIcon(role.icon);
                 return (
-                  <Link
+                  <button
                     key={role.accountType}
-                    to={role.signupRoute}
-                    className="group flex items-start gap-3 p-4 rounded-2xl border border-neutral-100 hover:border-[#145C25]/30 hover:bg-green-50/40 transition-colors"
+                    onClick={() => setSelectedRole(role.accountType)}
+                    className="group flex items-start gap-3 p-4 rounded-2xl border border-neutral-100 hover:border-[#145C25]/30 hover:bg-green-50/40 transition-colors text-left w-full"
                   >
                     <div className={`w-11 h-11 rounded-xl ${role.iconBg} flex items-center justify-center shrink-0`}>
                       <Icon className="w-5 h-5" />
@@ -31,15 +35,24 @@ export function RolePathways() {
                         {role.label}
                       </p>
                       <p className="text-sm text-neutral-500 mt-0.5">{role.summary}</p>
+                      <span className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-[#145C25]">
+                        Get started
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-[#145C25] mt-1 shrink-0 transition-colors" />
-                  </Link>
+                  </button>
                 );
               })}
             </div>
           </div>
         );
       })}
+
+      <AuthModal
+        open={selectedRole !== null}
+        onClose={() => setSelectedRole(null)}
+        role={selectedRole ?? "household"}
+      />
     </div>
   );
 }
