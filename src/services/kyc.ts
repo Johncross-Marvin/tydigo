@@ -15,11 +15,10 @@ export type KycDocument = {
   document_type: "national_id" | "drivers_license" | "passport" | "voter_card" | "vehicle_registration";
   document_url: string;
   status: "pending" | "approved" | "rejected";
-  reviewer_notes?: string;
-  reviewed_by?: string;
+  reviewer_id?: string;
+  review_notes?: string;
+  submitted_at: string;
   reviewed_at?: string;
-  created_at: string;
-  updated_at: string;
 };
 
 export type KycStatus = {
@@ -57,7 +56,6 @@ export async function uploadKycDocument(params: {
     .getPublicUrl(uploadData.path);
 
   // Create KYC record
-  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("kyc_documents")
     .insert({
@@ -65,8 +63,6 @@ export async function uploadKycDocument(params: {
       document_type: params.documentType,
       document_url: urlData.publicUrl,
       status: "pending",
-      created_at: now,
-      updated_at: now,
     })
     .select()
     .maybeSingle();
@@ -88,7 +84,7 @@ export async function getKycStatus(profileId: string): Promise<KycStatus> {
     .from("kyc_documents")
     .select("*")
     .eq("profile_id", profileId)
-    .order("created_at", { ascending: false });
+    .order("submitted_at", { ascending: false });
 
   if (error || !data) {
     return { is_verified: false, documents: [], pending_count: 0, approved_count: 0, rejected_count: 0 };
@@ -116,7 +112,7 @@ export async function listPendingKyc(options?: {
     .from("kyc_documents")
     .select("*")
     .eq("status", "pending")
-    .order("created_at", { ascending: true })
+    .order("submitted_at", { ascending: true })
     .range(options?.offset ?? 0, (options?.offset ?? 0) + (options?.limit ?? 50) - 1);
 
   if (error || !data) return [];
@@ -140,10 +136,9 @@ export async function reviewKyc(params: {
     .from("kyc_documents")
     .update({
       status: params.status,
-      reviewed_by: params.reviewerId,
-      reviewer_notes: params.notes ?? null,
+      reviewer_id: params.reviewerId,
+      review_notes: params.notes ?? null,
       reviewed_at: now,
-      updated_at: now,
     })
     .eq("id", params.documentId)
     .select()

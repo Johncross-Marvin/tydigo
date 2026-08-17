@@ -38,13 +38,13 @@ export type AdminUser = {
 
 export type PricingConfig = {
   id: string;
+  name: string;
   waste_type: string;
-  tier_name: string;
   min_kg: number;
   max_kg: number | null;
   base_price_ngn: number;
   per_kg_price_ngn: number;
-  active: boolean;
+  is_active: boolean;
   updated_at: string;
 };
 
@@ -84,7 +84,7 @@ export async function getPlatformKpis(): Promise<PlatformKpi> {
     { count: pendingKyc },
   ] = await Promise.all([
     supabase.from("profiles").select("*", { count: "exact", head: true }),
-    supabase.from("profiles").select("*", { count: "exact", head: true }).in("role", ["collector", "fleet"]),
+    supabase.from("profiles").select("*", { count: "exact", head: true }).in("role", ["collector", "fleet_owner"]),
     supabase.from("pickup_requests").select("estimated_weight_kg").eq("status", "completed"),
     supabase.from("pickup_requests").select("*", { count: "exact", head: true }),
     supabase.from("payments").select("amount_ngn").eq("status", "paid"),
@@ -177,9 +177,8 @@ export async function getPricingConfigs(): Promise<PricingConfig[]> {
   if (!isSupabaseAvailable() || !supabase) return [];
 
   const { data, error } = await supabase
-    .from("pricing_config")
+    .from("pricing_rules")
     .select("*")
-    .order("waste_type")
     .order("min_kg");
 
   if (error || !data) return [];
@@ -188,12 +187,12 @@ export async function getPricingConfigs(): Promise<PricingConfig[]> {
 
 export async function updatePricingConfig(
   configId: string,
-  updates: Partial<Pick<PricingConfig, "base_price_ngn" | "per_kg_price_ngn" | "active">>,
+  updates: Partial<Pick<PricingConfig, "base_price_ngn" | "per_kg_price_ngn" | "is_active">>,
 ): Promise<void> {
   if (!isSupabaseAvailable() || !supabase) return;
 
   await supabase
-    .from("pricing_config")
+    .from("pricing_rules")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", configId);
 }
@@ -202,7 +201,7 @@ export async function createPricingConfig(config: Omit<PricingConfig, "id" | "up
   if (!isSupabaseAvailable() || !supabase) throw new Error("Not available offline.");
 
   const { data, error } = await supabase
-    .from("pricing_config")
+    .from("pricing_rules")
     .insert({ ...config, updated_at: new Date().toISOString() })
     .select()
     .maybeSingle();
@@ -223,13 +222,13 @@ export async function getEcopointsConfig(): Promise<{
   }
 
   const { data } = await supabase
-    .from("platform_config")
+    .from("system_settings")
     .select("key, value")
     .in("key", ["ecopoints_per_naira", "max_discount_percent"]);
 
   const config: Record<string, string> = {};
-  (data ?? []).forEach((row: { key: string; value: string }) => {
-    config[row.key] = row.value;
+  (data ?? []).forEach((row: { key: string; value: unknown }) => {
+    config[row.key] = String(row.value);
   });
 
   return {
@@ -247,8 +246,11 @@ export async function updateEcopointsConfig(config: {
   const entries = Object.entries(config).filter(([, v]) => v !== undefined);
   for (const [key, value] of entries) {
     await supabase
-      .from("platform_config")
-      .upsert({ key, value: String(value), updated_at: new Date().toISOString() }, { onConflict: "key" });
+      .from("system_settings")
+      .upsert(
+        { key, value: String(value), value_type: "number", updated_at: new Date().toISOString() },
+        { onConflict: "key" },
+      );
   }
 }
 
