@@ -141,10 +141,10 @@ const Index = () => {
               </Link>
               <Link to="/earn/collector">
                 <Button
-                  variant="outline"
-                  className="w-full sm:w-auto h-12 px-7 rounded-xl border-white/20 text-white hover:bg-white/10"
+                  className="w-full sm:w-auto h-12 px-7 rounded-xl bg-white text-[#0A2F14] font-bold text-base hover:bg-green-50 active:scale-[0.98] transition-all duration-200"
                 >
                   Earn with Tydigo
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
             </div>
