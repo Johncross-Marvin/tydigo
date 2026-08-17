@@ -38,13 +38,15 @@ export type AdminUser = {
 
 export type PricingConfig = {
   id: string;
-  name: string;
+  name?: string;
+  tier_name?: string;
   waste_type: string;
   min_kg: number;
   max_kg: number | null;
   base_price_ngn: number;
   per_kg_price_ngn: number;
-  is_active: boolean;
+  is_active?: boolean;
+  active?: boolean;
   updated_at: string;
 };
 
@@ -187,13 +189,20 @@ export async function getPricingConfigs(): Promise<PricingConfig[]> {
 
 export async function updatePricingConfig(
   configId: string,
-  updates: Partial<Pick<PricingConfig, "base_price_ngn" | "per_kg_price_ngn" | "is_active">>,
+  updates: Partial<Pick<PricingConfig, "base_price_ngn" | "per_kg_price_ngn" | "is_active" | "active">>,
 ): Promise<void> {
   if (!isSupabaseAvailable() || !supabase) return;
 
+  // Map legacy `active` -> `is_active` for the pricing_rules table
+  const dbUpdates: Record<string, unknown> = { ...updates };
+  if (dbUpdates.active !== undefined) {
+    dbUpdates.is_active = dbUpdates.active;
+    delete dbUpdates.active;
+  }
+
   await supabase
     .from("pricing_rules")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...dbUpdates, updated_at: new Date().toISOString() })
     .eq("id", configId);
 }
 
