@@ -20,6 +20,9 @@ import NotFound from "./pages/NotFound";
 // ─── Lazy-loaded pages (code-split by role) ──────────────────
 const SignupPage = lazy(() => import("./pages/Signup"));
 const RoleLandingPage = lazy(() => import("./pages/RoleLanding"));
+const PublicPlaceholder = lazy(() =>
+  import("./pages/PublicPlaceholder").then((m) => ({ default: m.PublicPlaceholder })),
+);
 const OtpPage = lazy(() => import("./pages/OtpPage"));
 const RoleSelectionPage = lazy(() => import("./pages/RoleSelection"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
@@ -147,6 +150,33 @@ const App = () => (
                   <Route path="/status" element={<Suspense fallback={<LoadingFallback />}><StatusPage /></Suspense>} />
                   <Route path="/check-email" element={<Suspense fallback={<LoadingFallback />}><CheckEmailPage /></Suspense>} />
                   <Route path="/auth/callback" element={<Suspense fallback={<LoadingFallback />}><AuthCallbackPage /></Suspense>} />
+
+                  {/* Public marketing / content routes */}
+                  <Route path="/services/households" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Household pickup" description="On-demand waste collection for your home." cta={{ label: "Get started", href: "/signup/household" }} /></Suspense>} />
+                  <Route path="/services/estates" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Estate operations" description="Community-wide waste management for residential estates." cta={{ label: "Get started", href: "/signup/estate" }} /></Suspense>} />
+                  <Route path="/services/businesses" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Business waste" description="Bulk and recurring waste management for businesses." cta={{ label: "Get started", href: "/signup/business" }} /></Suspense>} />
+                  <Route path="/services/recycling" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Recycling & recovery" description="Material recovery network for recyclers." cta={{ label: "Partner as a recycler", href: "/signup/recycler" }} /></Suspense>} />
+                  <Route path="/services/organic-recovery" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Organic recovery" description="Compost and BSF feedstock from organic waste." cta={{ label: "Become a partner", href: "/signup/organic_partner" }} /></Suspense>} />
+                  <Route path="/earn" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Earn with Tydigo" description="Turn waste into income as a collector, recycler, organic partner, or fleet operator." cta={{ label: "Become a collector", href: "/signup/collector" }} /></Suspense>} />
+                  <Route path="/earn/collector" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Become a Collector" description="Accept pickup jobs and grow your earnings." cta={{ label: "Start application", href: "/signup/collector" }} /></Suspense>} />
+                  <Route path="/earn/recycler" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Partner as a Recycler" description="Source recyclable materials and manage intake." cta={{ label: "Start application", href: "/signup/recycler" }} /></Suspense>} />
+                  <Route path="/earn/organic-partner" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Organic Recovery Partner" description="Process organic waste for compost and BSF feedstock." cta={{ label: "Start application", href: "/signup/organic_partner" }} /></Suspense>} />
+                  <Route path="/earn/fleet-operator" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Operate a Fleet" description="Manage vehicles, drivers, and dispatch operations." cta={{ label: "Start application", href: "/signup/fleet_owner" }} /></Suspense>} />
+                  <Route path="/company/about" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="About Tydigo" description="Our mission to build cleaner Nigerian cities." /></Suspense>} />
+                  <Route path="/company/impact" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Impact" description="Environmental outcomes from waste collection and recovery." /></Suspense>} />
+                  <Route path="/company/careers" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Careers" description="Join the Tydigo team." /></Suspense>} />
+                  <Route path="/safety" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Safety Centre" description="Standards and guidance for safe waste handling." /></Suspense>} />
+                  <Route path="/safety/collectors" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Collector Safety" description="On-the-job safety for collectors." /></Suspense>} />
+                  <Route path="/safety/waste-handling" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Waste Handling" description="Safe sorting and disposal guidance." /></Suspense>} />
+                  <Route path="/safety/report-incident" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Report an Incident" description="Tell us what happened so we can help." /></Suspense>} />
+                  <Route path="/support" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Help Centre" description="Find answers and get support." cta={{ label: "Contact support", href: "/support" }} /></Suspense>} />
+                  <Route path="/support/:audience" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Support" description="Account-specific help and guidance." /></Suspense>} />
+                  <Route path="/cities" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Cities" description="Where Tydigo operates and how to request your city." /></Suspense>} />
+                  <Route path="/cities/:slug" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="City" description="Service details for this city." /></Suspense>} />
+                  <Route path="/legal/terms" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Terms of Service" description="The terms governing your use of Tydigo." /></Suspense>} />
+                  <Route path="/legal/privacy" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Privacy Policy" description="How Tydigo handles your data." /></Suspense>} />
+                  <Route path="/legal/cookies" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Cookie Policy" description="How Tydigo uses cookies." /></Suspense>} />
+                  <Route path="/legal/security" element={<Suspense fallback={<LoadingFallback />}><PublicPlaceholder title="Security" description="How Tydigo protects your account and data." /></Suspense>} />
 
                   {/* Household / Customer */}
                   <Route path="/household/dashboard" element={protectedPage(<Suspense fallback={<LoadingFallback />}><HouseholdDashboardPage /></Suspense>, HOUSEHOLD_ROLES)} />

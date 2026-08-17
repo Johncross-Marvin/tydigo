@@ -5,7 +5,7 @@ import {
   listenForInstallPrompt,
   showInstallPrompt,
   getInstallInstructions,
-  type BeforeInstallPromptEvent,
+  isInstallable,
 } from "@/lib/pwa";
 import { FEATURE_FLAGS } from "@/lib/site-config";
 
@@ -15,7 +15,7 @@ import { FEATURE_FLAGS } from "@/lib/site-config";
  * store badges are hidden until real URLs are configured.
  */
 export function AppInstallBanner() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installable, setInstallable] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
 
@@ -27,24 +27,24 @@ export function AppInstallBanner() {
     setIsStandalone(standalone);
 
     const cleanup = listenForInstallPrompt(
-      (e) => setDeferredPrompt(e),
-      () => setDeferredPrompt(null),
+      () => setInstallable(true),
+      () => setInstallable(false),
     );
     return cleanup;
   }, []);
 
   const handleInstall = useCallback(async () => {
-    if (deferredPrompt) {
+    if (isInstallable()) {
       const result = await showInstallPrompt();
       if (result?.outcome === "accepted") {
-        setDeferredPrompt(null);
+        setInstallable(false);
       } else {
         setShowInstructions(true);
       }
     } else {
       setShowInstructions(true);
     }
-  }, [deferredPrompt]);
+  }, []);
 
   // Don't show if already installed
   if (isStandalone) return null;
@@ -98,7 +98,7 @@ export function AppInstallBanner() {
           <div className="bg-white rounded-3xl max-w-sm w-full p-6">
             <h3 className="font-bold text-neutral-900 mb-2">Install Tydigo</h3>
             <p className="text-sm text-neutral-600 mb-4">
-              {getInstallInstructions()?.platform === "ios"
+              {getInstallInstructions()?.platform === "iOS Safari"
                 ? "On iPhone, tap the Share button and choose 'Add to Home Screen'."
                 : "Use your browser's menu to install Tydigo on your device."}
             </p>

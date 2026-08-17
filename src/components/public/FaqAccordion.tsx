@@ -1,9 +1,4 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { ChevronDown } from "lucide-react";
 
 export type FaqItem = {
   question: string;
@@ -14,19 +9,22 @@ type FaqAccordionProps = {
   items: FaqItem[];
 };
 
+/**
+ * Accessible FAQ accordion using native <details>/<summary> elements.
+ * No external dependency required; keyboard and screen-reader friendly.
+ */
 export function FaqAccordion({ items }: FaqAccordionProps) {
   return (
-    <Accordion type="single" collapsible className="w-full">
+    <div className="w-full divide-y divide-neutral-100">
       {items.map((item, i) => (
-        <AccordionItem key={i} value={`faq-${i}`} className="border-b border-neutral-100">
-          <AccordionTrigger className="text-left text-base font-semibold text-neutral-900 py-5 hover:no-underline">
+        <details key={i} className="group">
+          <summary className="flex items-center justify-between gap-4 py-5 cursor-pointer list-none text-base font-semibold text-neutral-900 [&::-webkit-details-marker]:hidden">
             {item.question}
-          </AccordionTrigger>
-          <AccordionContent className="text-neutral-600 leading-relaxed pb-5">
-            {item.answer}
-          </AccordionContent>
-        </AccordionItem>
+            <ChevronDown className="w-5 h-5 text-neutral-400 shrink-0 transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="text-neutral-600 leading-relaxed pb-5">{item.answer}</p>
+        </details>
       ))}
-    </Accordion>
+    </div>
   );
 }

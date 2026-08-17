@@ -10,14 +10,11 @@ import {
   Globe,
   Check,
 } from "lucide-react";
-import { useAuth } from "@/components/auth-provider";
-import { roleHomePath } from "@/lib/api";
 import {
   MENU_CATEGORIES,
   ACCOUNT_GROUPS,
   getRolesByGroup,
   LANGUAGES,
-  FEATURE_FLAGS,
   type RoleExperience,
 } from "@/lib/site-config";
 import { resolveIcon } from "@/lib/icon-resolver";
@@ -33,7 +30,6 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(MENU_CATEGORIES[0].key);
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
