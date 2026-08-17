@@ -1,624 +1,102 @@
 /**
- * Tydigo Multi-Step Signup Page
+ * Tydigo Signup — Account Type Selection
  *
- * Step 1: Full Name + Contact (email/phone) + City + Username + Password
- * Step 2: Select Account Type (9 role cards)
- * Step 3: Review & Create Account
- *
- * Mobile-first, accessible, with progress indicator and inline validation.
+ * Bolt-style "choose your product" landing page. Each account type is a
+ * distinct product with its own dedicated registration flow at /signup/:role.
  */
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  ArrowLeft, ArrowRight, CheckCircle2, Phone, Mail, User,
-  Shield, MapPin, AtSign, Building2, Home, Truck, Recycle,
-  Leaf, BarChart3, Globe, Eye, EyeOff, KeyRound, Loader2,
-  AlertCircle, X,
+  ArrowLeft, ArrowRight, Home, Building2, BarChart3, Truck,
+  Recycle, Leaf, Globe, Shield, CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { roleHomePath, type UserRole } from "@/lib/api";
-import { signUp, resetPassword } from "@/services/auth";
-import { generateUsername, isUsernameAvailable, isValidUsername } from "@/services/username";
-import { getCities, getStateForCity, type City } from "@/services/cities";
-import { isEmail, isPhone } from "@/services/identifier";
-import { useAuth } from "@/components/auth-provider";
-import { normalizeNigerianPhone } from "@/utils/phone";
+import { ACCOUNT_TYPES } from "@/lib/signup-config";
+import { useSeo } from "@/lib/seo";
 
-// ─── Constants ────────────────────────────────────────────────
-
-const TOTAL_STEPS = 3;
-const STEP_LABELS = ["Your Details", "Account Type", "Review"];
-
-const ROLE_OPTIONS: Array<{
-  value: UserRole;
-  label: string;
-  desc: string;
-  icon: typeof Home;
-  color: string;
-}> = [
-  { value: "household", label: "Household", desc: "Schedule waste pickups at home", icon: Home, color: "bg-green-100 text-[#145C25] border-green-300" },
-  { value: "estate", label: "Estate", desc: "Manage waste for your estate", icon: Building2, color: "bg-teal-100 text-teal-600 border-teal-300" },
-  { value: "business", label: "Business", desc: "Bulk waste management & reports", icon: BarChart3, color: "bg-purple-100 text-purple-600 border-purple-300" },
-  { value: "collector", label: "Collector", desc: "Accept jobs & earn", icon: Truck, color: "bg-blue-100 text-blue-600 border-blue-300" },
-  { value: "recycler", label: "Recycler", desc: "Source recyclable materials", icon: Recycle, color: "bg-amber-100 text-amber-600 border-amber-300" },
-  { value: "organic_partner", label: "Organic Partner", desc: "BSF farms & compost", icon: Leaf, color: "bg-lime-100 text-lime-600 border-lime-300" },
-  { value: "fleet_owner", label: "Fleet Operator", desc: "Manage collection vehicles", icon: Truck, color: "bg-indigo-100 text-indigo-600 border-indigo-300" },
-  { value: "corporate_partner", label: "Corporate", desc: "Sustainability partnerships", icon: Globe, color: "bg-rose-100 text-rose-600 border-rose-300" },
-  { value: "government", label: "Government", desc: "Agency oversight & reports", icon: Shield, color: "bg-slate-100 text-slate-600 border-slate-300" },
-];
-
-// ─── Password Strength ────────────────────────────────────────
-
-type StrengthLevel = { label: string; color: string; pct: number };
-
-function getPasswordStrength(pw: string): StrengthLevel {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[a-z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-
-  if (score <= 2) return { label: "Weak", color: "bg-red-500", pct: 25 };
-  if (score <= 3) return { label: "Fair", color: "bg-orange-500", pct: 50 };
-  if (score <= 4) return { label: "Good", color: "bg-yellow-500", pct: 75 };
-  return { label: "Strong", color: "bg-green-500", pct: 100 };
-}
-
-// ─── Component ────────────────────────────────────────────────
+const ICONS: Record<string, typeof Home> = {
+  Home,
+  Building2,
+  BarChart3,
+  Truck,
+  Recycle,
+  Leaf,
+  Globe,
+  Shield,
+};
 
 const SignupPage = () => {
-  const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-
-  // Step state
-  const [step, setStep] = useState(0);
-
-  // Step 1: Details
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [cityName, setCityName] = useState("");
-  const [citySearch, setCitySearch] = useState("");
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [cities, setCities] = useState<City[]>([]);
-  const [username, setUsername] = useState("");
-  const [usernameEdited, setUsernameEdited] = useState(false);
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
-  const [checkingUsername, setCheckingUsername] = useState(false);
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-
-  // Step 2: Role
-  const [role, setRole] = useState<UserRole>("household");
-
-  // Shared
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
-  const passwordsMatch = !confirmPassword || password === confirmPassword;
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (!authLoading && user) navigate(roleHomePath[user.role], { replace: true });
-  }, [authLoading, navigate, user]);
-
-  // Load cities
-  useEffect(() => {
-    getCities().then(setCities);
-  }, []);
-
-  // Auto-generate username from full name
-  useEffect(() => {
-    if (!usernameEdited && fullName.trim()) {
-      const generated = generateUsername(fullName);
-      setUsername(generated);
-    }
-  }, [fullName, usernameEdited]);
-
-  // Check username availability (debounced)
-  useEffect(() => {
-    if (!username || username.length < 3) {
-      setUsernameAvailable(null);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setCheckingUsername(true);
-      const available = await isUsernameAvailable(username);
-      setUsernameAvailable(available);
-      setCheckingUsername(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [username]);
-
-  // Filtered cities for dropdown
-  const filteredCities = useMemo(() => {
-    if (!citySearch) return cities.slice(0, 20);
-    const q = citySearch.toLowerCase();
-    return cities.filter(
-      (c) => c.city.toLowerCase().includes(q) || c.state.toLowerCase().includes(q)
-    ).slice(0, 10);
-  }, [cities, citySearch]);
-
-  // ── Validation ──────────────────────────────────────────
-
-  const step1Valid = useMemo(() => {
-    if (!fullName.trim() || fullName.trim().length < 2) return false;
-    if (!email.trim() || !isEmail(email)) return false;
-    if (phone.trim() && !isPhone(phone)) return false;
-    if (!cityName) return false;
-    if (!username || !isValidUsername(username) || usernameAvailable === false) return false;
-    if (!password || password.length < 8) return false;
-    if (password && confirmPassword && password !== confirmPassword) return false;
-    if (!agreedToTerms) return false;
-    return true;
-  }, [fullName, email, phone, cityName, username, usernameAvailable, password, confirmPassword, agreedToTerms]);
-
-  // ── Handlers ────────────────────────────────────────────
-
-  const handleCitySelect = useCallback((city: City) => {
-    setCityName(city.city);
-    setCitySearch("");
-    setShowCityDropdown(false);
-  }, []);
-
-  const handleUsernameChange = useCallback((value: string) => {
-    setUsernameEdited(true);
-    setUsername(value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30));
-  }, []);
-
-  const handleNext = useCallback(() => {
-    setError("");
-    if (step === 0 && !step1Valid) {
-      if (!fullName.trim()) setError("Please enter your full name.");
-      else if (!email.trim() || !isEmail(email)) setError("Please enter a valid email address.");
-      else if (!cityName) setError("Please select your city.");
-      else if (!username || !isValidUsername(username)) setError("Username must be 3-30 lowercase letters/numbers.");
-      else if (usernameAvailable === false) setError("This username is already taken.");
-      else if (!password || password.length < 8) setError("Password must be at least 8 characters.");
-      else if (password && confirmPassword && password !== confirmPassword) setError("Passwords do not match.");
-      else if (!agreedToTerms) setError("Please agree to the Terms of Service.");
-      return;
-    }
-    if (step < TOTAL_STEPS - 1) {
-      setStep(step + 1);
-    }
-  }, [step, step1Valid, fullName, email, phone, cityName, username, usernameAvailable, password, confirmPassword, agreedToTerms]);
-
-  const handleBack = useCallback(() => {
-    setError("");
-    if (step > 0) setStep(step - 1);
-  }, [step]);
-
-  const handleSubmit = async () => {
-    setError("");
-    setSubmitting(true);
-
-    try {
-      const result = await signUp({
-        fullName: fullName.trim(),
-        username,
-        email: email.trim(),
-        phone: phone.trim(),
-        password,
-        city: cityName,
-        state: getStateForCity(cityName, cities),
-        role,
-      });
-
-      // If email is already confirmed (admin API), go straight to dashboard
-      if (!result.needsVerification) {
-        navigate(roleHomePath[role], { replace: true });
-      } else {
-        navigate("/check-email", { state: { email: email.trim() } });
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create account. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // ── Render ──────────────────────────────────────────────
-
-  const progressPct = ((step + 1) / TOTAL_STEPS) * 100;
+  useSeo({ title: "Choose Your Account Type — Tydigo" });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] via-white to-[#DCFCE7] flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
-        <Link to="/login" className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#145C25] mb-4 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Sign In
+    <div className="min-h-screen bg-gradient-to-br from-[#F0FDF4] via-white to-[#DCFCE7]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#145C25] mb-8 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Home
         </Link>
 
-        {/* Progress */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            {STEP_LABELS.map((label, i) => (
-              <div key={label} className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  i < step ? "bg-[#145C25] text-white" :
-                  i === step ? "bg-[#145C25] text-white ring-4 ring-green-100" :
-                  "bg-neutral-200 text-neutral-500"
-                }`}>
-                  {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
-                </div>
-                <span className={`text-xs font-semibold hidden sm:block ${
-                  i <= step ? "text-[#145C25]" : "text-neutral-400"
-                }`}>
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
-          <Progress value={progressPct} className="h-2 rounded-full bg-neutral-200 [&>div]:bg-[#145C25]" />
+        {/* Hero */}
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <Badge className="bg-green-100 text-[#145C25] mb-4 px-4 py-1.5 rounded-full text-sm">
+            One platform, many ways to participate
+          </Badge>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-900 tracking-tight mb-4">
+            How will you use Tydigo?
+          </h1>
+          <p className="text-neutral-500 text-lg">
+            Choose your account type to get started. Each account type has its
+            own dedicated workspace and registration process.
+          </p>
         </div>
 
-        <Card className="border-0 shadow-brand-lg rounded-3xl">
-          <CardContent className="p-6">
-            {/* ── Step 0: Account Details ─────────────────── */}
-            {step === 0 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold text-neutral-900">Create your account</h2>
-                <p className="text-sm text-neutral-500">Fill in your details to get started with Tydigo.</p>
-
-                {/* Full Name */}
-                <div>
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Full Name *</label>
-                  <Input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Amina Bello"
-                    className="h-14 rounded-2xl"
-                    required
-                  />
-                </div>
-
-                {/* Email — REQUIRED */}
-                <div>
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Email *</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                      <Mail className="w-5 h-5 text-neutral-400" />
+        {/* Account type grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+          {ACCOUNT_TYPES.map((type) => {
+            const Icon = ICONS[type.icon] || Home;
+            return (
+              <Link key={type.role} to={`/signup/${type.role}`} className="group">
+                <Card className="border-0 shadow-md shadow-neutral-200/40 hover:shadow-brand-lg transition-all duration-300 rounded-2xl h-full hover:-translate-y-1 cursor-pointer">
+                  <CardContent className="p-6 flex flex-col h-full">
+                    <div className={`w-14 h-14 rounded-2xl ${type.iconBg} flex items-center justify-center mb-4`}>
+                      <Icon className="w-7 h-7" />
                     </div>
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="amina@email.com"
-                      className="pl-12 h-14 rounded-2xl"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-neutral-400 mt-1">Required for account verification.</p>
-                </div>
-
-                {/* Phone — contact information only */}
-                <div>
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Phone Number</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                      <Phone className="w-5 h-5 text-neutral-400" />
+                    <h3 className="text-lg font-bold text-neutral-900 mb-1">
+                      {type.title}
+                    </h3>
+                    <p className="text-sm text-neutral-500 leading-relaxed flex-1">
+                      {type.description}
+                    </p>
+                    <div className="flex items-center gap-1 mt-4 text-sm font-semibold text-[#145C25] group-hover:gap-2 transition-all">
+                      Get started
+                      <ArrowRight className="w-4 h-4" />
                     </div>
-                    <Input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="08012345678"
-                      className="pl-12 h-14 rounded-2xl"
-                    />
-                  </div>
-                  <p className="text-xs text-neutral-400 mt-1">Contact information (not used for login).</p>
-                </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
 
-                {/* City */}
-                <div className="relative">
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">City *</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                      <MapPin className="w-5 h-5 text-neutral-400" />
-                    </div>
-                    <Input
-                      value={citySearch || cityName}
-                      onChange={(e) => {
-                        setCitySearch(e.target.value);
-                        setCityName("");
-                        setShowCityDropdown(true);
-                      }}
-                      onFocus={() => setShowCityDropdown(true)}
-                      placeholder="Search your city..."
-                      className="pl-12 h-14 rounded-2xl"
-                    />
-                    {cityName && (
-                      <button
-                        type="button"
-                        onClick={() => { setCityName(""); setCitySearch(""); }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  {showCityDropdown && filteredCities.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-neutral-200 rounded-2xl shadow-lg max-h-48 overflow-y-auto">
-                      {filteredCities.map((city) => (
-                        <button
-                          key={city.id}
-                          type="button"
-                          onClick={() => handleCitySelect(city)}
-                          className="w-full text-left px-4 py-3 hover:bg-green-50 text-sm font-medium text-neutral-700 first:rounded-t-2xl last:rounded-b-2xl"
-                        >
-                          {city.city}, {city.state}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+        {/* Trust strip */}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-neutral-500 mb-8">
+          {["Free to start", "Dedicated dashboard", "Secure & verified"].map((item) => (
+            <span key={item} className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-[#145C25]" />
+              {item}
+            </span>
+          ))}
+        </div>
 
-                {/* Username */}
-                <div>
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Username</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                      <AtSign className="w-5 h-5 text-neutral-400" />
-                    </div>
-                    <Input
-                      value={username}
-                      onChange={(e) => handleUsernameChange(e.target.value)}
-                      placeholder="aminabello"
-                      className="pl-12 h-14 rounded-2xl"
-                    />
-                    {checkingUsername && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <Loader2 className="w-4 h-4 text-neutral-400 animate-spin" />
-                      </div>
-                    )}
-                    {!checkingUsername && usernameAvailable === true && username.length >= 3 && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      </div>
-                    )}
-                    {!checkingUsername && usernameAvailable === false && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <AlertCircle className="w-4 h-4 text-red-500" />
-                      </div>
-                    )}
-                  </div>
-                  {username.length >= 3 && usernameAvailable === false && (
-                    <p className="text-xs text-red-500 mt-1">This username is already taken.</p>
-                  )}
-                  {username.length >= 3 && usernameAvailable === true && (
-                    <p className="text-xs text-green-600 mt-1">Username available!</p>
-                  )}
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Password *</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                      <KeyRound className="w-5 h-5 text-neutral-400" />
-                    </div>
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 8 characters"
-                      className="pl-12 pr-12 h-14 rounded-2xl"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  {/* Password strength */}
-                  {password && (
-                    <div className="mt-2">
-                      <div className="flex gap-1 mb-1">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div
-                            key={i}
-                            className={`h-1 flex-1 rounded-full transition-colors ${
-                              passwordStrength.pct >= i * 25 ? passwordStrength.color : "bg-neutral-200"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-xs text-neutral-500">
-                        Strength: <span className="font-semibold">{passwordStrength.label}</span>
-                        {password.length < 8 && " — at least 8 characters needed"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="text-sm font-semibold text-neutral-700 mb-1.5 block">Confirm Password</label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                      <KeyRound className="w-5 h-5 text-neutral-400" />
-                    </div>
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter your password"
-                      className="pl-12 h-14 rounded-2xl"
-                    />
-                    {confirmPassword && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        {passwordsMatch ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-red-500" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {confirmPassword && !passwordsMatch && (
-                    <p className="text-xs text-red-500 mt-1">Passwords do not match.</p>
-                  )}
-                </div>
-
-                {/* Terms */}
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-neutral-300 text-[#145C25] focus:ring-[#145C25]"
-                  />
-                  <span className="text-sm text-neutral-600">
-                    I agree to the{" "}
-                    <Link to="/terms" className="text-[#145C25] font-semibold hover:underline">Terms of Service</Link>
-                    {" "}and{" "}
-                    <Link to="/privacy" className="text-[#145C25] font-semibold hover:underline">Privacy Policy</Link>
-                  </span>
-                </label>
-              </div>
-            )}
-
-            {/* ── Step 1: Account Type ────────────────────── */}
-            {step === 1 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold text-neutral-900">Select Account Type</h2>
-                <p className="text-sm text-neutral-500">Choose how you'll use Tydigo. Changing account type later requires review by Tydigo Support.</p>
-
-                <div className="grid gap-3">
-                  {ROLE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setRole(opt.value)}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
-                        role === opt.value
-                          ? `${opt.color} border-2 shadow-brand`
-                          : "border-neutral-200 hover:border-neutral-300"
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        role === opt.value ? opt.color.split(" ")[0] + " " + opt.color.split(" ")[1] : "bg-neutral-100 text-neutral-500"
-                      }`}>
-                        <opt.icon className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-neutral-900">{opt.label}</p>
-                        <p className="text-sm text-neutral-500">{opt.desc}</p>
-                      </div>
-                      {role === opt.value && <CheckCircle2 className="w-5 h-5 text-[#145C25]" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 2: Review ──────────────────────────── */}
-            {step === 2 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold text-neutral-900">Ready to go!</h2>
-                <p className="text-sm text-neutral-500">Review your details and create your account.</p>
-
-                <div className="bg-neutral-50 rounded-2xl p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">Name</span>
-                    <span className="font-semibold">{fullName}</span>
-                  </div>
-                  {email && (
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">Email</span>
-                      <span className="font-semibold">{email}</span>
-                    </div>
-                  )}
-                  {phone && (
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">Phone</span>
-                      <span className="font-semibold">{phone}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">City</span>
-                    <span className="font-semibold">{cityName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">Username</span>
-                    <span className="font-semibold">@{username}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">Account Type</span>
-                    <Badge className="bg-green-100 text-[#145C25]">
-                      {ROLE_OPTIONS.find((r) => r.value === role)?.label}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-amber-50 rounded-xl text-sm text-amber-700 flex items-start gap-2">
-                  <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">You are creating a <strong>{ROLE_OPTIONS.find((r) => r.value === role)?.label}</strong> account.</p>
-                    <p className="mt-1">This account type determines your Tydigo workspace. Changing to another account type later requires review by Tydigo Support.</p>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-green-50 rounded-xl text-sm text-green-700 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                  Your account will be created instantly. You'll be redirected to your dashboard.
-                </div>
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {error}
-              </div>
-            )}
-
-            {/* Navigation */}
-            <div className="flex gap-3 mt-6">
-              {step > 0 && (
-                <Button variant="outline" onClick={handleBack} className="rounded-xl" disabled={submitting}>
-                  Back
-                </Button>
-              )}
-              {step < TOTAL_STEPS - 1 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={step === 0 && !step1Valid}
-                  className="flex-1 bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl shadow-brand disabled:opacity-50"
-                >
-                  Continue
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="flex-1 bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl shadow-brand disabled:opacity-50"
-                >
-                  {submitting ? "Creating account..." : "Create Account"}
-                  {!submitting && <ArrowRight className="w-4 h-4 ml-1" />}
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-xs text-neutral-400 mt-4">
+        <p className="text-center text-sm text-neutral-500">
           Already have an account?{" "}
-          <Link to="/login" className="text-[#145C25] font-semibold hover:underline">Sign in</Link>
+          <Link to="/login" className="text-[#145C25] font-semibold hover:underline">
+            Sign in
+          </Link>
         </p>
       </div>
     </div>

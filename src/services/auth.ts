@@ -61,6 +61,8 @@ export type SignUpParams = {
   city: string;
   state?: string;
   role: UserRole;
+  /** Role-specific metadata (business name, vehicle type, organization, etc.) */
+  metadata?: Record<string, string>;
 };
 
 export async function signUp(params: SignUpParams) {
@@ -84,6 +86,7 @@ export async function signUp(params: SignUpParams) {
     email: normalizedEmail,
     role: canonicalRole,
     hasPassword: !!params.password,
+    hasMetadata: !!params.metadata,
   });
 
   // Use edge function to create user via admin API (bypasses SMTP email issues)
@@ -107,6 +110,7 @@ export async function signUp(params: SignUpParams) {
           role: canonicalRole,
           city: params.city,
           state: params.state || "FCT",
+          metadata: params.metadata || {},
         }),
       }
     );

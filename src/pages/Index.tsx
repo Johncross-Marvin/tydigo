@@ -108,7 +108,7 @@ const Index = () => {
                   Sign In
                 </Button>
               </Link>
-              <Link to="/login">
+              <Link to="/signup">
                 <Button className="bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl px-6 shadow-brand">
                   Get Started
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -152,7 +152,7 @@ const Index = () => {
                     Sign In
                   </Button>
                 </Link>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
                   <Button className="w-full bg-[#145C25] hover:bg-[#0F4A1E] text-white rounded-xl">
                     Get Started
                   </Button>
@@ -193,7 +193,7 @@ const Index = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/login">
+                <Link to="/signup">
                   <Button className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-[#0A2F14] font-bold text-base px-8 py-6 rounded-2xl shadow-lg shadow-amber-500/25 transition-all hover:scale-105">
                     <Phone className="w-5 h-5 mr-2" />
                     Start with Tydigo
@@ -507,59 +507,68 @@ const Index = () => {
               {
                 icon: Users,
                 title: "Household",
+                slug: "household",
                 desc: "Schedule home waste pickups and earn EcoPoints",
                 color: "bg-green-100 text-[#145C25]",
               },
               {
                 icon: Building2,
                 title: "Estate",
+                slug: "estate",
                 desc: "Manage waste collection for your residential estate",
                 color: "bg-teal-100 text-teal-600",
               },
               {
                 icon: BarChart3,
                 title: "Business",
+                slug: "business",
                 desc: "Bulk waste management, invoices, and sustainability reports",
                 color: "bg-purple-100 text-purple-600",
               },
               {
                 icon: Truck,
                 title: "Collector",
+                slug: "collector",
                 desc: "Accept pickup jobs, navigate routes, and grow your earnings",
                 color: "bg-blue-100 text-blue-600",
               },
               {
                 icon: Recycle,
                 title: "Recycler",
+                slug: "recycler",
                 desc: "Source recyclable materials and manage warehouse inventory",
                 color: "bg-amber-100 text-amber-600",
               },
               {
                 icon: Leaf,
                 title: "Organic Partner",
+                slug: "organic_partner",
                 desc: "BSF farms, compost operators, and livestock feed producers",
                 color: "bg-lime-100 text-lime-600",
               },
               {
                 icon: Truck,
                 title: "Fleet Operator",
+                slug: "fleet_owner",
                 desc: "Manage vehicles, drivers, routes, and dispatch operations",
                 color: "bg-indigo-100 text-indigo-600",
               },
               {
                 icon: Globe,
                 title: "Corporate Partner",
+                slug: "corporate_partner",
                 desc: "CSR/ESG programmes, sustainability targets, and impact reports",
                 color: "bg-rose-100 text-rose-600",
               },
               {
                 icon: Shield,
                 title: "Government",
+                slug: "government",
                 desc: "Jurisdiction-level waste and sustainability reporting",
                 color: "bg-slate-100 text-slate-600",
               },
             ].map((role, i) => (
-              <Link to="/login" key={i}>
+              <Link to={`/signup/${role.slug}`} key={i}>
                 <Card className="border-0 shadow-md shadow-neutral-200/30 hover:shadow-brand transition-all duration-300 rounded-2xl cursor-pointer h-full hover:-translate-y-1">
                   <CardContent className="p-6 text-center">
                     <div
@@ -602,7 +611,7 @@ const Index = () => {
                 price: "Free",
                 detail: "Pay per pickup",
                 cta: "Start Pickup",
-                route: "/login",
+                route: "/signup/household",
                 features: ["Phone-number signup", "Live collector tracking", "EcoPoints rewards"],
               },
               {
@@ -780,7 +789,7 @@ const Index = () => {
                 Join homes, estates, businesses, collectors, and recyclers using Tydigo to make waste pickup simpler and cities smarter.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/login">
+                <Link to="/signup">
                   <Button className="bg-amber-500 hover:bg-amber-400 text-[#0A2F14] font-bold text-base px-8 py-6 rounded-2xl shadow-lg shadow-amber-500/25">
                     <Phone className="w-5 h-5 mr-2" />
                     Get Started Free

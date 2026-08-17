@@ -35,7 +35,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { email, password, full_name, username, phone, phone_e164, role, city, state } = body;
+    const { email, password, full_name, username, phone, phone_e164, role, city, state, metadata } = body;
 
     const normalizedEmail = (email || "").toLowerCase().trim();
 
@@ -88,6 +88,7 @@ serve(async (req) => {
         role: canonicalRole,
         city: (city || "Abuja").trim(),
         state: (state || "FCT").trim(),
+        ...(metadata && typeof metadata === "object" ? metadata : {}),
       },
     });
 
