@@ -155,7 +155,7 @@ export async function suspendUser(userId: string, suspend: boolean): Promise<voi
 
   await supabase
     .from("profiles")
-    .update({ suspended: suspend, updated_at: new Date().toISOString() })
+    .update({ status: suspend ? "suspended" : "active", updated_at: new Date().toISOString() })
     .eq("id", userId);
 }
 

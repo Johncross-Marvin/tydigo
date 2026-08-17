@@ -152,11 +152,11 @@ export async function reviewKyc(params: {
   if (error) throw new Error(`Review failed: ${error.message}`);
   if (!data) throw new Error("KYC document not found.");
 
-  // If approved, update profile KYC status
+  // If approved, update profile KYC status (kyc_status column, not kyc_verified)
   if (params.status === "approved") {
     await supabase
       .from("profiles")
-      .update({ kyc_verified: true, updated_at: now })
+      .update({ kyc_status: "approved", updated_at: now })
       .eq("id", data.profile_id);
   }
 
