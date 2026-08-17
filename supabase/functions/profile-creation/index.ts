@@ -37,6 +37,13 @@ serve(async (req) => {
 
     const { fullName, role, city, state, username, email, phone } = await req.json();
 
+    // Normalize role to a valid user_role enum value.
+    let canonicalRole = role || "household";
+    if (canonicalRole === "fleet") canonicalRole = "fleet_owner";
+    if (canonicalRole === "corporate") canonicalRole = "corporate_partner";
+    if (canonicalRole === "customer") canonicalRole = "household";
+    if (canonicalRole === "admin") canonicalRole = "household";
+
     // Check if profile already exists
     const { data: existing } = await serviceClient
       .from("profiles")
@@ -61,7 +68,7 @@ serve(async (req) => {
         email: email || user.email || null,
         full_name: fullName || user.user_metadata?.full_name || "Tydigo User",
         username: username || null,
-        role: role || "customer",
+        role: canonicalRole,
         default_city: city || "Abuja",
         default_state: state || "FCT",
         country: "Nigeria",
@@ -141,7 +148,7 @@ serve(async (req) => {
     }
 
     // Create role-specific profile
-    await createRoleProfile(serviceClient, profile.id, role, now);
+    await createRoleProfile(serviceClient, profile.id, canonicalRole, now);
 
     // Log security event
     await serviceClient.from("security_logs").insert({
@@ -150,7 +157,7 @@ serve(async (req) => {
       event_type: "signup",
       ip_address: req.headers.get("x-forwarded-for") || null,
       user_agent: req.headers.get("user-agent") || null,
-      metadata: { role, city, state },
+      metadata: { role: canonicalRole, city, state },
       created_at: now,
     });
 
@@ -214,13 +221,13 @@ async function createRoleProfile(
     case "organic_partner":
       await client.from("organic_partner_profiles").insert(basePayload);
       break;
-    case "fleet":
+    case "fleet_owner":
       await client.from("fleet_profiles").insert(basePayload);
       break;
     case "government":
       await client.from("government_profiles").insert(basePayload);
       break;
-    case "corporate":
+    case "corporate_partner":
       await client.from("corporate_profiles").insert(basePayload);
       break;
     case "partner":
