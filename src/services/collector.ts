@@ -130,86 +130,24 @@ export async function acceptAssignment(
     return { success: false, error: "Not available" };
   }
 
-  const now = new Date().toISOString();
-
-  // 1. Verify assignment exists and is offered to this collector
-  const { data: assignment } = await supabase
-    .from("collector_assignments")
-    .select("id, pickup_request_id, collector_id, status")
-    .eq("id", assignmentId)
-    .eq("collector_id", profileId)
-    .eq("status", "offered")
-    .maybeSingle();
-
-  if (!assignment) {
-    return { success: false, error: "Offer not found or already taken" };
-  }
-
-  // 2. Verify no other accepted assignment exists for this pickup
-  const { data: existingAccepted } = await supabase
-    .from("collector_assignments")
-    .select("id")
-    .eq("pickup_request_id", assignment.pickup_request_id)
-    .eq("status", "accepted")
-    .maybeSingle();
-
-  if (existingAccepted) {
-    // Mark this offer as superseded
-    await supabase
-      .from("collector_assignments")
-      .update({ status: "superseded", cancelled_at: now })
-      .eq("id", assignmentId);
-    return { success: false, error: "Another collector already accepted this pickup" };
-  }
-
-  // 3. Verify pickup is in a matchable state
-  const { data: pickup } = await supabase
-    .from("pickup_requests")
-    .select("status")
-    .eq("id", assignment.pickup_request_id)
-    .maybeSingle();
-
-  if (!pickup || !canTransition(pickup.status as PickupStatus, "collector_assigned")) {
-    return { success: false, error: "Pickup is no longer available" };
-  }
-
-  // 4. Atomic update: accept assignment + update pickup
-  const { error: updateError } = await supabase
-    .from("collector_assignments")
-    .update({ status: "accepted", accepted_at: now })
-    .eq("id", assignmentId)
-    .eq("status", "offered");
-
-  if (updateError) {
-    return { success: false, error: updateError.message };
-  }
-
-  // 5. Update pickup request
-  await supabase
-    .from("pickup_requests")
-    .update({
-      collector_id: profileId,
-      status: "collector_assigned",
-      collector_assigned_at: now,
-      updated_at: now,
-    })
-    .eq("id", assignment.pickup_request_id);
-
-  // 6. Supersede competing offers
-  await supabase
-    .from("collector_assignments")
-    .update({ status: "superseded", cancelled_at: now })
-    .eq("pickup_request_id", assignment.pickup_request_id)
-    .neq("id", assignmentId)
-    .eq("status", "offered");
-
-  // 7. Create status event
-  await supabase.from("pickup_status_events").insert({
-    pickup_id: assignment.pickup_request_id,
-    to_status: "collector_assigned",
-    notes: `Collector accepted assignment`,
-    created_at: now,
+  // Delegate to the server-authoritative atomic RPC. This uses row-level
+  // locking (FOR UPDATE) to guarantee ONE pickup → ONE active accepted
+  // assignment, superseding competing offers and emitting domain events
+  // inside a single transaction. The client must NOT perform this as a
+  // sequence of separate queries (that would be race-prone).
+  const { data, error } = await supabase.rpc("accept_collector_assignment", {
+    p_assignment_id: assignmentId,
+    p_collector_id: profileId,
   });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const result = data as { success: boolean; error?: string };
+  if (!result?.success) {
+    return { success: false, error: result?.error || "Unable to accept this offer" };
+  }
 
   return { success: true };
 }
