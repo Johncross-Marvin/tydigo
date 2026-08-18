@@ -55,7 +55,10 @@ export async function initializePayment(params: {
           status: result.status as PaymentResult["status"],
           authorizationUrl: result.authorizationUrl as string | undefined,
           accessCode: result.accessCode as string | undefined,
-          pointsEarned: Math.max(100, Math.round(amountNgn * 0.1)),
+          // EcoPoints are awarded server-side (award_ecopoints RPC). The client
+          // must NOT fabricate a reward amount. Use 0 here; the authoritative
+          // reward is reflected in the user's wallet after server processing.
+          pointsEarned: 0,
           mock: result.mock as boolean | undefined,
         };
       }
@@ -143,7 +146,9 @@ async function mockPayment(params: {
     reference,
     amountNgn,
     status: "paid",
-    pointsEarned: Math.max(100, Math.round(amountNgn * 0.1)),
+    // EcoPoints are awarded server-side via award_ecopoints RPC. The client
+    // must NOT fabricate a reward amount.
+    pointsEarned: 0,
     mock: true,
   };
 }

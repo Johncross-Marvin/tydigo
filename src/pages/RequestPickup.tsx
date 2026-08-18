@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth-provider";
 import { createPickup, type PickupDraftInput } from "@/services/pickup";
 import { uploadDraftPhoto, associateDraftPhotos } from "@/services/storage";
-import { calculatePrice, formatNaira, type WasteType } from "@/services/pricing";
+import { calculatePrice, calculateServerPrice, formatNaira, type WasteType, type PriceBreakdown } from "@/services/pricing";
 import { getAddresses, type Address } from "@/services/address";
 import { initializePayment } from "@/services/payments";
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
@@ -57,8 +57,10 @@ const RequestPickupPage = () => {
   // Form state
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
-  const [draftId] = useState(() => `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-  const [submissionId] = useState(() => `sub-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  // Use proper UUIDs (not `temp-${Date.now()}`) so draft/submission identifiers
+  // are legitimate and can safely reach UUID columns if persisted.
+  const [draftId] = useState(() => crypto.randomUUID());
+  const [submissionId] = useState(() => crypto.randomUUID());
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [estimatedWeight, setEstimatedWeight] = useState(5);
   const [customWeight, setCustomWeight] = useState("");
@@ -71,6 +73,8 @@ const RequestPickupPage = () => {
   const [ecopointsToApply, setEcopointsToApply] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "transfer">("card");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [serverPricing, setServerPricing] = useState<PriceBreakdown | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   // Load data
   useEffect(() => {
@@ -95,8 +99,34 @@ const RequestPickupPage = () => {
       ? "mixed_waste"
       : (categories.find((c) => c.id === selectedCategories[0])?.type as WasteType) || "general_waste";
 
-  // Calculate pricing
-  const pricing = calculatePrice({
+  // Fetch server-authoritative pricing when the user reaches the pricing step.
+  // The server (pricing_rules table) is the source of truth, not the browser.
+  useEffect(() => {
+    if (step < 7) return;
+    let cancelled = false;
+    setPricingLoading(true);
+    calculateServerPrice({
+      weightKg: estimatedWeight,
+      wasteType,
+      ecopointsToApply,
+    })
+      .then((result) => {
+        if (!cancelled) setServerPricing(result);
+      })
+      .catch(() => {
+        // Fall back to client estimate on failure
+        if (!cancelled) setServerPricing(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPricingLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, estimatedWeight, wasteType, ecopointsToApply]);
+
+  // Use server pricing when available; otherwise fall back to client estimate.
+  const pricing: PriceBreakdown = serverPricing ?? calculatePrice({
     weightKg: estimatedWeight,
     wasteType,
     ecopointsToApply,
@@ -150,7 +180,8 @@ const RequestPickupPage = () => {
 
     try {
       // Step 1: Create pickup (idempotent — safe to retry)
-      const result = await createPickup(user, draft, submissionId);
+      // Pass server-authoritative pricing so the RPC stores the correct amount.
+      const result = await createPickup(user, draft, submissionId, serverPricing ?? undefined);
 
       // Step 2: Associate draft photos with the real pickup
       if (photos.length > 0) {

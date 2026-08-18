@@ -66,7 +66,9 @@ export async function findNearbyCollectors(
         id: c.id,
         profile_id: c.profile_id,
         full_name: c.profiles?.full_name || "Collector",
-        rating: c.profiles?.rating || 5.0,
+        // Do NOT fabricate a rating. If no real rating exists, use null so the
+        // UI can display "New collector" instead of a fake 4.8/5.0.
+        rating: c.profiles?.rating ?? null,
         vehicle_type: c.vehicle_type,
         max_capacity_kg: c.max_capacity_kg,
         current_lat: c.current_lat,
@@ -74,7 +76,7 @@ export async function findNearbyCollectors(
         distance_km: Math.round(distance * 10) / 10,
         is_online: c.is_online,
         total_pickups: c.profiles?.total_pickups || 0,
-        acceptance_rate: 0.85, // Default; would be calculated from assignment history
+        acceptance_rate: 0, // Unknown until computed from real assignment history
       };
     })
     .filter((c) => c.distance_km <= radiusKm)

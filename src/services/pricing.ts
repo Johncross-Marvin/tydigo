@@ -160,6 +160,63 @@ export function estimatePrice(weightKg: number, wasteType: WasteType): number {
 }
 
 /**
+ * Server-authoritative price calculation.
+ *
+ * Calls the `calculate-price` Edge Function so the database pricing rules
+ * (pricing_rules table) are the source of truth — NOT the browser.
+ *
+ * The client-side `calculatePrice` above remains only as a fallback/estimate
+ * for offline or mock mode. Production flows MUST use this function.
+ */
+export async function calculateServerPrice(params: {
+  weightKg: number;
+  wasteType: WasteType;
+  city?: string;
+  zone?: string;
+  ecopointsToApply?: number;
+}): Promise<PriceBreakdown> {
+  const { supabase, isSupabaseAvailable } = await import("@/lib/supabase");
+
+  if (isSupabaseAvailable() && supabase) {
+    try {
+      const { data, error } = await supabase.functions.invoke("calculate-price", {
+        body: {
+          weightKg: params.weightKg,
+          wasteType: params.wasteType,
+          city: params.city || null,
+          zone: params.zone || null,
+          ecopointsToApply: params.ecopointsToApply || 0,
+        },
+      });
+
+      if (!error && data) {
+        const result = data as Record<string, unknown>;
+        return {
+          basePriceNgn: result.basePriceNgn as number,
+          wasteModifierNgn: result.wasteModifierNgn as number,
+          wasteModifierPercent: result.wasteModifierPercent as number,
+          platformFeeNgn: result.platformFeeNgn as number,
+          platformFeePercent: result.platformFeePercent as number,
+          ecopointsDiscountNgn: result.ecopointsDiscountNgn as number,
+          ecopointsApplied: result.ecopointsApplied as number,
+          subtotalNgn: result.subtotalNgn as number,
+          finalTotalNgn: result.finalTotalNgn as number,
+        };
+      }
+    } catch (err) {
+      console.warn("[Tydigo Pricing] Server pricing failed, falling back to client estimate:", err);
+    }
+  }
+
+  // Fallback to client-side estimate (mock/offline mode)
+  return calculatePrice({
+    weightKg: params.weightKg,
+    wasteType: params.wasteType,
+    ecopointsToApply: params.ecopointsToApply,
+  });
+}
+
+/**
  * Format Naira for display.
  */
 export function formatNaira(value: number): string {

@@ -64,8 +64,11 @@ export async function createPickup(
   user: AuthUser,
   draft: PickupDraftInput,
   idempotencyKey?: string,
+  serverPricing?: PriceBreakdown,
 ): Promise<CreatedPickup> {
-  const pricing = calculatePrice({
+  // Prefer server-authoritative pricing when provided; otherwise fall back to
+  // a client-side estimate (mock/offline mode only).
+  const pricing = serverPricing ?? calculatePrice({
     weightKg: draft.estimatedWeightKg,
     wasteType: draft.wasteType,
     ecopointsToApply: draft.ecopointsToApply,
@@ -271,18 +274,22 @@ export async function uploadPickupPhoto(
 
     if (error) throw new Error(error.message);
 
-    const { data: urlData } = supabase.storage
+    // waste-photos is a PRIVATE bucket. Use a signed URL for authorized reads,
+    // never a permanent public URL.
+    const { data: signedData } = await supabase.storage
       .from("waste-photos")
-      .getPublicUrl(data.path);
+      .createSignedUrl(data.path, 3600); // 1 hour
 
-    // Record in pickup_images
+    const signedUrl = signedData?.signedUrl || "";
+
+    // Record in pickup_images (store the path, not a permanent URL)
     await supabase.from("pickup_images").insert({
       pickup_request_id: pickupId,
-      image_url: urlData.publicUrl,
+      image_url: signedUrl,
       storage_path: data.path,
     });
 
-    return urlData.publicUrl;
+    return signedUrl;
   }
 
   return URL.createObjectURL(file);

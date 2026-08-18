@@ -35,8 +35,14 @@ export async function uploadFile(
 
     if (error) throw new Error(`Upload failed: ${error.message}`);
 
-      // For private buckets, use signed URLs
-    const isPrivate = bucket === BUCKETS.KYC_DOCUMENTS || bucket === BUCKETS.COMPLAINT_EVIDENCE;
+    // Private buckets: waste-photos, pickup-proof, KYC documents, complaint
+    // evidence. These may reveal personal/private information and MUST use
+    // signed URLs for authorized reads — never permanent public URLs.
+    const isPrivate =
+      bucket === BUCKETS.WASTE_PHOTOS ||
+      bucket === BUCKETS.PICKUP_PROOF ||
+      bucket === BUCKETS.KYC_DOCUMENTS ||
+      bucket === BUCKETS.COMPLAINT_EVIDENCE;
     let url: string;
 
     if (isPrivate) {
