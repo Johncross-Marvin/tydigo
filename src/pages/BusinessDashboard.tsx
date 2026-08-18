@@ -20,13 +20,18 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { BulkScheduler } from "@/components/business/BulkScheduler";
 import { SubscriptionPlans } from "@/components/business/SubscriptionPlans";
 import { ImpactReport } from "@/components/business/ImpactReport";
 import { MultiAddressManager } from "@/components/business/MultiAddressManager";
 import { useToast } from "@/components/ui/toast-provider";
+import {
+  getBusinessLocations,
+  addBusinessLocation,
+  getImpactReport,
+} from "@/services/business";
 
 const BusinessDashboardPage = () => {
   const navigate = useNavigate();
@@ -35,17 +40,17 @@ const BusinessDashboardPage = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   useSeo(seoConfig.businessDashboard);
 
-  const { data: locationsData } = useQuery({
-    queryKey: ["business-locations"],
-    queryFn: api.getBusinessLocations,
+  const { data: locations = [] } = useQuery({
+    queryKey: ["business-locations", user?.id],
+    queryFn: () => getBusinessLocations(user?.id ?? ""),
+    enabled: !!user?.id,
   });
 
   const { data: impactData } = useQuery({
-    queryKey: ["impact-report"],
-    queryFn: () => api.getImpactReport("month"),
+    queryKey: ["impact-report", user?.id],
+    queryFn: () => getImpactReport(user?.id ?? "", "month"),
+    enabled: !!user?.id,
   });
-
-  const locations = locationsData?.locations ?? [];
 
   const handleBulkSchedule = async (data: {
     locationIds: string[];
@@ -54,11 +59,23 @@ const BusinessDashboardPage = () => {
     scheduleWindow: string;
     frequency: string;
   }) => {
+    if (!supabase || !user) {
+      toastError("Scheduling failed", "Not authenticated.");
+      return;
+    }
     try {
-      await api.scheduleBulkPickup({
-        ...data,
-        frequency: data.frequency as "once" | "daily" | "weekly" | "monthly",
-      });
+      const pickups = data.locationIds.map((locationId) => ({
+        customer_id: user.id,
+        waste_type: data.wasteType,
+        estimated_weight_kg: data.weightKg,
+        pickup_address: locationId,
+        requested_window: data.scheduleWindow,
+        status: "requested",
+        payment_status: "pending",
+        pickup_code: `TYD-${Math.floor(1000 + Math.random() * 9000)}`,
+      }));
+      const { error } = await supabase.from("pickup_requests").insert(pickups);
+      if (error) throw error;
       success("Pickups Scheduled", `${data.locationIds.length} pickups have been scheduled.`);
     } catch (err) {
       toastError("Scheduling failed", err instanceof Error ? err.message : "Please try again.");
@@ -66,8 +83,9 @@ const BusinessDashboardPage = () => {
   };
 
   const handleAddLocation = async (address: string, label: string) => {
+    if (!user) return;
     try {
-      await api.addBusinessLocation(address, label);
+      await addBusinessLocation(user.id, address, label);
       success("Location Added", `"${label}" has been added.`);
     } catch (err) {
       toastError("Failed to add location", err instanceof Error ? err.message : "Please try again.");
@@ -216,7 +234,7 @@ const BusinessDashboardPage = () => {
             </TabsContent>
 
             <TabsContent value="impact" className="mt-4">
-              <ImpactReport report={impactData?.report} onDownload={handleDownloadReport} />
+              <ImpactReport report={impactData} onDownload={handleDownloadReport} />
             </TabsContent>
 
             <TabsContent value="locations" className="mt-4">

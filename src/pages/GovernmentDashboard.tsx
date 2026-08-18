@@ -18,13 +18,18 @@ import {
   Home,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { RegionalAnalytics } from "@/components/government/RegionalAnalytics";
 import { ComplianceMonitor } from "@/components/government/ComplianceMonitor";
 import { EnvironmentalImpact } from "@/components/government/EnvironmentalImpact";
 import { PublicReports } from "@/components/government/PublicReports";
 import { useToast } from "@/components/ui/toast-provider";
+import {
+  getRegionalAnalytics,
+  getComplianceData,
+  getEnvironmentalImpact,
+  generatePublicReport,
+} from "@/services/government";
 
 const GovernmentDashboardPage = () => {
   const navigate = useNavigate();
@@ -33,28 +38,27 @@ const GovernmentDashboardPage = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   useSeo(seoConfig.governmentDashboard);
 
-  const { data: regionalData } = useQuery({
+  const { data: regions = [] } = useQuery({
     queryKey: ["regional-analytics"],
-    queryFn: api.getRegionalAnalytics,
+    queryFn: getRegionalAnalytics,
   });
 
-  const { data: complianceData } = useQuery({
+  const { data: compliance } = useQuery({
     queryKey: ["compliance-data"],
-    queryFn: api.getComplianceData,
+    queryFn: getComplianceData,
   });
 
-  const { data: impactData } = useQuery({
+  const { data: impact } = useQuery({
     queryKey: ["environmental-impact"],
-    queryFn: api.getEnvironmentalImpact,
+    queryFn: getEnvironmentalImpact,
   });
 
-  const regions = regionalData?.regions ?? [];
-  const compliance = complianceData ?? {
+  const complianceData = compliance ?? {
     registeredCollectors: 0,
     licensedOperators: 0,
     complianceRate: 0,
   };
-  const impact = impactData ?? {
+  const impactData = impact ?? {
     totalWasteDivertedKg: 0,
     recyclingRate: 0,
     carbonOffsetKg: 0,
@@ -63,7 +67,7 @@ const GovernmentDashboardPage = () => {
 
   const handleGenerateReport = async (period: string) => {
     try {
-      await api.generatePublicReport(period);
+      await generatePublicReport(period);
       success("Report Generated", `The ${period} report is being generated.`);
     } catch (err) {
       toastError("Generation failed", err instanceof Error ? err.message : "Please try again.");
@@ -197,18 +201,18 @@ const GovernmentDashboardPage = () => {
 
             <TabsContent value="compliance" className="mt-4">
               <ComplianceMonitor
-                registeredCollectors={compliance.registeredCollectors}
-                licensedOperators={compliance.licensedOperators}
-                complianceRate={compliance.complianceRate}
+                registeredCollectors={complianceData.registeredCollectors}
+                licensedOperators={complianceData.licensedOperators}
+                complianceRate={complianceData.complianceRate}
               />
             </TabsContent>
 
             <TabsContent value="environment" className="mt-4">
               <EnvironmentalImpact
-                totalWasteDivertedKg={impact.totalWasteDivertedKg}
-                recyclingRate={impact.recyclingRate}
-                carbonOffsetKg={impact.carbonOffsetKg}
-                landfillSavedKg={impact.landfillSavedKg}
+                totalWasteDivertedKg={impactData.totalWasteDivertedKg}
+                recyclingRate={impactData.recyclingRate}
+                carbonOffsetKg={impactData.carbonOffsetKg}
+                landfillSavedKg={impactData.landfillSavedKg}
               />
             </TabsContent>
 

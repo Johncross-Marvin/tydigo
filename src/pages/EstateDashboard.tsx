@@ -20,9 +20,9 @@ import {
   Leaf,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { useToast } from "@/components/ui/toast-provider";
+import { getBusinessLocations, getImpactReport } from "@/services/business";
 
 const EstateDashboardPage = () => {
   const navigate = useNavigate();

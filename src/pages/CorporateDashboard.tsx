@@ -20,9 +20,9 @@ import {
   FileText,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
 import { useSeo } from "@/lib/seo";
 import { useToast } from "@/components/ui/toast-provider";
+import { getBusinessLocations, getImpactReport } from "@/services/business";
 
 const CorporateDashboardPage = () => {
   const navigate = useNavigate();
@@ -31,18 +31,17 @@ const CorporateDashboardPage = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   useSeo({ title: "Corporate Partner Dashboard — Tydigo" });
 
-  const { data: locationsData } = useQuery({
-    queryKey: ["corporate-locations"],
-    queryFn: api.getBusinessLocations,
+  const { data: locations = [] } = useQuery({
+    queryKey: ["corporate-locations", user?.id],
+    queryFn: () => getBusinessLocations(user?.id ?? ""),
+    enabled: !!user?.id,
   });
 
-  const { data: impactData } = useQuery({
-    queryKey: ["corporate-impact"],
-    queryFn: () => api.getImpactReport("month"),
+  const { data: impact } = useQuery({
+    queryKey: ["corporate-impact", user?.id],
+    queryFn: () => getImpactReport(user?.id ?? "", "month"),
+    enabled: !!user?.id,
   });
-
-  const locations = locationsData?.locations ?? [];
-  const impact = impactData?.report;
 
   const menuItems = [
     { icon: Home, label: "Overview", active: true },
