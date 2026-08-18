@@ -46,21 +46,20 @@ const AdminDashboardPage = () => {
     queryKey: ["admin-overview"],
     queryFn: async () => {
       if (!supabase) return null;
-      const [usersRes, pickupsRes, kycRes] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("pickup_requests").select("id, status, final_total_ngn, estimated_weight_kg", { count: "exact" }),
+      const [kpiRes, kycRes] = await Promise.all([
+        supabase.from("admin_kpi_summary").select("*").maybeSingle(),
         supabase.from("kyc_documents").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(10),
       ]);
-      const totalPickups = pickupsRes.data || [];
+      const kpi = (kpiRes.data as Record<string, unknown> | null) ?? {};
       return {
         kpis: {
-          totalUsers: (usersRes as { count?: number })?.count ?? 0,
-          activeCollectors: 0,
-          wasteCollectedKg: totalPickups.reduce((s: number, p: Record<string,unknown>) => s + Number(p.estimated_weight_kg || 0), 0),
-          totalPickups: totalPickups.length,
-          revenueNgn: totalPickups.reduce((s: number, p: Record<string,unknown>) => s + Number(p.final_total_ngn || 0), 0),
-          ecopointsIssued: 0,
-          pendingKyc: kycRes.data?.length || 0,
+          totalUsers: Number(kpi.total_users ?? 0),
+          activeCollectors: Number(kpi.active_collectors ?? 0),
+          wasteCollectedKg: Number(kpi.waste_collected_kg ?? 0),
+          totalPickups: Number(kpi.total_pickups ?? 0),
+          revenueNgn: Number(kpi.revenue_ngn ?? 0),
+          ecopointsIssued: Number(kpi.ecopoints_issued ?? 0),
+          pendingKyc: Number(kpi.pending_kyc ?? 0),
         },
         pendingKyc: kycRes.data || [],
       };

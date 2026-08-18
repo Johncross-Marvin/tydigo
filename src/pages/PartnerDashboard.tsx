@@ -47,15 +47,51 @@ const PartnerDashboardPage = () => {
   const activeBatches = requests.filter((r) => !["received", "cancelled"].includes(r.status));
 
   const handleRequestMaterial = async (materialId: string) => {
+    if (!supabase || !user) {
+      toastError("Request failed", "Not authenticated.");
+      return;
+    }
     try {
+      // The marketplace lists existing partner_material_requests. "Requesting"
+      // a material creates a new request row referencing the source material.
+      const source = requests.find((r) => r.id === materialId);
+      if (!source) {
+        toastError("Request failed", "Material not found.");
+        return;
+      }
+      const { error } = await supabase.from("partner_material_requests").insert({
+        partner_id: user.id,
+        material: source.material,
+        quantity_kg: source.quantity_kg,
+        price_per_kg_ngn: source.price_per_kg_ngn,
+        delivery_address: source.delivery_address,
+        status: "requested",
+      });
+      if (error) throw error;
       success("Request Sent", "Your material request has been submitted.");
     } catch (err) {
       toastError("Request failed", err instanceof Error ? err.message : "Please try again.");
     }
   };
 
-  const handleRateQuality = (batchId: string, rating: number, notes?: string) => {
-    success("Quality Rated", `You rated this batch ${rating} stars.`);
+  const handleRateQuality = async (batchId: string, rating: number, notes?: string) => {
+    if (!supabase || !user) {
+      toastError("Rating failed", "Not authenticated.");
+      return;
+    }
+    try {
+      const { error } = await supabase.from("ratings").insert({
+        pickup_id: null,
+        rater_id: user.id,
+        ratee_id: null,
+        score: rating,
+        comment: notes ?? null,
+      });
+      if (error) throw error;
+      success("Quality Rated", `You rated this batch ${rating} stars.`);
+    } catch (err) {
+      toastError("Rating failed", err instanceof Error ? err.message : "Please try again.");
+    }
   };
 
   const menuItems = [
@@ -168,7 +204,7 @@ const PartnerDashboardPage = () => {
             avgPricePerKg={requests.length > 0
               ? requests.reduce((sum, r) => sum + r.price_per_kg_ngn, 0) / requests.length
               : 0}
-            supplierRating={4.5}
+            supplierRating={null}
             activeBatches={activeBatches.length}
           />
 

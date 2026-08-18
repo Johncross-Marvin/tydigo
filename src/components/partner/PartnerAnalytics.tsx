@@ -12,7 +12,7 @@ type PartnerAnalyticsProps = {
   totalSourced: number;
   totalSpent: number;
   avgPricePerKg: number;
-  supplierRating: number;
+  supplierRating: number | null;
   activeBatches: number;
 };
 
@@ -27,7 +27,7 @@ export function PartnerAnalytics({
     { icon: Package, label: "Total Sourced", value: formatWeight(totalSourced), color: "bg-purple-100 text-purple-600" },
     { icon: DollarSign, label: "Total Spent", value: formatNaira(totalSpent), color: "bg-green-100 text-[#145C25]" },
     { icon: TrendingUp, label: "Avg Price/kg", value: formatNaira(avgPricePerKg), color: "bg-blue-100 text-blue-600" },
-    { icon: Star, label: "Avg Supplier Rating", value: supplierRating.toFixed(1), color: "bg-amber-100 text-amber-600" },
+    { icon: Star, label: "Avg Supplier Rating", value: supplierRating != null ? supplierRating.toFixed(1) : "New", color: "bg-amber-100 text-amber-600" },
     { icon: BarChart3, label: "Active Batches", value: String(activeBatches), color: "bg-rose-100 text-rose-600" },
   ];
 
