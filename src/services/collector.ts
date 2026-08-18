@@ -9,7 +9,7 @@
  * transition is valid before executing.
  */
 
-import { supabase, isSupabaseAvailable, generateId } from "@/lib/supabase";
+import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { canTransition, type PickupStatus } from "./pickup-status";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -507,88 +507,23 @@ export async function completePickup(
     return { success: false, error: "Not available" };
   }
 
-  const { data: pickup } = await supabase
-    .from("pickup_requests")
-    .select("collector_id, status, customer_id, waste_type, estimated_weight_kg, actual_weight_kg, final_total_ngn")
-    .eq("id", pickupId)
-    .maybeSingle();
-
-  if (!pickup || pickup.collector_id !== profileId) {
-    return { success: false, error: "Not authorized for this pickup" };
-  }
-
-  if (!canTransition(pickup.status as PickupStatus, "completed")) {
-    return { success: false, error: `Cannot transition from ${pickup.status} to completed` };
-  }
-
-  const now = new Date().toISOString();
-
-  // Update pickup
-  await supabase
-    .from("pickup_requests")
-    .update({
-      status: "completed",
-      completed_at: now,
-      updated_at: now,
-    })
-    .eq("id", pickupId);
-
-  // Update assignment
-  await supabase
-    .from("collector_assignments")
-    .update({ completed_at: now })
-    .eq("pickup_request_id", pickupId)
-    .eq("collector_id", profileId)
-    .eq("status", "accepted");
-
-  // Create status event
-  await supabase.from("pickup_status_events").insert({
-    pickup_id: pickupId,
-    to_status: "completed",
-    notes: "Pickup completed",
-    created_at: now,
+  // Delegate to the server-authoritative atomic RPC. This finalizes the pickup
+  // (status → completed), creates the waste batch, and generates the receipt
+  // inside a single transaction with row locking. The client must NOT perform
+  // this as sequential writes (that would be non-atomic and race-prone).
+  const { data, error } = await supabase.rpc("complete_pickup", {
+    p_pickup_id: pickupId,
+    p_collector_id: profileId,
   });
 
-  // Create waste batch (idempotent — use pickup_id as unique key)
-  const weight = (pickup.actual_weight_kg || pickup.estimated_weight_kg || 0) as number;
-  const { data: existingBatch } = await supabase
-    .from("waste_batches")
-    .select("id")
-    .contains("source_pickup_ids", [pickupId])
-    .maybeSingle();
-
-  if (!existingBatch) {
-    await supabase.from("waste_batches").insert({
-      id: generateId("wbt"),
-      material_type: pickup.waste_type,
-      quantity_kg: weight,
-      source_pickup_ids: [pickupId],
-      verified: true,
-      created_at: now,
-    });
+  if (error) {
+    return { success: false, error: error.message };
   }
 
-  // Generate receipt (idempotent)
-  const receiptNumber = `TYD-RCP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const { data: existingReceipt } = await supabase
-    .from("digital_receipts")
-    .select("id")
-    .eq("pickup_request_id", pickupId)
-    .maybeSingle();
-
-  let receipt = existingReceipt;
-  if (!existingReceipt) {
-    const { data: newReceipt } = await supabase
-      .from("digital_receipts")
-      .insert({
-        pickup_request_id: pickupId,
-        receipt_number: receiptNumber,
-        issued_at: now,
-      })
-      .select("*")
-      .maybeSingle();
-    receipt = newReceipt;
+  const result = data as { success: boolean; error?: string; receipt_id?: string };
+  if (!result?.success) {
+    return { success: false, error: result?.error || "Unable to complete pickup" };
   }
 
-  return { success: true, receipt };
+  return { success: true, receipt: result };
 }
