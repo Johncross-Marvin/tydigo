@@ -111,7 +111,31 @@ const CollectorDashboardPage = () => {
     const next = !isOnline;
     setIsOnline(next);
     if (isSupabaseAvailable() && supabase && user) {
+      // Canonical availability: collector_profiles.is_online drives matching.
       await supabase.from("collector_profiles").update({ is_online: next }).eq("profile_id", user.id);
+
+      // Keep collector_availability in sync for fleet/operational views.
+      // collector_availability.collector_profile_id references collector_profiles.id.
+      const { data: cp } = await supabase
+        .from("collector_profiles")
+        .select("id")
+        .eq("profile_id", user.id)
+        .maybeSingle();
+
+      if (cp?.id) {
+        const now = new Date().toISOString();
+        await supabase.from("collector_availability").upsert(
+          {
+            collector_profile_id: cp.id,
+            status: next ? "online" : "offline",
+            accepting_jobs: next,
+            last_online_at: next ? now : null,
+            last_offline_at: next ? null : now,
+            updated_at: now,
+          },
+          { onConflict: "collector_profile_id" },
+        );
+      }
     }
   };
 

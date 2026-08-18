@@ -108,17 +108,33 @@ export async function getFleetDrivers(fleetProfileId: string): Promise<FleetDriv
 
   const { data: collectorProfiles } = await supabase
     .from("collector_profiles")
-    .select("profile_id, is_online")
+    .select("id, profile_id, is_online")
     .in("profile_id", profileIds);
 
-  const { data: availability } = await supabase
-    .from("collector_availability")
-    .select("collector_profile_id, current_job_id")
-    .in("collector_profile_id", profileIds);
+  // collector_availability.collector_profile_id references collector_profiles.id
+  // (NOT profiles.id). Resolve the collector_profiles.id values first, then query
+  // availability by those IDs so current_job_id resolves correctly.
+  const collectorProfileIds = (collectorProfiles || []).map((c) => c.id as string);
+
+  const { data: availability } = collectorProfileIds.length
+    ? await supabase
+        .from("collector_availability")
+        .select("collector_profile_id, current_job_id")
+        .in("collector_profile_id", collectorProfileIds)
+    : { data: [] };
 
   const profileMap = new Map((profiles || []).map((p) => [p.id as string, p]));
   const onlineMap = new Map((collectorProfiles || []).map((c) => [c.profile_id as string, c.is_online as boolean]));
-  const jobMap = new Map((availability || []).map((a) => [a.collector_profile_id as string, a.current_job_id as string | null]));
+  // Map collector_profiles.id → profiles.id so we can look up current_job_id by profile id
+  const collectorProfileIdToProfileId = new Map(
+    (collectorProfiles || []).map((c) => [c.id as string, c.profile_id as string]),
+  );
+  const jobMap = new Map(
+    (availability || []).map((a) => [
+      collectorProfileIdToProfileId.get(a.collector_profile_id as string) ?? (a.collector_profile_id as string),
+      a.current_job_id as string | null,
+    ]),
+  );
 
   return memberships.map((m) => {
     const p = profileMap.get(m.profile_id as string);
