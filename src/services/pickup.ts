@@ -5,7 +5,7 @@
  * multi-item support, image uploads, and tracking.
  */
 
-import { supabase, isSupabaseAvailable, generatePickupCode, generateId } from "@/lib/supabase";
+import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { api as mockApi, type Pickup } from "@/lib/api";
 import { calculatePrice, type WasteType, type PriceBreakdown } from "./pricing";
 import type { AuthUser } from "./auth";
@@ -331,20 +331,25 @@ export async function createWasteBatch(pickupId: string) {
   if (!isSupabaseAvailable() || !supabase) return null;
   const { data: pickup } = await supabase
     .from("pickup_requests")
-    .select("customer_id, waste_type, estimated_weight_kg, actual_weight_kg, pickup_code")
+    .select("customer_id, collector_id, waste_type, estimated_weight_kg, actual_weight_kg, pickup_code, pickup_address")
     .eq("id", pickupId)
     .maybeSingle();
   if (!pickup) return null;
   const weight = (pickup.actual_weight_kg || pickup.estimated_weight_kg || 0) as number;
+
+  // The waste_batches table uses `source_pickup_ids` (UUID array) to reference
+  // source pickups, NOT a `pickup_id` column. It also has no `customer_id`
+  // column — the chain-of-custody owner is `partner_id` (the receiving partner).
+  // We create a batch with the source pickup referenced in the array, leaving
+  // `partner_id` null until a destination/partner is assigned downstream.
   const { data } = await supabase
     .from("waste_batches")
     .insert({
-      id: generateId("wbt"),
-      pickup_id: pickupId,
-      customer_id: pickup.customer_id,
       material_type: pickup.waste_type,
       quantity_kg: weight,
       quality_grade: "standard",
+      source_pickup_ids: [pickupId],
+      source_zone: pickup.pickup_address || null,
       verified: false,
       created_at: new Date().toISOString(),
     })
