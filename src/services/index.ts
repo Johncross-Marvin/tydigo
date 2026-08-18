@@ -55,7 +55,18 @@ export {
 } from "./auth";
 export type { AuthUser, UserRole } from "./auth";
 
-export { createPickup, getCustomerPickups, getActivePickup, getPickupById, updatePickupStatus, uploadPickupPhoto, createPickupWithItems } from "./pickup";
+export {
+  createPickup,
+  getCustomerPickups,
+  getActivePickup,
+  getPickupById,
+  updatePickupStatus,
+  uploadPickupPhoto,
+  createPickupWithItems,
+  cancelPickup,
+  reschedulePickup,
+  reportNoShow,
+} from "./pickup";
 export type { PickupDraftInput, CreatedPickup, PickupItemInput } from "./pickup";
 
 export { initializePayment, verifyPayment } from "./payments";

@@ -267,6 +267,12 @@ export async function getPickupById(pickupId: string): Promise<Record<string, un
 }
 
 // ─── Status Updates ───────────────────────────────────────────
+//
+// NOTE: `updatePickupStatus` is retained ONLY for non-authoritative UI
+// transitions that do not carry business truth (e.g. optimistic display).
+// Authoritative state transitions (completion, cancellation, rescheduling,
+// no-show) MUST go through the dedicated server RPCs below, which enforce
+// authorization, stage-aware policy, and transactional integrity.
 
 export async function updatePickupStatus(
   pickupId: string,
@@ -300,6 +306,95 @@ export async function updatePickupStatus(
     notes: notes || null,
     created_at: now,
   });
+}
+
+// ─── Cancellation (server-authoritative, stage-aware) ─────────
+
+export async function cancelPickup(
+  pickupId: string,
+  actorProfileId: string,
+  reason?: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { data, error } = await supabase.rpc("cancel_pickup", {
+    p_pickup_id: pickupId,
+    p_actor_profile_id: actorProfileId,
+    p_reason: reason || null,
+  });
+
+  if (error) return { success: false, error: error.message };
+
+  const result = data as { success: boolean; error?: string };
+  if (!result?.success) {
+    return { success: false, error: result?.error || "Unable to cancel pickup" };
+  }
+
+  return { success: true };
+}
+
+// ─── Rescheduling (server-authoritative, persistent history) ──
+
+export async function reschedulePickup(
+  pickupId: string,
+  actorProfileId: string,
+  newWindowStart: string,
+  newWindowEnd: string,
+  reason?: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { data, error } = await supabase.rpc("reschedule_pickup", {
+    p_pickup_id: pickupId,
+    p_actor_profile_id: actorProfileId,
+    p_new_window_start: newWindowStart,
+    p_new_window_end: newWindowEnd,
+    p_reason: reason || null,
+  });
+
+  if (error) return { success: false, error: error.message };
+
+  const result = data as { success: boolean; error?: string };
+  if (!result?.success) {
+    return { success: false, error: result?.error || "Unable to reschedule pickup" };
+  }
+
+  return { success: true };
+}
+
+// ─── No-show reporting (server-authoritative) ─────────────────
+
+export async function reportNoShow(
+  pickupId: string,
+  actorProfileId: string,
+  noShowType: "customer_no_show" | "collector_no_show",
+  evidence?: string,
+  notes?: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
+
+  const { data, error } = await supabase.rpc("report_no_show", {
+    p_pickup_id: pickupId,
+    p_actor_profile_id: actorProfileId,
+    p_no_show_type: noShowType,
+    p_evidence: evidence || null,
+    p_notes: notes || null,
+  });
+
+  if (error) return { success: false, error: error.message };
+
+  const result = data as { success: boolean; error?: string };
+  if (!result?.success) {
+    return { success: false, error: result?.error || "Unable to report no-show" };
+  }
+
+  return { success: true };
 }
 
 // ─── Upload Pickup Photo ──────────────────────────────────────
