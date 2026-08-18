@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,13 +16,16 @@ import { CollectorWalletCard, type WalletData } from "@/components/collector/Col
 import { CollectorPerformancePanel, type PerformanceData } from "@/components/collector/CollectorPerformancePanel";
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { getCollectorOffers, getCurrentJob, acceptAssignment, rejectAssignment, markEnRoute, markArrived, verifyPickup, markWastePicked, completePickup, type CollectorOffer, type ActiveJob } from "@/services/collector";
+import { requestWithdrawal } from "@/services/collector-wallet";
 import { toast } from "sonner";
 import type { CollectorJob } from "@/lib/api";
 
 const CollectorDashboardPage = () => {
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState("jobs");
+  const [withdrawing, setWithdrawing] = useState(false);
 
   // Fetch collector profile
   const { data: profile } = useQuery({
@@ -288,9 +291,29 @@ const CollectorDashboardPage = () => {
             )}
           </TabsContent>
           <TabsContent value="wallet" className="mt-4">
-            {wallet && <CollectorWalletCard wallet={wallet} onWithdraw={() => {
-              toast.info("Withdrawal coming soon");
-            }} />}
+            {wallet && (
+              <CollectorWalletCard
+                wallet={wallet}
+                onWithdraw={async () => {
+                  if (!user || withdrawing) return;
+                  const amount = wallet.withdrawableBalanceNgn;
+                  if (amount <= 0) {
+                    toast.error("No withdrawable balance available yet.");
+                    return;
+                  }
+                  setWithdrawing(true);
+                  try {
+                    await requestWithdrawal(user.id, amount);
+                    toast.success("Withdrawal requested successfully!");
+                    queryClient.invalidateQueries({ queryKey: ["collector-wallet", user.id] });
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Withdrawal failed");
+                  } finally {
+                    setWithdrawing(false);
+                  }
+                }}
+              />
+            )}
           </TabsContent>
           <TabsContent value="stats" className="mt-4">
             {performance && <CollectorPerformancePanel performance={performance} />}

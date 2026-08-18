@@ -25,6 +25,7 @@ import {
   joinChallenge, getChallengeParticipants,
   getReferralCode, getReferrals,
   formatEcopoints, ecopointsToNaira,
+  redeemEcoPoints,
   REDEMPTION_OPTIONS,
   type EcoTier, type EcoBadge, type UserEcoBadge,
   type EcoChallenge, type EcoChallengeParticipant,
@@ -98,6 +99,28 @@ const EcoPointsPage = () => {
       toast.success("Challenge joined!");
     },
     onError: () => toast.error("Could not join challenge"),
+  });
+
+  // Redeem EcoPoints mutation (server-authoritative via RPC)
+  const redeemMutation = useMutation({
+    mutationFn: (option: { id: string; points: number; type: string; name: string }) =>
+      redeemEcoPoints({
+        profileId: profileId!,
+        points: option.points,
+        redemptionType: option.type,
+        idempotencyKey: `redeem_${option.id}_${Date.now()}`,
+        description: `Redeemed ${option.name}`,
+      }),
+    onSuccess: (result) => {
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["eco-wallet", profileId] });
+      queryClient.invalidateQueries({ queryKey: ["eco-transactions", profileId] });
+      toast.success("EcoPoints redeemed successfully!");
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not redeem EcoPoints"),
   });
 
   const currentPoints = wallet?.balance || 0;
@@ -242,7 +265,8 @@ const EcoPointsPage = () => {
                 {REDEMPTION_OPTIONS.map((r) => (
                   <button
                     key={r.id}
-                    disabled={currentPoints < r.points}
+                    disabled={currentPoints < r.points || redeemMutation.isPending}
+                    onClick={() => redeemMutation.mutate({ id: r.id, points: r.points, type: r.type, name: r.name })}
                     className="p-3 rounded-xl border-2 border-neutral-200 text-left hover:border-[#145C25] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <span className="text-2xl">{r.type === "discount" ? "💳" : r.type === "airtime" ? "📱" : r.type === "cashback" ? "💰" : "🌳"}</span>
