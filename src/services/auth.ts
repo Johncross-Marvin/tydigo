@@ -447,7 +447,9 @@ function mapProfile(p: Record<string, unknown>): AuthUser {
     city: (p.default_city as string) || "Abuja",
     state: (p.default_state as string) || "FCT",
     ecopoints: (p.ecopoints as number) || 0,
-    rating: (p.rating as number) || 5.0,
+    // Do NOT fabricate a rating. If no real rating exists, leave it null so the
+    // UI can display "New collector" instead of a fake 5.0.
+    rating: (p.rating as number | null) ?? null,
   };
 }
 

@@ -21,7 +21,7 @@ export type AuthUser = {
   city?: string;
   state?: string;
   ecopoints?: number;
-  rating?: number;
+  rating?: number | null;
 };
 
 export type Pickup = {

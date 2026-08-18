@@ -99,7 +99,7 @@ const CollectorJobsPage = () => {
         <div className="grid grid-cols-3 gap-3">
           <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center"><p className="text-2xl font-extrabold text-[#145C25]">{completed.length}</p><p className="text-[10px] text-neutral-500">Completed</p></CardContent></Card>
           <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center"><p className="text-2xl font-extrabold text-amber-600">{active.length}</p><p className="text-[10px] text-neutral-500">Active</p></CardContent></Card>
-          <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center"><p className="text-2xl font-extrabold">{profile?.rating_average?.toFixed(1) || "5.0"}⭐</p><p className="text-[10px] text-neutral-500">Rating</p></CardContent></Card>
+          <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center"><p className="text-2xl font-extrabold">{profile?.rating_average != null ? profile.rating_average.toFixed(1) : "New"}⭐</p><p className="text-[10px] text-neutral-500">Rating</p></CardContent></Card>
         </div>
 
         {/* Tabs */}

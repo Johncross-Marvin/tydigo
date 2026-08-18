@@ -80,9 +80,9 @@ const CollectorDashboardPage = () => {
     queryKey: ["collector-performance", user?.id],
     queryFn: async () => {
       if (!isSupabaseAvailable() || !supabase || !user) return {
-        totalPickups: 0, completedJobs: 0, cancelledJobs: 0, averageRating: 5.0,
-        acceptanceRate: 100, completionRate: 100, onTimeRate: 100,
-        averageResponseTimeSeconds: 30, totalDistanceKm: 0, totalEcoPoints: 0,
+        totalPickups: 0, completedJobs: 0, cancelledJobs: 0, averageRating: null,
+        acceptanceRate: null, completionRate: null, onTimeRate: null,
+        averageResponseTimeSeconds: null, totalDistanceKm: 0, totalEcoPoints: 0,
         currentLevel: { name: "Bronze", badge: "🥉", pointsToNextLevel: 100, progressPercent: 0 },
         recentAchievements: [],
       };
@@ -91,11 +91,13 @@ const CollectorDashboardPage = () => {
         totalPickups: data?.total_pickups || 0,
         completedJobs: data?.completed_jobs || 0,
         cancelledJobs: data?.cancelled_jobs || 0,
-        averageRating: data?.average_rating || 5.0,
-        acceptanceRate: data?.acceptance_rate || 100,
-        completionRate: data?.completion_rate || 100,
-        onTimeRate: data?.on_time_rate || 100,
-        averageResponseTimeSeconds: data?.average_response_time || 30,
+        // Do NOT fabricate ratings/rates. Use null when no real data exists so
+        // the UI can show "New collector" / "—" instead of fake 5.0 / 100%.
+        averageRating: data?.average_rating ?? null,
+        acceptanceRate: data?.acceptance_rate ?? null,
+        completionRate: data?.completion_rate ?? null,
+        onTimeRate: data?.on_time_rate ?? null,
+        averageResponseTimeSeconds: data?.average_response_time ?? null,
         totalDistanceKm: data?.total_distance_km || 0,
         totalEcoPoints: data?.total_ecopoints || 0,
         currentLevel: { name: "Bronze", badge: "🥉", pointsToNextLevel: 100, progressPercent: 15 },
@@ -222,7 +224,7 @@ const CollectorDashboardPage = () => {
           <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center">
             <p className="text-xs text-neutral-500">Rating</p>
             <p className="text-lg font-extrabold flex items-center justify-center gap-1">
-              <Star className="w-4 h-4 fill-amber-400 text-amber-400" /> {performance?.averageRating.toFixed(1) || "5.0"}
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" /> {performance?.averageRating != null ? performance.averageRating.toFixed(1) : "New"}
             </p>
           </CardContent></Card>
           <Card className="border-0 shadow-sm"><CardContent className="p-3 text-center">

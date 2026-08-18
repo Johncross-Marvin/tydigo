@@ -11,11 +11,11 @@ export type PerformanceData = {
   totalPickups: number;
   completedJobs: number;
   cancelledJobs: number;
-  averageRating: number;
-  acceptanceRate: number;
-  completionRate: number;
-  onTimeRate: number;
-  averageResponseTimeSeconds: number;
+  averageRating: number | null;
+  acceptanceRate: number | null;
+  completionRate: number | null;
+  onTimeRate: number | null;
+  averageResponseTimeSeconds: number | null;
   totalDistanceKm: number;
   totalEcoPoints: number;
   currentLevel: {
@@ -52,8 +52,8 @@ export function CollectorPerformancePanel({ performance }: Props) {
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-3">
         <StatCard icon={CheckCircle2} label="Completed" value={String(performance.completedJobs)} color="text-green-500" />
-        <StatCard icon={Star} label="Rating" value={performance.averageRating.toFixed(1)} color="text-amber-500" />
-        <StatCard icon={Clock} label="On-Time" value={`${performance.onTimeRate}%`} color="text-blue-500" />
+        <StatCard icon={Star} label="Rating" value={performance.averageRating != null ? performance.averageRating.toFixed(1) : "New"} color="text-amber-500" />
+        <StatCard icon={Clock} label="On-Time" value={performance.onTimeRate != null ? `${performance.onTimeRate}%` : "—"} color="text-blue-500" />
       </div>
 
       {/* Rates */}
@@ -64,7 +64,7 @@ export function CollectorPerformancePanel({ performance }: Props) {
           <RateBar label="On-Time Rate" value={performance.onTimeRate} />
           <div className="flex justify-between text-sm pt-1">
             <span className="text-neutral-500">Avg Response</span>
-            <span className="font-bold">{Math.round(performance.averageResponseTimeSeconds)}s</span>
+            <span className="font-bold">{performance.averageResponseTimeSeconds != null ? `${Math.round(performance.averageResponseTimeSeconds)}s` : "—"}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-neutral-500">Total Distance</span>
@@ -125,14 +125,14 @@ function StatCard({ icon: Icon, label, value, color }: { icon: typeof CheckCircl
   );
 }
 
-function RateBar({ label, value }: { label: string; value: number }) {
+function RateBar({ label, value }: { label: string; value: number | null }) {
   return (
     <div>
       <div className="flex justify-between text-sm mb-1">
         <span className="text-neutral-500">{label}</span>
-        <span className="font-bold">{value}%</span>
+        <span className="font-bold">{value != null ? `${value}%` : "—"}</span>
       </div>
-      <Progress value={value} className="h-2 rounded-full bg-neutral-200 [&>div]:bg-[#145C25]" />
+      <Progress value={value ?? 0} className="h-2 rounded-full bg-neutral-200 [&>div]:bg-[#145C25]" />
     </div>
   );
 }
