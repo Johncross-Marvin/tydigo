@@ -119,49 +119,6 @@ export function rankCollectors(
 }
 
 /**
- * Assign the best collector to a pickup request.
- */
-export async function assignCollector(
-  pickupRequestId: string,
-  collectorProfileId: string,
-  distanceKm: number,
-  estimatedArrivalMinutes: number,
-): Promise<void> {
-  if (!isSupabaseAvailable() || !supabase) return;
-
-  const now = new Date().toISOString();
-
-  // Create assignment
-  await supabase.from("collector_assignments").insert({
-    pickup_request_id: pickupRequestId,
-    collector_id: collectorProfileId,
-    distance_km: distanceKm,
-    estimated_arrival_minutes: estimatedArrivalMinutes,
-    accepted_at: now,
-  });
-
-  // Update pickup request
-  await supabase
-    .from("pickup_requests")
-    .update({
-      collector_id: collectorProfileId,
-      collector_assigned_at: now,
-      status: "collector_assigned",
-      updated_at: now,
-    })
-    .eq("id", pickupRequestId);
-
-  // Record status event
-  await supabase.from("pickup_status_events").insert({
-    pickup_id: pickupRequestId,
-    from_status: "matching_collector",
-    to_status: "collector_assigned",
-    notes: `Collector assigned (${distanceKm}km, ~${estimatedArrivalMinutes}min)`,
-    created_at: now,
-  });
-}
-
-/**
  * Haversine distance between two coordinates in km.
  */
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {

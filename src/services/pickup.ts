@@ -140,25 +140,68 @@ export async function createPickup(
   };
 }
 
-// ─── Multi-Item Pickup ────────────────────────────────────────
+// ─── Multi-Item Pickup (atomic) ───────────────────────────────
 
 export async function createPickupWithItems(
   user: AuthUser,
   draft: PickupDraftInput,
   items: PickupItemInput[],
 ): Promise<CreatedPickup> {
-  const result = await createPickup(user, draft);
+  if (isSupabaseAvailable() && supabase) {
+    const profileId = await resolveProfileId(user.id);
+    const dbWasteType = mapWasteTypeToDb(draft.wasteType);
+    const key = `pickup_${profileId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const pricing = calculatePrice({
+      weightKg: draft.estimatedWeightKg,
+      wasteType: draft.wasteType,
+      ecopointsToApply: draft.ecopointsToApply,
+    });
 
-  if (isSupabaseAvailable() && supabase && items.length > 0) {
-    const inserts = items.map((item) => ({
-      pickup_request_id: result.id,
-      waste_category_id: item.wasteCategoryId,
-      estimated_weight_kg: item.estimatedWeightKg,
-      notes: item.notes || null,
-    }));
-    await supabase.from("pickup_items").insert(inserts);
+    // Delegate to the server-authoritative atomic RPC. This creates the pickup
+    // AND its items inside a single transaction (with idempotency protection),
+    // so a partial failure cannot leave an orphaned pickup without items.
+    const { data, error } = await supabase.rpc("create_pickup_with_items", {
+      p_idempotency_key: key,
+      p_customer_id: profileId,
+      p_waste_type: dbWasteType,
+      p_estimated_weight_kg: draft.estimatedWeightKg,
+      p_pickup_address: draft.address,
+      p_pickup_instructions: draft.pickupInstructions || null,
+      p_requested_window: draft.scheduleWindow,
+      p_sorting_verified: draft.sortingStatus === "properly_sorted",
+      p_base_price_ngn: pricing.basePriceNgn,
+      p_waste_modifier_ngn: pricing.wasteModifierNgn,
+      p_platform_fee_ngn: pricing.platformFeeNgn,
+      p_ecopoints_discount_ngn: pricing.ecopointsDiscountNgn,
+      p_final_total_ngn: pricing.finalTotalNgn,
+      p_payment_method: draft.paymentMethod,
+      p_ecopoints_to_apply: pricing.ecopointsApplied,
+      p_items: items.map((item) => ({
+        waste_category_id: item.wasteCategoryId,
+        estimated_weight_kg: item.estimatedWeightKg,
+        notes: item.notes || null,
+      })),
+    });
+
+    if (error) throw new Error(error.message);
+
+    const result = data as Record<string, unknown>;
+    return {
+      id: result.id as string,
+      pickupCode: result.pickup_code as string,
+      wasteType: draft.wasteType,
+      estimatedWeightKg: draft.estimatedWeightKg,
+      address: draft.address,
+      status: result.status as string,
+      paymentStatus: result.payment_status as string,
+      priceBreakdown: pricing,
+      finalTotalNgn: pricing.finalTotalNgn,
+      createdAt: (result.created_at as string) || new Date().toISOString(),
+    };
   }
 
+  // Mock fallback (offline only)
+  const result = await createPickup(user, draft);
   return result;
 }
 
@@ -325,69 +368,35 @@ function mapDbPickupToPickup(db: Record<string, unknown>): Pickup {
   };
 }
 
-// ─── Waste Batch Creation ─────────────────────────────────────
+// ─── Complete Pickup (atomic, server-authoritative) ────────────
+//
+// NOTE: Waste batch creation and receipt generation are NOT performed by the
+// browser. They are produced server-side inside the `complete_pickup` RPC,
+// which atomically finalizes the pickup (status → completed), creates the
+// chain-of-custody waste batch, and issues the receipt in a single transaction
+// with row locking. The client only captures intent and observes the result.
 
-export async function createWasteBatch(pickupId: string) {
-  if (!isSupabaseAvailable() || !supabase) return null;
-  const { data: pickup } = await supabase
-    .from("pickup_requests")
-    .select("customer_id, collector_id, waste_type, estimated_weight_kg, actual_weight_kg, pickup_code, pickup_address")
-    .eq("id", pickupId)
-    .maybeSingle();
-  if (!pickup) return null;
-  const weight = (pickup.actual_weight_kg || pickup.estimated_weight_kg || 0) as number;
+export async function completePickup(
+  pickupId: string,
+  collectorProfileId: string,
+): Promise<{ success: boolean; error?: string; receipt?: unknown }> {
+  if (!isSupabaseAvailable() || !supabase) {
+    return { success: false, error: "Not available" };
+  }
 
-  // The waste_batches table uses `source_pickup_ids` (UUID array) to reference
-  // source pickups, NOT a `pickup_id` column. It also has no `customer_id`
-  // column — the chain-of-custody owner is `partner_id` (the receiving partner).
-  // We create a batch with the source pickup referenced in the array, leaving
-  // `partner_id` null until a destination/partner is assigned downstream.
-  const { data } = await supabase
-    .from("waste_batches")
-    .insert({
-      material_type: pickup.waste_type,
-      quantity_kg: weight,
-      quality_grade: "standard",
-      source_pickup_ids: [pickupId],
-      source_zone: pickup.pickup_address || null,
-      verified: false,
-      created_at: new Date().toISOString(),
-    })
-    .select("id")
-    .maybeSingle();
-  return data;
-}
+  const { data, error } = await supabase.rpc("complete_pickup", {
+    p_pickup_id: pickupId,
+    p_collector_id: collectorProfileId,
+  });
 
-// ─── Receipt Generation ───────────────────────────────────────
+  if (error) {
+    return { success: false, error: error.message };
+  }
 
-export async function generatePickupReceipt(pickupId: string) {
-  if (!isSupabaseAvailable() || !supabase) return null;
-  const { data: pickup } = await supabase
-    .from("pickup_requests")
-    .select("*")
-    .eq("id", pickupId)
-    .maybeSingle();
-  if (!pickup) return null;
-  const receiptNumber = `TYD-RCP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const { data } = await supabase
-    .from("digital_receipts")
-    .insert({
-      pickup_request_id: pickupId,
-      receipt_number: receiptNumber,
-      issued_at: new Date().toISOString(),
-    })
-    .select("*")
-    .maybeSingle();
-  return data;
-}
+  const result = data as { success: boolean; error?: string };
+  if (!result?.success) {
+    return { success: false, error: result?.error || "Unable to complete pickup" };
+  }
 
-// ─── Complete Pickup (atomic) ─────────────────────────────────
-
-export async function completePickup(pickupId: string) {
-  if (!isSupabaseAvailable() || !supabase) throw new Error("Not available");
-  const now = new Date().toISOString();
-  await updatePickupStatus(pickupId, "completed", "Pickup completed");
-  await createWasteBatch(pickupId);
-  const receipt = await generatePickupReceipt(pickupId);
-  return { receipt, completedAt: now };
+  return { success: true, receipt: result };
 }

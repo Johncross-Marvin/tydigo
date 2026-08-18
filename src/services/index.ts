@@ -277,7 +277,6 @@ export type { ActivityLog } from "./activity";
 export {
   findNearbyCollectors,
   rankCollectors,
-  assignCollector,
 } from "./collector-matching";
 export type { NearbyCollector, MatchResult } from "./collector-matching";
 
