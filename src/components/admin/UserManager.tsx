@@ -101,7 +101,7 @@ export function UserManager({ users, onSearch, onSuspend, onViewDetails }: UserM
                   <span>{user.phone}</span>
                   <span className="flex items-center gap-0.5">
                     <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                    {user.rating.toFixed(1)}
+                    {user.rating != null ? user.rating.toFixed(1) : "New"}
                   </span>
                   <span>{user.total_pickups} pickups</span>
                 </div>

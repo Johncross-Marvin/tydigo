@@ -52,12 +52,12 @@ export type PricingConfig = {
 
 export type AuditLog = {
   id: string;
-  actor_id: string;
-  actor_name: string;
+  admin_id: string | null;
   action: string;
-  entity_type: string;
-  entity_id: string;
+  target_type: string | null;
+  target_id: string | null;
   details?: Record<string, unknown>;
+  ip_address?: string | null;
   created_at: string;
 };
 
@@ -268,18 +268,18 @@ export async function updateEcopointsConfig(config: {
 export async function getAuditLogs(options?: {
   limit?: number;
   offset?: number;
-  entityType?: string;
-  actorId?: string;
+  targetType?: string;
+  adminId?: string;
 }): Promise<AuditLog[]> {
   if (!isSupabaseAvailable() || !supabase) return [];
 
   let query = supabase
-    .from("audit_logs")
+    .from("admin_audit_logs")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (options?.entityType) query = query.eq("entity_type", options.entityType);
-  if (options?.actorId) query = query.eq("actor_id", options.actorId);
+  if (options?.targetType) query = query.eq("target_type", options.targetType);
+  if (options?.adminId) query = query.eq("admin_id", options.adminId);
 
   query = query.range(
     options?.offset ?? 0,
@@ -292,21 +292,19 @@ export async function getAuditLogs(options?: {
 }
 
 export async function createAuditLog(params: {
-  actorId: string;
-  actorName: string;
+  adminId: string;
   action: string;
-  entityType: string;
-  entityId: string;
+  targetType?: string;
+  targetId?: string;
   details?: Record<string, unknown>;
 }): Promise<void> {
   if (!isSupabaseAvailable() || !supabase) return;
 
-  await supabase.from("audit_logs").insert({
-    actor_id: params.actorId,
-    actor_name: params.actorName,
+  await supabase.from("admin_audit_logs").insert({
+    admin_id: params.adminId,
     action: params.action,
-    entity_type: params.entityType,
-    entity_id: params.entityId,
+    target_type: params.targetType ?? null,
+    target_id: params.targetId ?? null,
     details: params.details ?? {},
     created_at: new Date().toISOString(),
   });

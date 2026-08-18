@@ -21,7 +21,6 @@ import {
   Megaphone,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { PlatformKPIs } from "@/components/admin/PlatformKPIs";
@@ -30,8 +29,17 @@ import { KycReviewQueue } from "@/components/admin/KycReviewQueue";
 import { PricingConfig } from "@/components/admin/PricingConfig";
 import { AuditLogs } from "@/components/admin/AuditLogs";
 import { useToast } from "@/components/ui/toast-provider";
-import type { AdminUser, KycDocument, AuditLog } from "@/lib/api";
-import type { PricingConfig as PricingConfigType } from "@/services/admin";
+import type { KycDocument } from "@/lib/api";
+import {
+  listUsers,
+  suspendUser,
+  getPricingConfigs,
+  updatePricingConfig,
+  getAuditLogs,
+  type AdminUser,
+  type AuditLog,
+  type PricingConfig as PricingConfigType,
+} from "@/services/admin";
 
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
@@ -68,17 +76,17 @@ const AdminDashboardPage = () => {
 
   const { data: usersData, refetch: refetchUsers } = useQuery({
     queryKey: ["admin-users", userSearch],
-    queryFn: () => api.adminListUsers(userSearch),
+    queryFn: () => listUsers({ search: userSearch, limit: 50 }),
   });
 
   const { data: pricingData } = useQuery({
     queryKey: ["admin-pricing"],
-    queryFn: api.adminGetPricing,
+    queryFn: getPricingConfigs,
   });
 
   const { data: auditData } = useQuery({
     queryKey: ["admin-audit-logs"],
-    queryFn: () => api.adminGetAuditLogs(50),
+    queryFn: () => getAuditLogs({ limit: 50 }),
   });
 
   const kpis = overviewData?.kpis ?? {
@@ -93,14 +101,14 @@ const AdminDashboardPage = () => {
       status: "pending" as const,
     }));
 
-  const users: AdminUser[] = usersData?.users ?? [];
-  const pricingConfigs: PricingConfigType[] = (pricingData?.configs ?? []).map((c) => ({
+  const users: AdminUser[] = usersData ?? [];
+  const pricingConfigs: PricingConfigType[] = (pricingData ?? []).map((c) => ({
     ...c,
     min_kg: (c as Record<string, unknown>).min_kg as number ?? 0,
     max_kg: (c as Record<string, unknown>).max_kg as number | null ?? null,
     updated_at: (c as Record<string, unknown>).updated_at as string ?? new Date().toISOString(),
   }));
-  const auditLogs: AuditLog[] = auditData?.logs ?? [];
+  const auditLogs: AuditLog[] = auditData ?? [];
 
   const handleSearchUsers = (query: string) => {
     setUserSearch(query);
@@ -109,7 +117,7 @@ const AdminDashboardPage = () => {
 
   const handleSuspendUser = async (userId: string, suspend: boolean) => {
     try {
-      await api.adminSuspendUser(userId, suspend);
+      await suspendUser(userId, suspend);
       success(suspend ? "User Suspended" : "User Activated", "The user status has been updated.");
       refetchUsers();
     } catch (err) {
@@ -123,7 +131,11 @@ const AdminDashboardPage = () => {
 
   const handleApproveKyc = async (documentId: string) => {
     try {
-      await api.adminReviewKyc(documentId, "approved");
+      const { error } = await supabase
+        .from("kyc_documents")
+        .update({ status: "approved", reviewed_at: new Date().toISOString() })
+        .eq("id", documentId);
+      if (error) throw error;
       success("KYC Approved", "Document has been approved.");
     } catch (err) {
       toastError("Approval failed", err instanceof Error ? err.message : "Please try again.");
@@ -132,7 +144,11 @@ const AdminDashboardPage = () => {
 
   const handleRejectKyc = async (documentId: string) => {
     try {
-      await api.adminReviewKyc(documentId, "rejected", "Document does not meet requirements.");
+      const { error } = await supabase
+        .from("kyc_documents")
+        .update({ status: "rejected", review_notes: "Document does not meet requirements.", reviewed_at: new Date().toISOString() })
+        .eq("id", documentId);
+      if (error) throw error;
       success("KYC Rejected", "Document has been rejected.");
     } catch (err) {
       toastError("Rejection failed", err instanceof Error ? err.message : "Please try again.");
@@ -145,7 +161,7 @@ const AdminDashboardPage = () => {
 
   const handleUpdatePricing = async (configId: string, updates: Record<string, unknown>) => {
     try {
-      await api.adminUpdatePricing(configId, updates);
+      await updatePricingConfig(configId, updates as Partial<Pick<PricingConfigType, "base_price_ngn" | "per_kg_price_ngn" | "is_active" | "active">>);
       success("Pricing Updated", "The pricing configuration has been updated.");
     } catch (err) {
       toastError("Update failed", err instanceof Error ? err.message : "Please try again.");

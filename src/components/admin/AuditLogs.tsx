@@ -10,7 +10,7 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react";
-import type { AuditLog } from "@/lib/api";
+import type { AuditLog } from "@/services/admin";
 
 type AuditLogsProps = {
   logs: AuditLog[];
@@ -60,14 +60,14 @@ export function AuditLogs({ logs }: AuditLogsProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-neutral-800">
-                        {log.actor_name}
+                        {log.admin_id ? `Admin ${log.admin_id.slice(0, 8)}` : "System"}
                       </p>
                       <Badge className="bg-neutral-100 text-neutral-600 rounded-full text-[10px] capitalize">
                         {log.action}
                       </Badge>
                     </div>
                     <p className="text-xs text-neutral-500 mt-0.5">
-                      {log.entity_type} • {log.entity_id.slice(0, 8)}...
+                      {log.target_type ?? "—"}{log.target_id ? ` • ${log.target_id.slice(0, 8)}...` : ""}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
