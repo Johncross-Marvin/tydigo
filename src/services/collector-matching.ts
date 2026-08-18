@@ -11,7 +11,7 @@ export type NearbyCollector = {
   id: string;
   profile_id: string;
   full_name: string;
-  rating: number;
+  rating: number | null;
   vehicle_type: string | null;
   max_capacity_kg: number | null;
   current_lat: number | null;
@@ -98,8 +98,9 @@ export function rankCollectors(
       // Distance score (closer = better, max 40 points)
       const distanceScore = Math.max(0, 40 - c.distance_km * 4);
 
-      // Rating score (5.0 = 30 points)
-      const ratingScore = (c.rating / 5) * 30;
+      // Rating score (5.0 = 30 points). If no real rating exists, use a neutral
+      // midpoint so new collectors are not unfairly penalized or rewarded.
+      const ratingScore = ((c.rating ?? 3.0) / 5) * 30;
 
       // Capacity score (can handle weight = 20 points)
       const capacityScore = c.max_capacity_kg && c.max_capacity_kg >= estimatedWeightKg ? 20 : 5;
