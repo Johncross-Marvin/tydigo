@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { useSeo, seoConfig } from "@/lib/seo";
+import { IMAGE_IDS, gdUrl } from "@/lib/images";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { AppInstallBanner } from "@/components/public/AppInstallBanner";
@@ -117,8 +118,15 @@ const Index = () => {
       <PublicHeader transparent />
 
       {/* ── Editorial hero ── */}
-      <section className="relative bg-[#0A2F14] text-white pt-24 pb-16 lg:pt-32 lg:pb-24">
-        <div className="max-w-[80rem] mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative bg-[#0A2F14] text-white pt-24 pb-16 lg:pt-32 lg:pb-24 overflow-hidden">
+        {/* Hero background image overlay */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${gdUrl(IMAGE_IDS.heroBackground, 1600)})` }}
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A2F14]/90 via-[#0A2F14]/80 to-[#0A2F14]" aria-hidden="true" />
+        <div className="relative max-w-[80rem] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <Badge className="bg-white/10 text-green-200 mb-6 px-4 py-1.5 rounded-full border border-white/10">
               Waste collection, recycling & recovery

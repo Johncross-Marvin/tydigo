@@ -1,11 +1,17 @@
 /**
  * Tydigo Google Drive Image IDs
- * 
- * Each ID maps to a specific UI design screenshot.
+ *
+ * Each ID maps to a specific UI design screenshot or brand asset.
  * Using Google Drive thumbnail API for reliable cross-origin embedding.
  */
 
 export const IMAGE_IDS = {
+  // Brand assets
+  heroBackground: "1eV2qt7IRnOK4hNZCt22mJC3bwF-hONVx",
+  favicon: "1flG4z--jtG3r-yBwqtNtwnoq7LQ9-pWM",
+  navbarLogo: "1-q_7Yway8YZNK2Swow8RFwHU3qlE4HjA",
+  dashboardIcon: "1K6fONWY85K5cfo1wQ84HifyQ-SeBVVa1",
+
   // Public / Landing
   hero: "1Iipeg7HtEfp8Thx6bRt_0OX36M0l9Jge",
   onboarding: "1TcIeg2FTB04UtdKaZGwEr3dJ6dGMedCO",

@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { BrandMark } from "@/components/BrandMark";
 import { formatWeight } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
@@ -94,9 +95,7 @@ const HouseholdDashboardPage = () => {
       <aside className="hidden lg:flex flex-col w-64 bg-[#0A2F14] text-white fixed inset-y-0 left-0 z-30">
         <div className="p-5">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-              <Recycle className="w-5 h-5 text-amber-400" />
-            </div>
+            <BrandMark size={36} className="bg-white/15" />
             <span className="text-xl font-bold">
               Ty<span className="text-amber-400">digo</span>
             </span>
@@ -138,7 +137,7 @@ const HouseholdDashboardPage = () => {
           <div className="absolute left-0 top-0 bottom-0 w-64 bg-[#0A2F14] text-white p-5 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <Link to="/" className="flex items-center gap-2.5">
-                <Recycle className="w-5 h-5 text-amber-400" />
+                <BrandMark size={28} />
                 <span className="text-lg font-bold">Tydigo</span>
               </Link>
               <button onClick={() => setMobileSidebarOpen(false)}>

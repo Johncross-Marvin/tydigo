@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  Recycle,
   Menu,
   X,
   ArrowRight,
@@ -18,6 +17,7 @@ import {
   type RoleExperience,
 } from "@/lib/site-config";
 import { resolveIcon } from "@/lib/icon-resolver";
+import { IMAGE_IDS, gdUrl } from "@/lib/images";
 import { AuthModal } from "@/components/public/AuthModal";
 import type { UserRole } from "@/lib/api";
 
@@ -88,9 +88,13 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5" aria-label="Tydigo home">
-              <div className="w-9 h-9 rounded-xl bg-[#145C25] flex items-center justify-center">
-                <Recycle className="w-5 h-5 text-white" />
-              </div>
+              <img
+                src={gdUrl(IMAGE_IDS.navbarLogo, 200)}
+                alt="Tydigo"
+                className="w-9 h-9 rounded-xl object-contain"
+                loading="eager"
+                decoding="async"
+              />
               <span
                 className={`text-xl font-bold tracking-tight ${
                   solid ? "text-neutral-900" : "text-white"
@@ -207,9 +211,13 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
             {/* Menu header */}
             <div className="flex items-center justify-between h-16">
               <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#145C25] flex items-center justify-center">
-                  <Recycle className="w-5 h-5 text-white" />
-                </div>
+                <img
+                  src={gdUrl(IMAGE_IDS.navbarLogo, 200)}
+                  alt="Tydigo"
+                  className="w-9 h-9 rounded-xl object-contain"
+                  loading="eager"
+                  decoding="async"
+                />
                 <span className="text-xl font-bold text-neutral-900">
                   Ty<span className="text-amber-500">digo</span>
                 </span>
