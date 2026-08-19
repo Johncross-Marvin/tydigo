@@ -95,13 +95,6 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
                 loading="eager"
                 decoding="async"
               />
-              <span
-                className={`text-xl font-bold tracking-tight ${
-                  solid ? "text-neutral-900" : "text-white"
-                }`}
-              >
-                Ty<span className="text-amber-500">digo</span>
-              </span>
             </Link>
 
             {/* Desktop controls */}
@@ -218,9 +211,6 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
                   loading="eager"
                   decoding="async"
                 />
-                <span className="text-xl font-bold text-neutral-900">
-                  Ty<span className="text-amber-500">digo</span>
-                </span>
               </Link>
               <button
                 onClick={() => setMenuOpen(false)}

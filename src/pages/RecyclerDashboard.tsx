@@ -23,6 +23,7 @@ import {
   getMyWarehouses, getWarehouseInventory, getMySettlements,
   getAcceptedMaterials, getRecyclerAnalytics,
 } from "@/services/marketplace";
+import { getBatchesByDestination, type WasteBatch } from "@/services/chain-of-custody";
 
 const formatNgn = (v: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(v);
@@ -41,6 +42,7 @@ const RecyclerDashboard = () => {
   const { data: settlements } = useQuery({ queryKey: ["settlements", profileId], queryFn: () => getMySettlements(profileId), enabled: !!profileId });
   const { data: materials } = useQuery({ queryKey: ["accepted-materials", profileId], queryFn: () => getAcceptedMaterials(profileId), enabled: !!profileId });
   const { data: analytics } = useQuery({ queryKey: ["recycler-analytics", profileId], queryFn: () => getRecyclerAnalytics(profileId), enabled: !!profileId });
+  const { data: incomingBatches = [] } = useQuery<WasteBatch[]>({ queryKey: ["recycler-incoming-batches", profileId], queryFn: () => getBatchesByDestination(profileId), enabled: !!profileId, refetchInterval: 30000 });
 
   const activeListings = listings?.filter((l: Record<string,unknown>) => l.status === "active") || [];
   const activeRequests = requests?.filter((r: Record<string,unknown>) => r.status === "active") || [];
@@ -77,8 +79,9 @@ const RecyclerDashboard = () => {
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full grid grid-cols-5 rounded-2xl bg-neutral-100 p-1">
+          <TabsList className="w-full grid grid-cols-6 rounded-2xl bg-neutral-100 p-1">
             <TabsTrigger value="overview" className="rounded-xl text-xs">Overview</TabsTrigger>
+            <TabsTrigger value="incoming" className="rounded-xl text-xs">Incoming</TabsTrigger>
             <TabsTrigger value="marketplace" className="rounded-xl text-xs">Market</TabsTrigger>
             <TabsTrigger value="trades" className="rounded-xl text-xs">Trades</TabsTrigger>
             <TabsTrigger value="warehouse" className="rounded-xl text-xs">Warehouse</TabsTrigger>
@@ -116,6 +119,29 @@ const RecyclerDashboard = () => {
                 ))}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="incoming" className="mt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold">Incoming Batches</h2>
+              <Badge className="bg-green-100 text-green-700">{incomingBatches.length} batches</Badge>
+            </div>
+            {incomingBatches.length === 0 ? (
+              <p className="text-center text-neutral-400 py-8">No incoming batches assigned to you yet.</p>
+            ) : (
+              incomingBatches.map((b: WasteBatch) => (
+                <Card key={b.id} className="border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-bold text-sm">{b.batch_reference || b.id.slice(0, 8)}</p>
+                      <Badge className="text-xs">{b.status.replace(/_/g, " ")}</Badge>
+                    </div>
+                    <p className="text-sm text-neutral-600">{b.material_type}</p>
+                    <p className="text-xs text-neutral-500 mt-1">{b.quantity_kg.toLocaleString()} kg</p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
 
           <TabsContent value="marketplace" className="mt-4 space-y-3">
