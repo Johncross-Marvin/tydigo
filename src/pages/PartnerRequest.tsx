@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, ShoppingBag, Send, CheckCircle2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/components/auth-provider";
 
 const PartnerRequestPage = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [sent, setSent] = useState(false);
   const [material, setMaterial] = useState("");
   const [quantityKg, setQuantityKg] = useState("");
@@ -16,7 +18,23 @@ const PartnerRequestPage = () => {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [error, setError] = useState("");
   const requestMutation = useMutation({
-    mutationFn: api.createPartnerRequest,
+    mutationFn: async (payload: {
+      material: string;
+      quantityKg: number;
+      pricePerKgNgn: number;
+      deliveryAddress: string;
+    }) => {
+      if (!supabase || !user) throw new Error("Not authenticated.");
+      const { error: insertError } = await supabase.from("partner_material_requests").insert({
+        partner_id: user.id,
+        material_type: payload.material,
+        quantity_kg: payload.quantityKg,
+        price_per_kg_ngn: payload.pricePerKgNgn,
+        preferred_city: payload.deliveryAddress,
+        is_active: true,
+      });
+      if (insertError) throw insertError;
+    },
     onSuccess: async () => {
       setSent(true);
       await queryClient.invalidateQueries({ queryKey: ["partner-requests"] });

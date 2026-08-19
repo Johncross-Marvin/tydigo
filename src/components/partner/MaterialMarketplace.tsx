@@ -35,12 +35,12 @@ export function MaterialMarketplace({ materials, onRequest }: MaterialMarketplac
   const [filter, setFilter] = useState<string>("all");
 
   const filtered = materials.filter((m) => {
-    if (filter !== "all" && m.material !== filter) return false;
-    if (search && !m.material.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filter !== "all" && m.material_type !== filter) return false;
+    if (search && !m.material_type.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const materialTypes = [...new Set(materials.map((m) => m.material))];
+  const materialTypes = [...new Set(materials.map((m) => m.material_type))];
 
   return (
     <div className="space-y-4">

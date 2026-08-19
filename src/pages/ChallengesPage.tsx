@@ -4,8 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Trophy, Target, Flame, Users, Zap, Gift } from "lucide-react";
-import { api } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 
 const challengeIcons = [Target, Flame, Users, Zap, Trophy, Gift];
 const challengeBars = [

@@ -31,18 +31,17 @@ const EstateDashboardPage = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   useSeo({ title: "Estate Dashboard — Tydigo" });
 
-  const { data: locationsData } = useQuery({
-    queryKey: ["estate-locations"],
-    queryFn: api.getBusinessLocations,
+  const { data: locations = [] } = useQuery({
+    queryKey: ["estate-locations", user?.id],
+    queryFn: () => getBusinessLocations(user?.id ?? ""),
+    enabled: !!user?.id,
   });
 
-  const { data: impactData } = useQuery({
-    queryKey: ["estate-impact"],
-    queryFn: () => api.getImpactReport("month"),
+  const { data: impact } = useQuery({
+    queryKey: ["estate-impact", user?.id],
+    queryFn: () => getImpactReport(user?.id ?? "", "month"),
+    enabled: !!user?.id,
   });
-
-  const locations = locationsData?.locations ?? [];
-  const impact = impactData?.report;
 
   const menuItems = [
     { icon: Home, label: "Overview", active: true },

@@ -20,9 +20,9 @@ import {
   Droplets,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
 import { useSeo } from "@/lib/seo";
 import { useToast } from "@/components/ui/toast-provider";
+import { getImpactReport } from "@/services/business";
 
 const OrganicDashboardPage = () => {
   const navigate = useNavigate();
@@ -31,12 +31,11 @@ const OrganicDashboardPage = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   useSeo({ title: "Organic Partner Dashboard — Tydigo" });
 
-  const { data: impactData } = useQuery({
-    queryKey: ["organic-impact"],
-    queryFn: () => api.getImpactReport("month"),
+  const { data: impact } = useQuery({
+    queryKey: ["organic-impact", user?.id],
+    queryFn: () => getImpactReport(user?.id ?? "", "month"),
+    enabled: !!user?.id,
   });
-
-  const impact = impactData?.report;
 
   const menuItems = [
     { icon: Home, label: "Overview", active: true },

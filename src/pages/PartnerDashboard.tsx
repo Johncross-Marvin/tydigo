@@ -17,7 +17,6 @@ import {
   Star,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { useSeo, seoConfig } from "@/lib/seo";
 import { MaterialMarketplace } from "@/components/partner/MaterialMarketplace";
@@ -44,7 +43,7 @@ const PartnerDashboardPage = () => {
   });
 
   const requests = requestsData?.requests ?? [];
-  const activeBatches = requests.filter((r) => !["received", "cancelled"].includes(r.status));
+  const activeBatches = requests.filter((r) => r.is_active !== false);
 
   const handleRequestMaterial = async (materialId: string) => {
     if (!supabase || !user) {
@@ -61,11 +60,11 @@ const PartnerDashboardPage = () => {
       }
       const { error } = await supabase.from("partner_material_requests").insert({
         partner_id: user.id,
-        material: source.material,
+        material_type: source.material_type,
         quantity_kg: source.quantity_kg,
         price_per_kg_ngn: source.price_per_kg_ngn,
-        delivery_address: source.delivery_address,
-        status: "requested",
+        preferred_city: source.preferred_city,
+        is_active: true,
       });
       if (error) throw error;
       success("Request Sent", "Your material request has been submitted.");

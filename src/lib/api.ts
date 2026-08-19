@@ -43,11 +43,16 @@ export type Pickup = {
 
 export type PartnerMaterialRequest = {
   id: string;
-  material: string;
+  partner_id?: string;
+  material_type: string;
   quantity_kg: number;
-  price_per_kg_ngn: number;
-  delivery_address: string;
-  status: string;
+  frequency?: string;
+  quality_rules?: string;
+  contamination_max_pct?: number;
+  preferred_city?: string;
+  preferred_zones?: string[];
+  price_per_kg_ngn?: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 };
