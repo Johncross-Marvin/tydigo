@@ -101,14 +101,12 @@ export function MaterialMarketplace({ materials, onRequest }: MaterialMarketplac
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <Badge className="bg-purple-100 text-purple-600 rounded-full capitalize text-xs">
-                    {material.material.replace(/_/g, " ")}
+                    {material.material_type.replace(/_/g, " ")}
                   </Badge>
                   <Badge className={`rounded-full text-xs ${
-                    material.status === "available" ? "bg-green-100 text-green-600" :
-                    material.status === "requested" ? "bg-amber-100 text-amber-600" :
-                    "bg-neutral-100 text-neutral-600"
+                    material.is_active ? "bg-green-100 text-green-600" : "bg-neutral-100 text-neutral-600"
                   }`}>
-                    {material.status}
+                    {material.is_active ? "available" : "inactive"}
                   </Badge>
                 </div>
 
@@ -123,7 +121,7 @@ export function MaterialMarketplace({ materials, onRequest }: MaterialMarketplac
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-neutral-400" />
-                    <span className="truncate">{material.delivery_address}</span>
+                    <span className="truncate">{material.preferred_city ?? "—"}</span>
                   </div>
                 </div>
 

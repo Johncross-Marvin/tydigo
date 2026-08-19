@@ -37,7 +37,8 @@ export function BatchTracker({ batches }: BatchTrackerProps) {
   return (
     <div className="space-y-3">
       {batches.map((batch) => {
-        const currentIdx = batchSteps.indexOf(batch.status);
+        const status = batch.is_active ? "requested" : "received";
+        const currentIdx = batchSteps.indexOf(status);
         const progress = currentIdx >= 0 ? Math.round(((currentIdx + 1) / batchSteps.length) * 100) : 0;
 
         return (
@@ -45,7 +46,7 @@ export function BatchTracker({ batches }: BatchTrackerProps) {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <Badge className="bg-purple-100 text-purple-600 rounded-full capitalize text-xs">
-                  {batch.material.replace(/_/g, " ")}
+                  {batch.material_type.replace(/_/g, " ")}
                 </Badge>
                 <span className="text-sm font-bold text-neutral-700">
                   {formatWeight(batch.quantity_kg)}
@@ -76,7 +77,7 @@ export function BatchTracker({ batches }: BatchTrackerProps) {
               <div className="flex items-center gap-2 text-xs text-neutral-500">
                 <Clock className="w-3 h-3" />
                 <span>{new Date(batch.created_at).toLocaleDateString()}</span>
-                <span className="capitalize">• {batch.status.replace(/_/g, " ")}</span>
+                <span className="capitalize">• {status.replace(/_/g, " ")}</span>
               </div>
             </CardContent>
           </Card>

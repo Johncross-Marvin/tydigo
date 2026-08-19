@@ -229,7 +229,7 @@ const PartnerDashboardPage = () => {
               {activeBatches.length > 0 && (
                 <QualityVerification
                   batchId={activeBatches[0].id}
-                  material={activeBatches[0].material}
+                  material={activeBatches[0].material_type}
                   onRate={handleRateQuality}
                 />
               )}
