@@ -314,12 +314,24 @@ export async function createAuditLog(params: {
 
 export type WasteBatch = {
   id: string;
-  pickup_id: string;
-  waste_type: string;
-  weight_kg: number;
+  batch_reference: string | null;
+  partner_id: string | null;
+  material_type: string;
+  quantity_kg: number;
+  quality_grade: string | null;
+  contamination_pct: number | null;
+  source_pickup_ids: string[] | null;
+  source_zone: string | null;
+  delivered_at: string | null;
+  received_by: string | null;
+  verified: boolean;
+  proof_photos: string[] | null;
   status: string;
-  partner_id?: string;
-  price_per_kg_ngn?: number;
+  custodian_profile_id: string | null;
+  custodian_type: string | null;
+  destination_type: string | null;
+  destination_id: string | null;
+  destination_assigned_at: string | null;
   created_at: string;
   updated_at: string;
 };
