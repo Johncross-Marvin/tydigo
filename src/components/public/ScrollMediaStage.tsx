@@ -25,8 +25,10 @@ type ScrollMediaStageProps = {
 export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMediaStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [progress, setProgress] = useState(0);
 
+  // Scroll-reactive expansion
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) return;
@@ -40,7 +42,6 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
     const update = () => {
       const rect = stage.getBoundingClientRect();
       const viewportH = window.innerHeight;
-      // Progress from 0 (entering) to 1 (fully engaged)
       const raw = (viewportH - rect.top) / (viewportH + rect.height);
       const clamped = Math.max(0, Math.min(1, raw));
       setProgress(clamped);
@@ -55,7 +56,6 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
           };
           window.addEventListener("scroll", onScroll, { passive: true });
           update();
-          // Store cleanup
           (stage as unknown as { _cleanup?: () => void })._cleanup = () => {
             window.removeEventListener("scroll", onScroll);
             cancelAnimationFrame(raf);
@@ -73,9 +73,59 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
     };
   }, []);
 
+  // Force autoplay + loop for the video. Browsers block autoplay unless the
+  // video is muted and `play()` is invoked programmatically after the media
+  // is ready. We retry on several events to guarantee playback across browsers.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Ensure muted + inline so autoplay is permitted on all browsers.
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.loop = true;
+    video.autoplay = true;
+
+    let cancelled = false;
+
+    const attemptPlay = () => {
+      if (cancelled) return;
+      const p = video.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          // Retry once more after a short delay (some browsers need a tick).
+          if (!cancelled) {
+            setTimeout(() => {
+              if (!cancelled) video.play().catch(() => {});
+            }, 250);
+          }
+        });
+      }
+    };
+
+    // Attempt playback as soon as data is available and on several readiness
+    // events to cover all browser timing differences.
+    video.addEventListener("loadedmetadata", attemptPlay);
+    video.addEventListener("loadeddata", attemptPlay);
+    video.addEventListener("canplay", attemptPlay);
+    video.addEventListener("canplaythrough", attemptPlay);
+
+    // Also attempt immediately (in case the video is already cached).
+    attemptPlay();
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("loadedmetadata", attemptPlay);
+      video.removeEventListener("loadeddata", attemptPlay);
+      video.removeEventListener("canplay", attemptPlay);
+      video.removeEventListener("canplaythrough", attemptPlay);
+    };
+  }, [videoSrc]);
+
   // Compute styles from progress (compositor-friendly)
-  const scale = 1 + progress * 0.06; // ~6% max expansion
-  const radius = Math.max(8, 24 - progress * 16); // relax radius from 24px to 8px
+  const scale = 1 + progress * 0.06;
+  const radius = Math.max(8, 24 - progress * 16);
   const opacity = 1;
 
   return (
@@ -92,6 +142,7 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
       >
         {videoSrc ? (
           <video
+            ref={videoRef}
             src={videoSrc}
             className="w-full h-[60vh] sm:h-[70vh] object-cover"
             autoPlay
@@ -99,6 +150,8 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
             muted
             playsInline
             preload="auto"
+            controls={false}
+            disablePictureInPicture
           />
         ) : src ? (
           <img
