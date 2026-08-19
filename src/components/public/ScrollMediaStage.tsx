@@ -4,10 +4,8 @@ import { Recycle } from "lucide-react";
 type ScrollMediaStageProps = {
   /** Optional image source. Falls back to a brand panel when absent. */
   src?: string;
-  /** Optional video source (direct .mp4/.webm URL for a <video> element). */
+  /** Optional video source (direct .mp4/.webm URL). */
   videoSrc?: string;
-  /** Optional Google Drive embed URL (iframe-based, most reliable). */
-  videoEmbedSrc?: string;
   /** Optional poster image shown while the video loads. */
   poster?: string;
   alt?: string;
@@ -23,18 +21,9 @@ type ScrollMediaStageProps = {
  * IntersectionObserver + requestAnimationFrame-throttled progress and only
  * animates compositor-friendly properties (transform, border-radius, opacity).
  *
- * Supports an image (`src`), a direct video (`videoSrc`), or a Google Drive
- * embed (`videoEmbedSrc`). Provides an immediate static equivalent under
- * prefers-reduced-motion.
+ * Supports an image (`src`) or an autoplaying, looping video (`videoSrc`).
  */
-export function ScrollMediaStage({
-  src,
-  videoSrc,
-  videoEmbedSrc,
-  poster,
-  alt = "",
-  children,
-}: ScrollMediaStageProps) {
+export function ScrollMediaStage({ src, videoSrc, poster, alt = "", children }: ScrollMediaStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -85,7 +74,9 @@ export function ScrollMediaStage({
     };
   }, []);
 
-  // Force autoplay + loop for the direct <video> element.
+  // Ensure the video autoplays and loops. `muted` + `playsInline` are required
+  // for autoplay to be permitted by all browsers. We also call `play()`
+  // programmatically as a belt-and-suspenders measure.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -96,35 +87,20 @@ export function ScrollMediaStage({
     video.loop = true;
     video.autoplay = true;
 
-    let cancelled = false;
-
-    const attemptPlay = () => {
-      if (cancelled) return;
+    const tryPlay = () => {
       const p = video.play();
       if (p && typeof p.catch === "function") {
-        p.catch(() => {
-          if (!cancelled) {
-            setTimeout(() => {
-              if (!cancelled) video.play().catch(() => {});
-            }, 250);
-          }
-        });
+        p.catch(() => {});
       }
     };
 
-    video.addEventListener("loadedmetadata", attemptPlay);
-    video.addEventListener("loadeddata", attemptPlay);
-    video.addEventListener("canplay", attemptPlay);
-    video.addEventListener("canplaythrough", attemptPlay);
-
-    attemptPlay();
+    video.addEventListener("canplay", tryPlay);
+    video.addEventListener("loadeddata", tryPlay);
+    tryPlay();
 
     return () => {
-      cancelled = true;
-      video.removeEventListener("loadedmetadata", attemptPlay);
-      video.removeEventListener("loadeddata", attemptPlay);
-      video.removeEventListener("canplay", attemptPlay);
-      video.removeEventListener("canplaythrough", attemptPlay);
+      video.removeEventListener("canplay", tryPlay);
+      video.removeEventListener("loadeddata", tryPlay);
     };
   }, [videoSrc]);
 
@@ -145,16 +121,7 @@ export function ScrollMediaStage({
           willChange: "transform, border-radius",
         }}
       >
-        {videoEmbedSrc ? (
-          <iframe
-            src={videoEmbedSrc}
-            className="w-full h-[60vh] sm:h-[70vh]"
-            title={alt || "Tydigo video"}
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            frameBorder="0"
-          />
-        ) : videoSrc ? (
+        {videoSrc ? (
           <video
             ref={videoRef}
             src={videoSrc}
@@ -165,8 +132,6 @@ export function ScrollMediaStage({
             muted
             playsInline
             preload="auto"
-            controls={false}
-            disablePictureInPicture
           />
         ) : src || poster ? (
           <img
