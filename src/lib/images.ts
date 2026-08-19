@@ -11,6 +11,7 @@ export const IMAGE_IDS = {
   favicon: "1flG4z--jtG3r-yBwqtNtwnoq7LQ9-pWM",
   navbarLogo: "1-q_7Yway8YZNK2Swow8RFwHU3qlE4HjA",
   dashboardIcon: "1K6fONWY85K5cfo1wQ84HifyQ-SeBVVa1",
+  heroVideo: "1xxRtH_WpUoQM-wOYToQ7kGKeDipep0fl",
 
   // Public / Landing
   hero: "1Iipeg7HtEfp8Thx6bRt_0OX36M0l9Jge",
@@ -62,4 +63,13 @@ export function gdSrcSet(id: string): string {
     `https://drive.google.com/thumbnail?id=${id}&sz=w800 800w`,
     `https://drive.google.com/thumbnail?id=${id}&sz=w1200 1200w`,
   ].join(", ");
+}
+
+/**
+ * Returns a direct streaming URL for a Google Drive video.
+ * Uses the `uc?export=download` endpoint which serves the raw file and
+ * supports autoplay/loop in a <video> element.
+ */
+export function gdVideoUrl(id: string): string {
+  return `https://drive.google.com/uc?export=download&id=${id}`;
 }

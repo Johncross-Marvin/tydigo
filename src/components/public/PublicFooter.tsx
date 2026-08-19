@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { Recycle, Leaf } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { FOOTER_GROUPS, LEGAL_LINKS, SOCIAL_LINKS, FEATURE_FLAGS } from "@/lib/site-config";
+import { BrandMark } from "@/components/BrandMark";
 
 export function PublicFooter() {
   return (
@@ -10,9 +11,7 @@ export function PublicFooter() {
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-                <Recycle className="w-5 h-5 text-amber-400" />
-              </div>
+              <BrandMark size={36} className="bg-white/15" />
               <span className="text-xl font-bold text-white">
                 Ty<span className="text-amber-400">digo</span>
               </span>

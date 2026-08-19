@@ -4,6 +4,8 @@ import { Recycle } from "lucide-react";
 type ScrollMediaStageProps = {
   /** Optional image source. Falls back to a brand panel when absent. */
   src?: string;
+  /** Optional video source. Takes precedence over `src` when provided. */
+  videoSrc?: string;
   alt?: string;
   /** Optional overlay content. */
   children?: React.ReactNode;
@@ -17,9 +19,10 @@ type ScrollMediaStageProps = {
  * IntersectionObserver + requestAnimationFrame-throttled progress and only
  * animates compositor-friendly properties (transform, border-radius, opacity).
  *
+ * Supports an image (`src`) or an autoplaying, looping video (`videoSrc`).
  * Provides an immediate static equivalent under prefers-reduced-motion.
  */
-export function ScrollMediaStage({ src, alt = "", children }: ScrollMediaStageProps) {
+export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMediaStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
@@ -87,7 +90,17 @@ export function ScrollMediaStage({ src, alt = "", children }: ScrollMediaStagePr
           willChange: "transform, border-radius",
         }}
       >
-        {src ? (
+        {videoSrc ? (
+          <video
+            src={videoSrc}
+            className="w-full h-[60vh] sm:h-[70vh] object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+          />
+        ) : src ? (
           <img
             src={src}
             alt={alt}

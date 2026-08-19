@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { getRolesByGroup } from "@/lib/site-config";
-import { resolveIcon } from "@/lib/icon-resolver";
+import { BrandMark } from "@/components/BrandMark";
 
 export function EarnFeature() {
   const earnRoles = getRolesByGroup("earn_operate").concat(getRolesByGroup("process_materials"));
@@ -22,7 +22,6 @@ export function EarnFeature() {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {earnRoles.map((role) => {
-            const Icon = resolveIcon(role.icon);
             return (
               <Link
                 key={role.accountType}
@@ -30,7 +29,7 @@ export function EarnFeature() {
                 className="group rounded-2xl bg-white/5 border border-white/10 p-6 hover:bg-white/10 transition-colors"
               >
                 <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4">
-                  <Icon className="w-6 h-6 text-amber-400" />
+                  <BrandMark size={32} />
                 </div>
                 <h3 className="font-bold text-white mb-1">{role.label}</h3>
                 <p className="text-sm text-green-200/80 mb-4">{role.summary}</p>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { ACCOUNT_GROUPS, getRolesByGroup, type RoleExperience } from "@/lib/site-config";
-import { resolveIcon } from "@/lib/icon-resolver";
+import { BrandMark } from "@/components/BrandMark";
 import { AuthModal } from "@/components/public/AuthModal";
 import type { UserRole } from "@/lib/api";
 
@@ -20,7 +20,6 @@ export function RolePathways() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {roles.map((role) => {
-                const Icon = resolveIcon(role.icon);
                 return (
                   <button
                     key={role.accountType}
@@ -28,7 +27,7 @@ export function RolePathways() {
                     className="group flex items-start gap-3 p-4 rounded-2xl border border-neutral-100 hover:border-[#145C25]/30 hover:bg-green-50/40 transition-colors text-left w-full"
                   >
                     <div className={`w-11 h-11 rounded-xl ${role.iconBg} flex items-center justify-center shrink-0`}>
-                      <Icon className="w-5 h-5" />
+                      <BrandMark size={28} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-neutral-900 group-hover:text-[#145C25] transition-colors">

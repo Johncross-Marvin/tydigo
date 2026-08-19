@@ -17,7 +17,8 @@ import {
   Users,
 } from "lucide-react";
 import { useSeo, seoConfig } from "@/lib/seo";
-import { IMAGE_IDS, gdUrl } from "@/lib/images";
+import { IMAGE_IDS, gdUrl, gdVideoUrl } from "@/lib/images";
+import { BrandMark } from "@/components/BrandMark";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { AppInstallBanner } from "@/components/public/AppInstallBanner";
@@ -163,7 +164,10 @@ const Index = () => {
       {/* ── Scroll-reactive media stage ── */}
       <section className="bg-[#0A2F14] pb-8">
         <div className="max-w-[80rem] mx-auto px-4 sm:px-6 lg:px-8">
-          <ScrollMediaStage alt="Tydigo waste collection and recycling operations">
+          <ScrollMediaStage
+            videoSrc={gdVideoUrl(IMAGE_IDS.heroVideo)}
+            alt="Tydigo waste collection and recycling operations"
+          >
             <div className="max-w-md">
               <p className="text-white font-semibold text-lg mb-1">
                 From pickup to recovery
@@ -213,7 +217,7 @@ const Index = () => {
                 <div className="rounded-2xl bg-white border border-neutral-100 p-6 h-full">
                   <div className="text-5xl font-black text-neutral-100 mb-4">{item.step}</div>
                   <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mb-4">
-                    <item.icon className="w-6 h-6 text-[#145C25]" />
+                    <BrandMark size={28} />
                   </div>
                   <h3 className="text-lg font-bold text-neutral-900 mb-2">{item.title}</h3>
                   <p className="text-neutral-500 leading-relaxed">{item.desc}</p>
@@ -243,7 +247,7 @@ const Index = () => {
                 className="rounded-2xl border border-neutral-100 p-6 hover:border-[#145C25]/20 transition-colors"
               >
                 <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center mb-4">
-                  <item.icon className="w-5 h-5 text-[#145C25]" />
+                  <BrandMark size={24} />
                 </div>
                 <h3 className="font-bold text-neutral-900 mb-1.5">{item.title}</h3>
                 <p className="text-neutral-500 leading-relaxed">{item.desc}</p>
@@ -313,8 +317,8 @@ const Index = () => {
                 { icon: Globe, label: "Partners & government", value: "Oversee" },
               ].map((item) => (
                 <div key={item.label} className="rounded-2xl bg-white border border-neutral-100 p-5">
-                  <item.icon className="w-6 h-6 text-[#145C25] mb-3" />
-                  <p className="text-sm text-neutral-500">{item.label}</p>
+                  <BrandMark size={28} />
+                  <p className="text-sm text-neutral-500 mt-3">{item.label}</p>
                   <p className="font-bold text-neutral-900">{item.value}</p>
                 </div>
               ))}
