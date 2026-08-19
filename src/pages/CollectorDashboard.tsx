@@ -17,6 +17,7 @@ import { CollectorPerformancePanel, type PerformanceData } from "@/components/co
 import { supabase, isSupabaseAvailable } from "@/lib/supabase";
 import { getCollectorOffers, getCurrentJob, acceptAssignment, rejectAssignment, markEnRoute, markArrived, verifyPickup, markWastePicked, completePickup, type CollectorOffer, type ActiveJob } from "@/services/collector";
 import { requestWithdrawal } from "@/services/collector-wallet";
+import { getBatchesByCustodian, type WasteBatch } from "@/services/chain-of-custody";
 import { toast } from "sonner";
 import type { CollectorJob } from "@/lib/api";
 
@@ -76,6 +77,17 @@ const CollectorDashboardPage = () => {
       };
     },
     enabled: !!user,
+  });
+
+  // Fetch custody batches (waste batches where this collector is custodian)
+  const { data: custodyBatches = [] } = useQuery<WasteBatch[]>({
+    queryKey: ["collector-custody-batches", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      return getBatchesByCustodian(user.id);
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
   });
 
   // Fetch performance
@@ -262,9 +274,10 @@ const CollectorDashboardPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-4 rounded-2xl bg-neutral-100 p-1">
+          <TabsList className="w-full grid grid-cols-5 rounded-2xl bg-neutral-100 p-1">
             <TabsTrigger value="jobs" className="rounded-xl text-xs">Jobs</TabsTrigger>
             <TabsTrigger value="active" className="rounded-xl text-xs">Active</TabsTrigger>
+            <TabsTrigger value="batches" className="rounded-xl text-xs">Batches</TabsTrigger>
             <TabsTrigger value="wallet" className="rounded-xl text-xs">Wallet</TabsTrigger>
             <TabsTrigger value="stats" className="rounded-xl text-xs">Stats</TabsTrigger>
           </TabsList>
@@ -288,6 +301,30 @@ const CollectorDashboardPage = () => {
                   <p className="text-sm">Accept a job from the Jobs tab to get started</p>
                 </CardContent>
               </Card>
+            )}
+          </TabsContent>
+          <TabsContent value="batches" className="mt-4 space-y-3">
+            {custodyBatches.length === 0 ? (
+              <Card className="border-0 shadow-sm rounded-2xl">
+                <CardContent className="p-6 text-center text-neutral-400">
+                  <Truck className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="font-semibold">No batches in your custody</p>
+                  <p className="text-sm">Completed pickups create waste batches you can track here.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              custodyBatches.map((batch) => (
+                <Card key={batch.id} className="border-0 shadow-sm rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-bold text-sm">{batch.batch_reference || batch.id.slice(0, 8)}</p>
+                      <Badge className="text-xs">{batch.status.replace(/_/g, " ")}</Badge>
+                    </div>
+                    <p className="text-sm text-neutral-600">{batch.material_type}</p>
+                    <p className="text-xs text-neutral-500 mt-1">{batch.quantity_kg.toLocaleString()} kg</p>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </TabsContent>
           <TabsContent value="wallet" className="mt-4">

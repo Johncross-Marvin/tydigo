@@ -20,6 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { roleHomePath, type UserRole } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
+import { BrandMark } from "@/components/BrandMark";
 import { getAccountTypeConfig } from "@/lib/signup-config";
 import { useSeo } from "@/lib/seo";
 import { AuthModal } from "@/components/public/AuthModal";
@@ -58,9 +59,7 @@ const RoleLandingPage = () => {
       <nav className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#0A2F14] flex items-center justify-center">
-              <Recycle className="w-5 h-5 text-amber-400" />
-            </div>
+            <BrandMark size={36} />
             <span className="text-xl font-bold text-neutral-900">Ty<span className="text-[#145C25]">digo</span></span>
           </Link>
           <div className="flex items-center gap-3">
@@ -236,9 +235,7 @@ const RoleLandingPage = () => {
       <footer className="bg-[#0A2F14] text-green-200 py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
           <div className="flex items-center justify-center gap-2.5 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-              <Recycle className="w-5 h-5 text-amber-400" />
-            </div>
+            <BrandMark size={36} className="bg-white/15" />
             <span className="text-xl font-bold text-white">Ty<span className="text-amber-400">digo</span></span>
           </div>
           <p className="text-sm text-green-300">Cleaner homes. Smarter cities.</p>

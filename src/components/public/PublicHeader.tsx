@@ -89,9 +89,9 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5" aria-label="Tydigo home">
               <img
-                src={gdUrl(IMAGE_IDS.navbarLogo, 200)}
+                src={gdUrl(IMAGE_IDS.navbarLogo, 400)}
                 alt="Tydigo"
-                className="w-9 h-9 rounded-xl object-contain"
+                className="h-8 w-auto sm:h-10 object-contain"
                 loading="eager"
                 decoding="async"
               />
@@ -212,9 +212,9 @@ export function PublicHeader({ transparent = false }: PublicHeaderProps) {
             <div className="flex items-center justify-between h-16">
               <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5">
                 <img
-                  src={gdUrl(IMAGE_IDS.navbarLogo, 200)}
+                  src={gdUrl(IMAGE_IDS.navbarLogo, 400)}
                   alt="Tydigo"
-                  className="w-9 h-9 rounded-xl object-contain"
+                  className="h-8 w-auto sm:h-10 object-contain"
                   loading="eager"
                   decoding="async"
                 />
