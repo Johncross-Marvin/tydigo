@@ -166,6 +166,7 @@ const Index = () => {
         <div className="max-w-[80rem] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollMediaStage
             videoSrc={gdVideoUrl(IMAGE_IDS.heroVideo)}
+            poster={gdUrl(IMAGE_IDS.heroBackground, 1600)}
             alt="Tydigo waste collection and recycling operations"
           >
             <div className="max-w-md">

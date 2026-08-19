@@ -4,8 +4,12 @@ import { Recycle } from "lucide-react";
 type ScrollMediaStageProps = {
   /** Optional image source. Falls back to a brand panel when absent. */
   src?: string;
-  /** Optional video source. Takes precedence over `src` when provided. */
+  /** Optional video source (direct .mp4/.webm URL for a <video> element). */
   videoSrc?: string;
+  /** Optional Google Drive embed URL (iframe-based, most reliable). */
+  videoEmbedSrc?: string;
+  /** Optional poster image shown while the video loads. */
+  poster?: string;
   alt?: string;
   /** Optional overlay content. */
   children?: React.ReactNode;
@@ -19,10 +23,18 @@ type ScrollMediaStageProps = {
  * IntersectionObserver + requestAnimationFrame-throttled progress and only
  * animates compositor-friendly properties (transform, border-radius, opacity).
  *
- * Supports an image (`src`) or an autoplaying, looping video (`videoSrc`).
- * Provides an immediate static equivalent under prefers-reduced-motion.
+ * Supports an image (`src`), a direct video (`videoSrc`), or a Google Drive
+ * embed (`videoEmbedSrc`). Provides an immediate static equivalent under
+ * prefers-reduced-motion.
  */
-export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMediaStageProps) {
+export function ScrollMediaStage({
+  src,
+  videoSrc,
+  videoEmbedSrc,
+  poster,
+  alt = "",
+  children,
+}: ScrollMediaStageProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -73,14 +85,11 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
     };
   }, []);
 
-  // Force autoplay + loop for the video. Browsers block autoplay unless the
-  // video is muted and `play()` is invoked programmatically after the media
-  // is ready. We retry on several events to guarantee playback across browsers.
+  // Force autoplay + loop for the direct <video> element.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Ensure muted + inline so autoplay is permitted on all browsers.
     video.muted = true;
     video.defaultMuted = true;
     video.playsInline = true;
@@ -94,7 +103,6 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
       const p = video.play();
       if (p && typeof p.catch === "function") {
         p.catch(() => {
-          // Retry once more after a short delay (some browsers need a tick).
           if (!cancelled) {
             setTimeout(() => {
               if (!cancelled) video.play().catch(() => {});
@@ -104,14 +112,11 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
       }
     };
 
-    // Attempt playback as soon as data is available and on several readiness
-    // events to cover all browser timing differences.
     video.addEventListener("loadedmetadata", attemptPlay);
     video.addEventListener("loadeddata", attemptPlay);
     video.addEventListener("canplay", attemptPlay);
     video.addEventListener("canplaythrough", attemptPlay);
 
-    // Also attempt immediately (in case the video is already cached).
     attemptPlay();
 
     return () => {
@@ -140,10 +145,20 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
           willChange: "transform, border-radius",
         }}
       >
-        {videoSrc ? (
+        {videoEmbedSrc ? (
+          <iframe
+            src={videoEmbedSrc}
+            className="w-full h-[60vh] sm:h-[70vh]"
+            title={alt || "Tydigo video"}
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+            frameBorder="0"
+          />
+        ) : videoSrc ? (
           <video
             ref={videoRef}
             src={videoSrc}
+            poster={poster}
             className="w-full h-[60vh] sm:h-[70vh] object-cover"
             autoPlay
             loop
@@ -153,9 +168,9 @@ export function ScrollMediaStage({ src, videoSrc, alt = "", children }: ScrollMe
             controls={false}
             disablePictureInPicture
           />
-        ) : src ? (
+        ) : src || poster ? (
           <img
-            src={src}
+            src={src || poster}
             alt={alt}
             className="w-full h-[60vh] sm:h-[70vh] object-cover"
             loading="lazy"

@@ -68,10 +68,21 @@ export function gdSrcSet(id: string): string {
 /**
  * Returns a direct streaming URL for a Google Drive video.
  *
- * Uses the `drive.usercontent.google.com` CDN endpoint which serves the raw
- * file bytes directly (no HTML confirmation page), so it works reliably in a
- * `<video>` element with autoplay/loop.
+ * Uses the canonical `uc?export=download` endpoint. This is the standard
+ * Google Drive direct-download URL that browsers follow redirects for and
+ * serve with the correct `Content-Type` for `<video>` playback.
  */
 export function gdVideoUrl(id: string): string {
-  return `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`;
+  return `https://drive.google.com/uc?export=download&id=${id}`;
+}
+
+/**
+ * Returns the Google Drive preview/embed URL for a video.
+ *
+ * This is the officially supported embed endpoint and is the most reliable
+ * way to play a Google Drive video across browsers. Supports autoplay/loop
+ * via query parameters.
+ */
+export function gdVideoEmbedUrl(id: string): string {
+  return `https://drive.google.com/file/d/${id}/preview`;
 }
