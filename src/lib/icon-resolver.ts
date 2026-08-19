@@ -13,6 +13,17 @@ import {
   Globe,
   Shield,
   Handshake,
+  MapPin,
+  Award,
+  Users,
+  Calendar,
+  FileText,
+  CreditCard,
+  Package,
+  Droplets,
+  DollarSign,
+  Clock,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +37,17 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Globe,
   Shield,
   Handshake,
+  MapPin,
+  Award,
+  Users,
+  Calendar,
+  FileText,
+  CreditCard,
+  Package,
+  Droplets,
+  DollarSign,
+  Clock,
+  Bell,
 };
 
 export function resolveIcon(name: string): LucideIcon {
